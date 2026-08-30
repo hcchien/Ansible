@@ -6,7 +6,6 @@ import '../../services/atproto_client.dart';
 import '../../services/messenger_sync_service.dart';
 import '../../services/network_status_service.dart';
 import '../../services/ops_dispatch_service.dart';
-import '../../services/handle_resolver.dart';
 import '../../services/reading_preferences_controller.dart';
 import '../../services/relay_discovery_client.dart';
 import '../../l10n/app_l10n.dart';
@@ -326,28 +325,18 @@ class MainPanel extends StatelessWidget {
         children: [
           AnsibleMark(size: 20, color: s.foreground),
           const SizedBox(width: 9),
-          ElixWordmark(fontSize: 21, color: s.foreground),
-          const Spacer(),
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(color: s.surface, shape: BoxShape.circle),
-            child: IconButton(
-              key: const Key('compact_home_sync_button'),
-              padding: EdgeInsets.zero,
-              onPressed: syncing ? null : onSync,
-              icon: syncing
-                  ? const SizedBox.square(
-                      dimension: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.sync, size: 20),
+          Text(
+            AnsibleDesign.brandName,
+            style: TextStyle(
+              fontFamily: AnsibleDesign.sans,
+              fontFamilyFallback: AnsibleDesign.fallback,
+              fontSize: 21,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.2,
               color: s.foreground,
-              tooltip: context.uiCopy(zh: '同步', en: 'Sync'),
-              visualDensity: VisualDensity.compact,
             ),
           ),
-          const SizedBox(width: 8),
+          const Spacer(),
           Container(
             width: 34,
             height: 34,
@@ -366,155 +355,58 @@ class MainPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          _sessionChip(s),
+          _sessionChip(context, s),
         ],
       ),
     );
   }
 
-  /// The handoff gives every mobile destination a clear editorial masthead.
-  /// Keep it inside the board shell so swiping still changes only local view
-  /// state and does not alter navigation or data behavior.
-  Widget _compactBoardMasthead(BuildContext context) {
-    final s = (screenStyles[selectedTab] ?? ElixScreenStyle.paper).dataFor(
-      Theme.of(context).brightness,
-    );
-    final title = switch (selectedBoard) {
-      HomeBoard.personal => context.uiCopy(zh: '個人版', en: 'Personal'),
-      HomeBoard.timeline => context.uiCopy(zh: '時間軸', en: 'Timeline'),
-      HomeBoard.forum => context.uiCopy(zh: '討論區', en: 'Forum'),
-    };
-    final eyebrow = switch (selectedBoard) {
-      HomeBoard.personal => 'YOUR NOTES · MURMURS',
-      HomeBoard.timeline => 'FOLLOWING · SIGNED SOURCES',
-      HomeBoard.forum => 'BOARDS · PUBLIC DISCUSSION',
-    };
-    final meta = switch (selectedBoard) {
-      HomeBoard.personal =>
-        '${contentItems.length.toString().padLeft(2, '0')} LOCAL',
-      HomeBoard.timeline =>
-        '${followingPosts.length.toString().padLeft(2, '0')} POSTS',
-      HomeBoard.forum => '${posts.length.toString().padLeft(2, '0')} THREADS',
-    };
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(
-        AnsibleDesign.pageGutter,
-        14,
-        AnsibleDesign.pageGutter,
-        15,
-      ),
-      decoration: BoxDecoration(
-        color: s.surface.withValues(alpha: 0.62),
-        border: Border(
-          top: BorderSide(color: s.rule, width: AnsibleDesign.hairline),
-          bottom: BorderSide(color: s.rule, width: AnsibleDesign.hairline),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Container(
-            width: 4,
-            height: 35,
+  Widget _sessionChip(BuildContext context, ElixScreenStyleData s) {
+    return Tooltip(
+      message: context.uiCopy(zh: '同步', en: 'Sync'),
+      child: Semantics(
+        button: true,
+        label: context.uiCopy(zh: '同步', en: 'Sync'),
+        child: GestureDetector(
+          key: const Key('compact_home_sync_button'),
+          behavior: HitTestBehavior.opaque,
+          onTap: syncing ? null : onSync,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(3, 3, 9, 3),
             decoration: BoxDecoration(
-              color: s.accent,
-              borderRadius: BorderRadius.circular(2),
+              border: Border.all(color: s.rule),
+              borderRadius: BorderRadius.circular(999),
             ),
-          ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  eyebrow,
-                  style: TextStyle(
-                    fontFamily: AnsibleDesign.mono,
-                    fontSize: 8.5,
-                    letterSpacing: 1.55,
-                    color: s.faint,
+                Container(
+                  width: 26,
+                  height: 26,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AnsibleDesign.darkLavender
+                        : AnsibleDesign.lavender,
+                    shape: BoxShape.circle,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(width: 5),
                 Text(
-                  title,
+                  'PK',
                   style: TextStyle(
-                    fontFamily: AnsibleDesign.serif,
-                    fontFamilyFallback: AnsibleDesign.fallback,
-                    fontSize: 27,
-                    height: 1,
-                    fontWeight: FontWeight.w500,
-                    color: s.foreground,
+                    fontFamily: AnsibleDesign.mono,
+                    fontSize: 10,
+                    letterSpacing: 1,
+                    fontWeight: FontWeight.w600,
+                    color: s.muted,
                   ),
                 ),
               ],
             ),
           ),
-          Text(
-            meta,
-            style: TextStyle(
-              fontFamily: AnsibleDesign.mono,
-              fontSize: 8.5,
-              letterSpacing: 1.2,
-              color: s.faint,
-            ),
-          ),
-        ],
+        ),
       ),
-    );
-  }
-
-  Widget _sessionChip(ElixScreenStyleData s) {
-    return FutureBuilder<String?>(
-      initialData: HandleResolver.shared.cached(did),
-      future: HandleResolver.shared.handleFor(did),
-      builder: (context, snap) {
-        final h = (snap.data ?? '').replaceFirst('@', '').trim();
-        final initial = h.isEmpty ? '·' : h.substring(0, 1).toUpperCase();
-        return Container(
-          padding: const EdgeInsets.fromLTRB(3, 3, 9, 3),
-          decoration: BoxDecoration(
-            border: Border.all(color: s.rule),
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 26,
-                height: 26,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: s.accent,
-                  shape: BoxShape.circle,
-                ),
-                child: Text(
-                  initial,
-                  style: TextStyle(
-                    fontFamily: AnsibleDesign.serif,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: s.background,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 5),
-              Text(
-                'PK',
-                style: TextStyle(
-                  fontFamily: AnsibleDesign.mono,
-                  fontSize: 10,
-                  letterSpacing: 1,
-                  fontWeight: FontWeight.w600,
-                  color: s.accent,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 
@@ -531,7 +423,6 @@ class MainPanel extends StatelessWidget {
             // search + identity chip) sits above the boards; navigation lives in
             // the bottom bar.
             if (compact) _compactBrandHeader(context),
-            if (compact && bottomNav) _compactBoardMasthead(context),
             // The bottom nav (compact/phone) replaces the top header entirely;
             // gate on bottomNav too so the 640–720 band doesn't show both.
             if (!compact && !bottomNav)

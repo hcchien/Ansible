@@ -311,9 +311,12 @@ void main() {
 
     expect(find.byTooltip('已連線 · WiFi'), findsNothing);
     expect(find.byKey(const Key('compact_home_sync_button')), findsOneWidget);
+    expect(find.byTooltip('搜尋'), findsOneWidget);
     expect(
-      tester.getCenter(find.byKey(const Key('compact_home_sync_button'))).dx,
-      lessThan(tester.getCenter(find.byTooltip('搜尋')).dx),
+      tester.getCenter(find.byTooltip('搜尋')).dx,
+      lessThan(
+        tester.getCenter(find.byKey(const Key('compact_home_sync_button'))).dx,
+      ),
     );
     expect(find.byKey(const Key('board_switch_personal')), findsNothing);
     expect(find.byKey(const Key('board_switch_timeline')), findsOneWidget);

@@ -1,41 +1,40 @@
 /* ─────────────────────────────────────────────
-   ELIX WEB — Forest Letter
-   Canonical 2026-08-30 12:30 handoff: Mist + Ink, lavender identity,
-   sky-blue trust signals and yellow interaction energy. Serif carries content;
-   sans is UI chrome and mono is provenance.
+   ELIX WEB — Threads-style RWA
+   Canonical source: top-level Elix Web.html in the 2026-08-30 handoff.
+   True white, true ink, lichen green identity and magenta interaction energy.
    ───────────────────────────────────────────── */
 :root {
   color-scheme: light;
-  --background: #F4F3EC;
-  --background-soft: #ECEAE0;
+  --background: #FFFFFF;
+  --background-soft: #F3F5F1;
   --surface: #FFFFFF;
-  --surface-raised: #ECEAE0;
-  --surface-deep: #E2DFD2;
-  --border: #D8D3C4;
-  --border-soft: #E6E2D6;
-  --border-strong: #C1BCA8;
-  --muted-fill: #E2DFD2;
-  --accent: #C9AEEB;
-  --lavender: #C9AEEB;
-  --highlight: #EBE21C;
+  --surface-raised: #F3F5F1;
+  --surface-deep: #D0D9CD;
+  --border: #D0D9CD;
+  --border-soft: #E5EAE2;
+  --border-strong: #ADB6AA;
+  --muted-fill: #D0D9CD;
+  --accent: #78900D;
+  --lavender: #222222;
+  --highlight: #D94EE8;
   --warning: #C0475C;
   --danger: #C0475C;
-  --success: #6FB2E8;
-  --sky: #6FB2E8;
-  --navy: #2846A8;
-  --text: #2A2A0A;
-  --muted: #625F3C;
-  --faint: #9C9974;
-  --on-accent: #2A2A0A;
+  --success: #78900D;
+  --sky: #5D645E;
+  --navy: #78900D;
+  --text: #222222;
+  --muted: #5D645E;
+  --faint: #93998F;
+  --on-accent: #FFFFFF;
   --glow: 0 0 18px color-mix(in oklab, var(--accent) 22%, transparent);
   --paper: var(--background);
   --rule: var(--border);
   --rule-soft: var(--border-soft);
   --ochre: var(--accent);
   --ink-muted: var(--muted);
-  --serif: "Noto Serif TC", "Newsreader", serif;
-  --serif-en: "Newsreader", "Noto Serif TC", serif;
-  --display: "Noto Serif TC", "Newsreader", serif;
+  --serif: "Noto Sans TC", ui-sans-serif, system-ui, sans-serif;
+  --serif-en: "Noto Sans TC", ui-sans-serif, system-ui, sans-serif;
+  --display: "Noto Sans TC", ui-sans-serif, system-ui, sans-serif;
   --sans: "Noto Sans TC", ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono",
@@ -46,54 +45,54 @@
 /* Paper theme — explicit selection (wins inside a dark system) */
 .forum-shell[data-theme="light"] {
   color-scheme: light;
-  --background: #F4F3EC;
-  --background-soft: #ECEAE0;
+  --background: #FFFFFF;
+  --background-soft: #F3F5F1;
   --surface: #FFFFFF;
-  --surface-raised: #ECEAE0;
-  --surface-deep: #E2DFD2;
-  --border: #D8D3C4;
-  --border-soft: #E6E2D6;
-  --border-strong: #C1BCA8;
-  --muted-fill: #E2DFD2;
-  --accent: #C9AEEB;
-  --lavender: #C9AEEB;
-  --highlight: #EBE21C;
+  --surface-raised: #F3F5F1;
+  --surface-deep: #D0D9CD;
+  --border: #D0D9CD;
+  --border-soft: #E5EAE2;
+  --border-strong: #ADB6AA;
+  --muted-fill: #D0D9CD;
+  --accent: #78900D;
+  --lavender: #222222;
+  --highlight: #D94EE8;
   --warning: #C0475C;
   --danger: #C0475C;
-  --success: #6FB2E8;
-  --sky: #6FB2E8;
-  --navy: #2846A8;
-  --text: #2A2A0A;
-  --muted: #625F3C;
-  --faint: #9C9974;
-  --on-accent: #2A2A0A;
+  --success: #78900D;
+  --sky: #5D645E;
+  --navy: #78900D;
+  --text: #222222;
+  --muted: #5D645E;
+  --faint: #93998F;
+  --on-accent: #FFFFFF;
   --glow: 0 0 18px color-mix(in oklab, var(--accent) 18%, transparent);
 }
 
 /* Ink theme — explicit selection */
 .forum-shell[data-theme="dark"] {
   color-scheme: dark;
-  --background: #17130A;
-  --background-soft: #1F1A0E;
-  --surface: #1F1A0E;
-  --surface-raised: #1F1A0E;
-  --surface-deep: #2A2413;
-  --border: #362E17;
-  --border-soft: #221D10;
-  --border-strong: #514628;
-  --muted-fill: #2A2413;
-  --accent: #D9C6F2;
-  --lavender: #D9C6F2;
-  --highlight: #F5EE3A;
+  --background: #222222;
+  --background-soft: #2A2A28;
+  --surface: #2A2A28;
+  --surface-raised: #2A2A28;
+  --surface-deep: #34362F;
+  --border: #3D3F39;
+  --border-soft: #2E302B;
+  --border-strong: #51544B;
+  --muted-fill: #34362F;
+  --accent: #9AC02E;
+  --lavender: #F3F5F1;
+  --highlight: #E876F0;
   --warning: #E58C91;
   --danger: #E58C91;
-  --success: #8FC4F5;
-  --sky: #8FC4F5;
-  --navy: #5C82E0;
-  --text: #F4EEDA;
-  --muted: #B7AD8E;
-  --faint: #726B4F;
-  --on-accent: #17130A;
+  --success: #9AC02E;
+  --sky: #ADB3A9;
+  --navy: #9AC02E;
+  --text: #F3F5F1;
+  --muted: #ADB3A9;
+  --faint: #7A8076;
+  --on-accent: #FFFFFF;
   --glow: 0 0 20px color-mix(in oklab, var(--accent) 28%, transparent);
 }
 
@@ -102,27 +101,27 @@
   :root,
   .forum-shell[data-theme="auto"] {
     color-scheme: dark;
-    --background: #17130A;
-    --background-soft: #1F1A0E;
-    --surface: #1F1A0E;
-    --surface-raised: #1F1A0E;
-    --surface-deep: #2A2413;
-    --border: #362E17;
-    --border-soft: #221D10;
-    --border-strong: #514628;
-    --muted-fill: #2A2413;
-    --accent: #D9C6F2;
-    --lavender: #D9C6F2;
-    --highlight: #F5EE3A;
+    --background: #222222;
+    --background-soft: #2A2A28;
+    --surface: #2A2A28;
+    --surface-raised: #2A2A28;
+    --surface-deep: #34362F;
+    --border: #3D3F39;
+    --border-soft: #2E302B;
+    --border-strong: #51544B;
+    --muted-fill: #34362F;
+    --accent: #9AC02E;
+    --lavender: #F3F5F1;
+    --highlight: #E876F0;
     --warning: #E58C91;
     --danger: #E58C91;
-    --success: #8FC4F5;
-    --sky: #8FC4F5;
-    --navy: #5C82E0;
-    --text: #F4EEDA;
-    --muted: #B7AD8E;
-    --faint: #726B4F;
-    --on-accent: #17130A;
+    --success: #9AC02E;
+    --sky: #ADB3A9;
+    --navy: #9AC02E;
+    --text: #F3F5F1;
+    --muted: #ADB3A9;
+    --faint: #7A8076;
+    --on-accent: #FFFFFF;
     --glow: 0 0 20px color-mix(in oklab, var(--accent) 28%, transparent);
   }
 }
@@ -4053,10 +4052,11 @@ h2 {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
   gap: 13px;
-  padding: 20px 18px;
-  margin: 0 0 4px;
-  border: 0.5px solid var(--border);
-  border-radius: 12px;
+  padding: 18px 14px;
+  margin: 0 -4px;
+  border: 0;
+  border-bottom: 1px solid var(--border-soft);
+  border-radius: 16px;
 }
 
 .post .lane {
@@ -4110,9 +4110,9 @@ h2 {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-family: var(--serif);
+  font-family: var(--sans);
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text);
   text-decoration: none;
   min-width: 0;
@@ -4126,17 +4126,17 @@ h2 {
 
 .post .row1 .when {
   margin-left: auto;
-  font-family: var(--mono);
-  font-size: 10px;
+  font-family: var(--sans);
+  font-size: 13px;
   color: var(--faint);
   white-space: nowrap;
 }
 
 .post .src {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-family: var(--sans);
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--faint);
 }
 
@@ -4148,7 +4148,7 @@ h2 {
   margin: 0;
   font-family: var(--serif);
   font-size: 18px;
-  font-weight: 500;
+  font-weight: 700;
   line-height: 1.4;
   color: var(--text);
 }
@@ -4435,19 +4435,18 @@ h2 {
   height: 23px;
 }
 
-/* ── Forest Letter fidelity pass ────────────────────────────────────── */
-/* Mist ground, Ink editorial type, lavender identity, sky trust and yellow
-   interaction energy. Cards are restrained 12px sheets with hairline rules. */
+/* ── Top-level Elix Web.html fidelity pass ──────────────────────────── */
+/* Threads-style structure, true-white ground and lichen-green identity. */
 .command-header {
   border-bottom: 0.5px solid var(--border);
   padding: 14px 28px;
 }
 
 .cols {
-  grid-template-columns: 280px minmax(0, 1fr) 320px;
-  gap: 28px;
-  width: min(1280px, 100%);
-  padding: 24px 28px 56px;
+  grid-template-columns: 248px minmax(0, 1fr) 300px;
+  gap: 30px;
+  width: min(1240px, 100%);
+  padding: 26px 26px 60px;
 }
 
 .rail,
@@ -4460,8 +4459,8 @@ h2 {
 .rail-nav a {
   padding: 6px 8px;
   border-radius: 8px;
-  font-family: var(--serif);
-  font-size: 14px;
+  font-family: var(--sans);
+  font-size: 15px;
   font-weight: 500;
 }
 
@@ -4474,7 +4473,6 @@ h2 {
 .card,
 .side-panel,
 .compose,
-.post,
 .thread-detail-shell,
 .board-head,
 .login-page,
@@ -4482,13 +4480,12 @@ h2 {
 .settings-preference-block,
 .thread-draft-form {
   border: 0.5px solid var(--border);
-  border-radius: 12px;
+  border-radius: 16px;
   box-shadow: none;
 }
 
 .card,
 .side-panel,
-.post,
 .thread-detail-shell,
 .board-head,
 .login-page,
@@ -4520,7 +4517,7 @@ h2,
 h3,
 h4 {
   font-family: var(--serif);
-  font-weight: 500;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
@@ -4528,7 +4525,7 @@ h4 {
 .board-head h1,
 .thread-hd h1 {
   font-size: 28px;
-  font-weight: 500;
+  font-weight: 700;
 }
 
 .primary-action,
@@ -4536,8 +4533,8 @@ h4 {
   background: var(--accent);
   border: none;
   color: var(--on-accent);
-  font-family: var(--serif);
-  font-weight: 500;
+  font-family: var(--sans);
+  font-weight: 600;
 }
 
 .primary-action:hover,

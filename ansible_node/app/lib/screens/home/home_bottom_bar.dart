@@ -50,11 +50,8 @@ class AutoHidingHomeBottomBar extends StatelessWidget {
   }
 }
 
-/// Elix Forest Letter bottom tabbar: icon-only cells — home (時間軸) ·
-/// circle (討論區) · a bordered center ＋ · bell (通知) · eye (我). Active cells
-/// switch to ink; inactive stay faint (no labels, no filled variants). The
-/// center ＋ is a rounded-rect with a soft fill + hairline rule, not a solid
-/// disc. Replaces the top board-swipe tabs on compact (phone) layouts.
+/// Elix Screens bottom tabbar: icon-only cells — home (時間軸) · circle
+/// (討論區) · green center ＋ · bell (通知) · eye (我).
 class HomeBottomBar extends StatelessWidget {
   const HomeBottomBar({
     super.key,
@@ -211,7 +208,7 @@ class HomeBottomBar extends StatelessWidget {
                 width: 7,
                 height: 7,
                 decoration: BoxDecoration(
-                  color: dark ? AnsibleDesign.darkNavy : AnsibleDesign.navy,
+                  color: dark ? AnsibleDesign.darkMoss : AnsibleDesign.moss,
                   shape: BoxShape.circle,
                   border: Border.all(color: background, width: 1.5),
                 ),
@@ -222,8 +219,7 @@ class HomeBottomBar extends StatelessWidget {
     );
   }
 
-  /// Center ＋ — the editorial ink action, matching the handoff's persistent
-  /// mobile compose control. Lavender stays reserved for identity and trust.
+  /// Center ＋ — the lichen-green rounded rectangle from b01.
   Widget _compose(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 7),
@@ -239,17 +235,11 @@ class HomeBottomBar extends StatelessWidget {
             height: 40,
             decoration: BoxDecoration(
               color: Theme.of(context).brightness == Brightness.dark
-                  ? AnsibleDesign.darkInk
-                  : AnsibleDesign.ink,
+                  ? AnsibleDesign.darkOchre
+                  : AnsibleDesign.accent,
               borderRadius: BorderRadius.circular(13),
             ),
-            child: Icon(
-              Icons.add,
-              size: 23,
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? AnsibleDesign.darkPaper
-                  : AnsibleDesign.paper,
-            ),
+            child: Icon(Icons.add, size: 23, color: Colors.white),
           ),
         ),
       ),

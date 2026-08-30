@@ -45,7 +45,6 @@ class TimelineBoardView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = ElixScreenStyleScope.dataOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -55,17 +54,11 @@ class TimelineBoardView extends StatelessWidget {
               : followingPosts.isEmpty
               ? _timelineEmptyState(context)
               : ListView.separated(
-                  itemCount: followingPosts.length + 2,
+                  itemCount: followingPosts.length,
                   padding: const EdgeInsets.only(bottom: 12),
                   separatorBuilder: (_, _) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
-                    if (index == 0) {
-                      return _sortControl(context, style);
-                    }
-                    if (index == 1) {
-                      return _discoveryEntry(context, style);
-                    }
-                    final post = followingPosts[index - 2];
+                    final post = followingPosts[index];
                     return PostCard(
                       db: db,
                       data: post,

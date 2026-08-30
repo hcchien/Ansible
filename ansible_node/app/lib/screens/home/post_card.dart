@@ -17,7 +17,6 @@ import '../../services/safety_actions.dart';
 import '../../theme/ansible_design.dart';
 import '../../theme/elix_screen_style.dart';
 import '../../widgets/author_label.dart';
-import '../../widgets/ansible_screen_chrome.dart';
 import '../../widgets/reaction_picker.dart';
 import '../../widgets/report_dialog.dart';
 import '../posts_view_screen.dart';
@@ -593,26 +592,13 @@ class _PostCardState extends State<PostCard> {
             screenStyle: screenStyle,
             systemBrightness: Theme.of(context).brightness,
           ),
-          border: Border.all(color: style.rule, width: 0.5),
-          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: style.rule, width: 1),
+          borderRadius: BorderRadius.circular(18),
         ),
         padding: const EdgeInsets.fromLTRB(16, 15, 16, 13),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AnsibleSourceLabel(
-              data.category.isNotEmpty
-                  ? data.category
-                  : (data.openableThread
-                        ? 'BOARD · ${data.board}'
-                        : 'FROM YOUR TIMELINE'),
-              dotColor: data.openableThread
-                  ? (Theme.of(context).brightness == Brightness.dark
-                        ? AnsibleDesign.darkMoss
-                        : AnsibleDesign.moss)
-                  : style.accent,
-            ),
-            const SizedBox(height: 11),
             InkWell(
               key: Key('post_card_author_${thread.id}'),
               borderRadius: BorderRadius.circular(10),
@@ -647,56 +633,23 @@ class _PostCardState extends State<PostCard> {
                               ),
                             ),
                             if (data.signatureVerified) ...[
-                              const SizedBox(width: 7),
-                              const ElixSignedPill(kind: 'PK'),
-                            ],
-                            if (data.openableThread &&
-                                data.board.trim().isNotEmpty) ...[
-                              Text(
-                                '  ›  ',
-                                style: TextStyle(
-                                  fontFamily: AnsibleDesign.sans,
-                                  fontSize: 13,
-                                  color: style.faint,
-                                ),
-                              ),
-                              Flexible(
-                                child: InkWell(
-                                  key: Key('post_card_board_${thread.id}'),
-                                  borderRadius: BorderRadius.circular(6),
-                                  onTap: widget.onOpenBoard == null
-                                      ? null
-                                      : () => widget.onOpenBoard!(
-                                          data.thread.boardId,
-                                        ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 3,
-                                    ),
-                                    child: Text(
-                                      data.board,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontFamily: AnsibleDesign.sans,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                        color: style.muted,
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                              const SizedBox(width: 5),
+                              Icon(
+                                Icons.verified,
+                                size: 14,
+                                color: style.accent,
                               ),
                             ],
                           ],
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          data.timeAgo,
+                          '${data.timeAgo}'
+                          '${data.signatureVerified ? context.uiCopy(zh: ' · signed', en: ' · signed') : ''}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontFamily: AnsibleDesign.serif,
+                            fontFamily: AnsibleDesign.sans,
                             fontSize: 12,
                             color: style.faint,
                           ),
@@ -704,7 +657,8 @@ class _PostCardState extends State<PostCard> {
                       ],
                     ),
                   ),
-                  if (PostingGate.isVerifiedHuman(data.authorTier)) ...[
+                  if (PostingGate.isVerifiedHuman(data.authorTier) &&
+                      !data.signatureVerified) ...[
                     Icon(Icons.verified, size: 14, color: AnsibleDesign.spore),
                     const SizedBox(width: 8),
                   ],
@@ -714,10 +668,24 @@ class _PostCardState extends State<PostCard> {
                       tooltip: context.uiCopy(zh: '安全選項', en: 'Safety options'),
                       icon: Icon(Icons.more_horiz, color: style.muted),
                       onSelected: (value) {
+                        if (value == 'open_board') {
+                          widget.onOpenBoard?.call(data.thread.boardId);
+                        }
                         if (value == 'report') _reportContent();
                         if (value == 'block') _blockAndReport();
                       },
                       itemBuilder: (context) => [
+                        if (widget.onOpenBoard != null &&
+                            data.board.trim().isNotEmpty)
+                          PopupMenuItem(
+                            value: 'open_board',
+                            child: Text(
+                              context.uiCopy(
+                                zh: '前往看板 · ${data.board}',
+                                en: 'Open board · ${data.board}',
+                              ),
+                            ),
+                          ),
                         PopupMenuItem(
                           value: 'report',
                           child: Text(context.uiCopy(zh: '檢舉', en: 'Report')),
@@ -753,8 +721,34 @@ class _PostCardState extends State<PostCard> {
                         fontFamily: AnsibleDesign.serif,
                         fontSize: 16.5,
                         height: 1.4,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w700,
                         color: _hover ? style.accent : style.foreground,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Transform.rotate(
+                      angle: -0.035,
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        width: 56,
+                        height: 6,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AnsibleDesign.darkHighlight
+                            : AnsibleDesign.highlight,
+                      ),
+                    ),
+                    Transform.translate(
+                      offset: const Offset(8, -1),
+                      child: Transform.rotate(
+                        angle: 0.035,
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          width: 26,
+                          height: 6,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AnsibleDesign.darkHighlight
+                              : AnsibleDesign.highlight,
+                        ),
                       ),
                     ),
                   ],
@@ -839,7 +833,7 @@ class _PostCardState extends State<PostCard> {
                 _feedAction(Icons.repeat, color: style, onTap: _share),
                 const Spacer(),
                 _feedAction(
-                  Icons.ios_share,
+                  Icons.send_outlined,
                   color: style,
                   onTap: _share,
                   tooltip: context.uiCopy(zh: '分享貼文', en: 'Share post'),

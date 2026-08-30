@@ -56,42 +56,25 @@ class AnsibleScreenScaffold extends StatelessWidget {
                     ),
                   ),
                 ),
-                padding: EdgeInsets.fromLTRB(
-                  AnsibleDesign.pageGutter,
-                  paddingTop,
-                  AnsibleDesign.pageGutter,
-                  11,
-                ),
+                padding: EdgeInsets.fromLTRB(16, paddingTop, 16, 12),
                 child: Row(
                   children: [
                     Expanded(
                       child: _NavTextButton(label: leading, onTap: onLeading),
                     ),
-                    if (showBrand)
-                      Semantics(
-                        label: AnsibleDesign.brandName,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const AnsibleMark(size: 18),
-                            const SizedBox(width: 7),
-                            ElixWordmark(
-                              fontSize: 17,
-                              color: screenStyle.foreground,
-                            ),
-                          ],
-                        ),
-                      )
-                    else
-                      Text(
-                        eyebrow ?? title,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontFamily: AnsibleDesign.mono,
-                          fontSize: 10,
-                          letterSpacing: 1.8,
-                        ).copyWith(color: screenStyle.faint),
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: AnsibleDesign.mono,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 2.2,
+                        color: screenStyle.muted,
                       ),
+                    ),
                     Expanded(
                       child: Align(
                         alignment: Alignment.centerRight,
@@ -101,69 +84,6 @@ class AnsibleScreenScaffold extends StatelessWidget {
                   ],
                 ),
               ),
-              if (title.isNotEmpty)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(
-                    AnsibleDesign.pageGutter,
-                    16,
-                    AnsibleDesign.pageGutter,
-                    17,
-                  ),
-                  decoration: BoxDecoration(
-                    color: screenStyle.surface.withValues(alpha: 0.62),
-                    border: Border(
-                      bottom: BorderSide(
-                        color: screenStyle.rule,
-                        width: AnsibleDesign.hairline,
-                      ),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        (eyebrow ?? 'ELIX · ${title.toUpperCase()}'),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: AnsibleDesign.mono,
-                          fontSize: 9,
-                          letterSpacing: 1.7,
-                          color: screenStyle.faint,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 4,
-                            height: 27,
-                            decoration: BoxDecoration(
-                              color: screenStyle.accent,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          const SizedBox(width: 11),
-                          Expanded(
-                            child: Text(
-                              title,
-                              style: TextStyle(
-                                fontFamily: AnsibleDesign.serif,
-                                fontFamilyFallback: AnsibleDesign.fallback,
-                                fontSize: 26,
-                                height: 1.2,
-                                fontWeight: FontWeight.w500,
-                                color: screenStyle.foreground,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
               Expanded(child: child),
             ],
           ),

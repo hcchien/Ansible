@@ -4,10 +4,10 @@ import '../l10n/app_l10n.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Elix Design System — "Forest Letter".
-// Canonical source: Elix Brand System.html plus the Forest Letter tokens in the
-// 2026-08-30 12:30 handoff. Mist + Ink carry the product; lavender is the
-// identity/CTA signal, sky blue is secondary trust, and yellow marks energy.
+// Elix Design System — Threads-influenced Elix.
+// Canonical app source: the top-level Elix Screens.html from the 2026-08-30
+// handoff. It renders a true-white / true-ink interface with lichen-green
+// identity accents and a magenta interaction highlight.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AnsibleDesign {
@@ -18,61 +18,61 @@ class AnsibleDesign {
   // radii and hairlines; one-off Material defaults make the screens drift back
   // toward a generic app even when the palette is correct.
   static const hairline = 0.5;
-  static const cardRadius = 12.0;
-  static const compactRadius = 8.0;
+  static const cardRadius = 18.0;
+  static const compactRadius = 10.0;
   static const pageGutter = 22.0;
   static const sectionGap = 18.0;
 
-  // ── Light (Mist — canonical) ──────────────────────────────────────────────
-  static const paper = Color(0xFFF4F3EC);
-  static const paperElev = Color(0xFFECEAE0);
-  static const paperDeep = Color(0xFFE2DFD2);
+  // ── Light (top-level Elix Screens.html) ──────────────────────────────────
+  static const paper = Color(0xFFFFFFFF);
+  static const paperElev = Color(0xFFF3F5F1);
+  static const paperDeep = Color(0xFFD0D9CD);
   static const paperWhite = Color(0xFFFFFFFF);
-  static const ink = Color(0xFF2A2A0A);
-  static const inkMuted = Color(0xFF625F3C);
-  static const inkFaint = Color(0xFF9C9974);
-  static const rule = Color(0xFFD8D3C4);
-  static const ruleSoft = Color(0xFFE6E2D6);
-  static const accent = Color(0xFFC9AEEB);
-  static const accentSoft = Color(0xFFDCC9F0);
-  static const signalSoft = Color(0xFFC7DDF1);
-  static const tintSky = Color(0xFFE3EFF8);
-  static const tintLavender = Color(0xFFEDE4F7);
-  static const tintCitron = Color(0xFFF5F1BE);
+  static const ink = Color(0xFF222222);
+  static const inkMuted = Color(0xFF5D645E);
+  static const inkFaint = Color(0xFF93998F);
+  static const rule = Color(0xFFD0D9CD);
+  static const ruleSoft = Color(0xFFE5EAE2);
+  static const accent = Color(0xFF78900D);
+  static const accentSoft = Color(0xFFDDE6B7);
+  static const signalSoft = Color(0xFFD0D9CD);
+  static const tintSky = Color(0xFFF3F5F1);
+  static const tintLavender = Color(0xFFF0F3E5);
+  static const tintCitron = Color(0xFFF4F6E7);
   static const spore = accent;
-  static const moss = Color(0xFF6FB2E8);
-  static const lavender = accent;
-  static const highlight = Color(0xFFEBE21C);
-  static const navy = Color(0xFF2846A8);
+  static const moss = Color(0xFF5D645E);
+  static const lavender = ink;
+  static const highlight = Color(0xFFD94EE8);
+  static const navy = Color(0xFF78900D);
   static const danger = Color(0xFFC0475C);
   static const ember = highlight;
   static const ochre = accent;
 
-  // ── Dark (Pine) ───────────────────────────────────────────────────────────
-  static const darkPaper = Color(0xFF17130A);
-  static const darkPaperElev = Color(0xFF1F1A0E);
-  static const darkPaperDeep = Color(0xFF2A2413);
-  static const darkPaperWhite = Color(0xFF1F1A0E);
-  static const darkInk = Color(0xFFF4EEDA);
-  static const darkInkMuted = Color(0xFFB7AD8E);
-  static const darkInkFaint = Color(0xFF726B4F);
-  static const darkRule = Color(0xFF362E17);
-  static const darkRuleSoft = Color(0xFF221D10);
-  static const darkSignalSoft = Color(0xFF36536A);
-  static const darkTintSky = Color(0xFF1C2A33);
-  static const darkTintLavender = Color(0xFF31283D);
-  static const darkTintCitron = Color(0xFF302D12);
-  static const darkOchre = Color(0xFFD9C6F2);
-  static const darkMoss = Color(0xFF8FC4F5);
-  static const darkLavender = darkOchre;
-  static const darkHighlight = Color(0xFFF5EE3A);
-  static const darkNavy = Color(0xFF5C82E0);
+  // ── Dark (top-level Elix Screens.html) ───────────────────────────────────
+  static const darkPaper = Color(0xFF222222);
+  static const darkPaperElev = Color(0xFF2A2A28);
+  static const darkPaperDeep = Color(0xFF34362F);
+  static const darkPaperWhite = Color(0xFF2A2A28);
+  static const darkInk = Color(0xFFF3F5F1);
+  static const darkInkMuted = Color(0xFFADB3A9);
+  static const darkInkFaint = Color(0xFF7A8076);
+  static const darkRule = Color(0xFF3D3F39);
+  static const darkRuleSoft = Color(0xFF2E302B);
+  static const darkSignalSoft = Color(0xFF34362F);
+  static const darkTintSky = Color(0xFF2A2A28);
+  static const darkTintLavender = Color(0xFF303329);
+  static const darkTintCitron = Color(0xFF303329);
+  static const darkOchre = Color(0xFF9AC02E);
+  static const darkMoss = Color(0xFFADB3A9);
+  static const darkLavender = darkInk;
+  static const darkHighlight = Color(0xFFE876F0);
+  static const darkNavy = Color(0xFF9AC02E);
   static const darkEmber = darkHighlight;
 
   // ── Typography ────────────────────────────────────────────────────────────
-  static const display = 'Noto Serif TC';
-  static const serif = 'Noto Serif TC';
-  static const serifEn = 'Newsreader';
+  static const display = 'Noto Sans TC';
+  static const serif = 'Noto Sans TC';
+  static const serifEn = 'Noto Sans TC';
   static const sans = 'Noto Sans TC';
   static const mono = 'JetBrains Mono';
   static const appTextScale = 1.06;
@@ -80,10 +80,10 @@ class AnsibleDesign {
   static const readingTextSize = 16.0;
   static const previewTextSize = 15.5;
   static const fallback = [
-    'Noto Serif TC',
-    'Newsreader',
     'Noto Sans TC',
     'PingFang TC',
+    'Noto Serif TC',
+    'Newsreader',
     'Songti TC',
     'PMingLiU',
     'MingLiU',
@@ -257,8 +257,8 @@ class AnsibleDesign {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: ink,
-          foregroundColor: paper,
+          backgroundColor: accent,
+          foregroundColor: paperWhite,
           shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           textStyle: const TextStyle(
@@ -280,8 +280,8 @@ class AnsibleDesign {
         style: TextButton.styleFrom(foregroundColor: inkMuted),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: ink,
-        foregroundColor: paper,
+        backgroundColor: accent,
+        foregroundColor: paperWhite,
         elevation: 0,
         focusElevation: 0,
         hoverElevation: 0,
@@ -294,8 +294,8 @@ class AnsibleDesign {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: rule, width: 0.5),
+          borderRadius: BorderRadius.circular(cardRadius),
+          side: const BorderSide(color: rule, width: 1),
         ),
       ),
       chipTheme: base.chipTheme.copyWith(
@@ -355,13 +355,13 @@ class AnsibleDesign {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
         side: const BorderSide(color: rule, width: hairline),
         fillColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.selected) ? ink : paper,
+          (states) => states.contains(WidgetState.selected) ? accent : paper,
         ),
         checkColor: const WidgetStatePropertyAll(paper),
       ),
       radioTheme: RadioThemeData(
         fillColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.selected) ? ink : inkFaint,
+          (states) => states.contains(WidgetState.selected) ? accent : inkFaint,
         ),
       ),
       dialogTheme: DialogThemeData(
@@ -492,8 +492,8 @@ class AnsibleDesign {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: darkInk,
-          foregroundColor: darkPaper,
+          backgroundColor: darkOchre,
+          foregroundColor: Colors.white,
           shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           textStyle: const TextStyle(
@@ -515,8 +515,8 @@ class AnsibleDesign {
         style: TextButton.styleFrom(foregroundColor: darkInkMuted),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: darkInk,
-        foregroundColor: darkPaper,
+        backgroundColor: darkOchre,
+        foregroundColor: Colors.white,
         elevation: 0,
         focusElevation: 0,
         hoverElevation: 0,
@@ -529,8 +529,8 @@ class AnsibleDesign {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: darkRule, width: 0.5),
+          borderRadius: BorderRadius.circular(cardRadius),
+          side: const BorderSide(color: darkRule, width: 1),
         ),
       ),
       chipTheme: base.chipTheme.copyWith(
@@ -591,14 +591,14 @@ class AnsibleDesign {
         side: const BorderSide(color: darkRule, width: hairline),
         fillColor: WidgetStateProperty.resolveWith(
           (states) =>
-              states.contains(WidgetState.selected) ? darkInk : darkPaper,
+              states.contains(WidgetState.selected) ? darkOchre : darkPaper,
         ),
         checkColor: const WidgetStatePropertyAll(darkPaper),
       ),
       radioTheme: RadioThemeData(
         fillColor: WidgetStateProperty.resolveWith(
           (states) =>
-              states.contains(WidgetState.selected) ? darkInk : darkInkFaint,
+              states.contains(WidgetState.selected) ? darkOchre : darkInkFaint,
         ),
       ),
       dialogTheme: DialogThemeData(

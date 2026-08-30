@@ -5,8 +5,8 @@ import '../theme/ansible_design.dart';
 
 /// Section A (onboarding) intro flow from the Elix Screens design: Welcome (A·01)
 /// and Promise (A·02). Leads into the passkey registration screen ("first key",
-/// A·03). Editorial styling: serif headings/body, mono small-caps labels, the
-/// constellation mark + wordmark, dark pill CTA.
+/// A·03). Threads-style styling: bold sans content, mono technical labels,
+/// the constellation mark + wordmark, and the lichen-green primary CTA.
 class OnboardingIntroScreen extends StatefulWidget {
   const OnboardingIntroScreen({
     super.key,
@@ -105,7 +105,27 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                 const AnsibleMark(size: 50),
                 const SizedBox(height: 20),
                 const ElixWordmark(fontSize: 46),
-                const SizedBox(height: 20),
+                const SizedBox(height: 14),
+                Transform.rotate(
+                  angle: -0.035,
+                  alignment: Alignment.centerLeft,
+                  child: Container(width: 56, height: 6, color: _accent),
+                ),
+                Transform.translate(
+                  offset: const Offset(8, -1),
+                  child: Transform.rotate(
+                    angle: 0.035,
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      width: 26,
+                      height: 6,
+                      color: _dark
+                          ? AnsibleDesign.darkHighlight
+                          : AnsibleDesign.highlight,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
                 Text(
                   context.uiCopy(
                     zh: '你的話、你的圈、\n你的鑰匙。',
@@ -399,7 +419,7 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
     return SizedBox(
       width: double.infinity,
       child: Material(
-        color: _fg,
+        color: _accent,
         borderRadius: BorderRadius.circular(999),
         child: InkWell(
           borderRadius: BorderRadius.circular(999),
@@ -415,7 +435,7 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                     fontFamily: AnsibleDesign.sans,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: _bg,
+                    color: Colors.white,
                   ),
                 ),
                 if (trailing != null) ...[
@@ -425,7 +445,7 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                     style: TextStyle(
                       fontFamily: AnsibleDesign.sans,
                       fontSize: 14,
-                      color: _bg.withValues(alpha: 0.82),
+                      color: Colors.white.withValues(alpha: 0.82),
                     ),
                   ),
                 ],

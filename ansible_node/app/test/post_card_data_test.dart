@@ -147,7 +147,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.ios_share));
+    await tester.tap(find.byIcon(Icons.send_outlined));
     await tester.pump();
 
     expect(sharedText, 'Original post body');
@@ -256,7 +256,10 @@ void main() {
     expect(openedBoard, isNull);
 
     openedAuthor = null;
-    await tester.tap(find.byKey(const Key('post_card_board_thread-nav')));
+    await tester.tap(find.byKey(const Key('post_safety_menu_thread-nav')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('前往看板 · General'));
+    await tester.pumpAndSettle();
     expect(openedBoard, 'board-nav');
     expect(openedAuthor, isNull);
   });
@@ -320,7 +323,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byIcon(Icons.ios_share));
+    await tester.tap(find.byIcon(Icons.send_outlined));
     await tester.pump();
 
     expect(
