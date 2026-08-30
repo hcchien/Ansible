@@ -3,21 +3,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('light and dark themes share the Threads Signal component contract', () {
+  test('light and dark themes share the Forest Letter component contract', () {
     final light = AnsibleDesign.theme();
     final dark = AnsibleDesign.darkTheme();
 
-    expect(AnsibleDesign.paper, const Color(0xFFFFFFFF));
-    expect(AnsibleDesign.ink, const Color(0xFF222222));
-    expect(AnsibleDesign.accent, const Color(0xFF78900D));
-    expect(AnsibleDesign.highlight, const Color(0xFFD94EE8));
-    expect(AnsibleDesign.darkPaper, const Color(0xFF222222));
-    expect(AnsibleDesign.darkOchre, const Color(0xFF9AC02E));
+    expect(AnsibleDesign.paper, const Color(0xFFF4F3EC));
+    expect(AnsibleDesign.ink, const Color(0xFF2A2A0A));
+    expect(AnsibleDesign.accent, const Color(0xFFC9AEEB));
+    expect(AnsibleDesign.moss, const Color(0xFF6FB2E8));
+    expect(AnsibleDesign.highlight, const Color(0xFFEBE21C));
+    expect(AnsibleDesign.darkPaper, const Color(0xFF17130A));
+    expect(AnsibleDesign.darkOchre, const Color(0xFFD9C6F2));
     expect(light.scaffoldBackgroundColor, AnsibleDesign.paper);
     expect(dark.scaffoldBackgroundColor, AnsibleDesign.darkPaper);
     expect(light.colorScheme.secondary, AnsibleDesign.accent);
     expect(dark.colorScheme.secondary, AnsibleDesign.darkOchre);
-    expect(light.colorScheme.onSecondary, AnsibleDesign.paperWhite);
+    expect(light.colorScheme.onSecondary, AnsibleDesign.ink);
     expect(dark.colorScheme.onSecondary, AnsibleDesign.darkPaper);
     expect(light.textTheme.bodyMedium?.fontFamily, AnsibleDesign.serif);
     expect(dark.textTheme.bodyMedium?.fontFamily, AnsibleDesign.serif);
@@ -27,7 +28,7 @@ void main() {
     expect(dark.cardTheme.elevation, 0);
     expect(
       (light.cardTheme.shape! as RoundedRectangleBorder).borderRadius,
-      BorderRadius.circular(18),
+      BorderRadius.circular(12),
     );
   });
 
@@ -40,7 +41,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Elix'), findsOneWidget);
+    expect(find.byType(CustomPaint), findsWidgets);
     expect(find.bySemanticsLabel('Elix'), findsOneWidget);
   });
 }

@@ -16,8 +16,8 @@
                     <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" spacing="14" translatesAutoresizingMaskIntoConstraints="NO" id="KjP-9n-wJm">
-                                <rect key="frame" x="135" y="352" width="120" height="176"/>
+                            <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" translatesAutoresizingMaskIntoConstraints="NO" id="KjP-9n-wJm">
+                                <rect key="frame" x="135" y="380" width="120" height="120"/>
                                 <subviews>
                                     <imageView opaque="NO" clipsSubviews="YES" contentMode="scaleAspectFit" image="LaunchLogo" translatesAutoresizingMaskIntoConstraints="NO" id="YRO-k0-Ey4">
                                         <rect key="frame" x="0.0" y="0.0" width="120" height="120"/>
@@ -26,16 +26,10 @@
                                             <constraint firstAttribute="width" constant="120" id="N7x-6T-HQq"/>
                                         </constraints>
                                     </imageView>
-                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" text="Elix" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" translatesAutoresizingMaskIntoConstraints="NO" id="xkA-gB-Nq3">
-                                        <rect key="frame" x="0.0" y="134" width="120" height="42"/>
-                                        <fontDescription key="fontDescription" type="system" weight="bold" pointSize="34"/>
-                                        <color key="textColor" red="0.1647058824" green="0.1647058824" blue="0.03921568627" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-                                        <nil key="highlightedColor"/>
-                                    </label>
                                 </subviews>
                             </stackView>
                         </subviews>
-                        <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                        <color key="backgroundColor" red="0.9568627451" green="0.9529411765" blue="0.9254901961" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
                             <constraint firstItem="KjP-9n-wJm" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="1a2-6s-vTC"/>
                             <constraint firstItem="KjP-9n-wJm" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="4X2-HB-R7a"/>

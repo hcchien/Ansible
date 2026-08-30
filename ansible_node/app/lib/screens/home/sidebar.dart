@@ -21,12 +21,16 @@ class HomeSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final background = dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
+    final rule = dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
+    final faint = dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
+    final foreground = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
+    final accent = dark ? AnsibleDesign.darkOchre : AnsibleDesign.accent;
     return Container(
       decoration: BoxDecoration(
-        color: AnsibleDesign.paperElev,
-        border: Border(
-          right: BorderSide(color: AnsibleDesign.rule.withValues(alpha: 0.8)),
-        ),
+        color: background,
+        border: Border(right: BorderSide(color: rule, width: 0.5)),
       ),
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -36,18 +40,18 @@ class HomeSidebar extends StatelessWidget {
             children: [
               Text(
                 l10n.circleSection,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: AnsibleDesign.mono,
                   fontSize: 10,
                   letterSpacing: 1.4,
-                  color: AnsibleDesign.inkFaint,
+                  color: faint,
                 ),
               ),
               const Spacer(),
               IconButton(
                 onPressed: () {},
                 icon: const Icon(Icons.add),
-                color: AnsibleDesign.accent,
+                color: accent,
               ),
             ],
           ),
@@ -88,8 +92,8 @@ class HomeSidebar extends StatelessWidget {
             icon: const Icon(Icons.settings_outlined, size: 18),
             label: Text(l10n.manageSubscriptions),
             style: OutlinedButton.styleFrom(
-              foregroundColor: AnsibleDesign.ink,
-              side: const BorderSide(color: AnsibleDesign.rule, width: 0.5),
+              foregroundColor: foreground,
+              side: BorderSide(color: rule, width: 0.5),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
@@ -118,13 +122,22 @@ class _BoardTileState extends State<_BoardTile> {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final selected = widget.selected;
     final item = widget.item;
-    final baseBg = selected ? AnsibleDesign.paperDeep : AnsibleDesign.paperElev;
-    final hoverBg = AnsibleDesign.paperDeep;
+    final base = dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
+    final raised = dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev;
+    final deep = dark ? AnsibleDesign.darkPaperDeep : AnsibleDesign.paperDeep;
+    final foreground = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
+    final muted = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+    final rule = dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
+    final ruleSoft = dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
+    final accent = dark ? AnsibleDesign.darkOchre : item.accent;
+    final baseBg = selected ? raised : base;
+    final hoverBg = selected ? deep : raised;
     final borderColor = selected
-        ? item.accent.withValues(alpha: 0.35)
-        : (_hover ? AnsibleDesign.rule : AnsibleDesign.ruleSoft);
+        ? accent.withValues(alpha: 0.5)
+        : (_hover ? rule : ruleSoft);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
@@ -132,21 +145,10 @@ class _BoardTileState extends State<_BoardTile> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         curve: Curves.easeOut,
-        transform: Matrix4.identity()
-          ..translateByDouble(0.0, _hover ? -2.0 : 0.0, 0.0, 1.0),
         decoration: BoxDecoration(
           color: _hover ? hoverBg : baseBg,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: borderColor),
-          boxShadow: _hover
-              ? [
-                  BoxShadow(
-                    color: item.accent.withValues(alpha: 0.15),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ]
-              : null,
+          border: Border.all(color: borderColor, width: 0.5),
         ),
         child: Material(
           type: MaterialType.transparency,
@@ -154,8 +156,8 @@ class _BoardTileState extends State<_BoardTile> {
           clipBehavior: Clip.antiAlias,
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: item.accent.withValues(alpha: 0.15),
-              foregroundColor: item.accent,
+              backgroundColor: accent.withValues(alpha: 0.16),
+              foregroundColor: accent,
               child: const Text(
                 '#',
                 style: TextStyle(fontWeight: FontWeight.w700),
@@ -165,16 +167,13 @@ class _BoardTileState extends State<_BoardTile> {
               item.title,
               style: TextStyle(
                 fontWeight: FontWeight.w700,
-                color: _hover ? item.accent : AnsibleDesign.ink,
+                color: _hover ? accent : foreground,
               ),
             ),
             subtitle: item.subtitle != null
                 ? Text(
                     item.subtitle!,
-                    style: const TextStyle(
-                      color: AnsibleDesign.inkMuted,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: muted, fontSize: 12),
                   )
                 : null,
             trailing: item.badge != null
@@ -184,7 +183,7 @@ class _BoardTileState extends State<_BoardTile> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: AnsibleDesign.paperDeep,
+                      color: deep,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(

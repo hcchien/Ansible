@@ -415,7 +415,7 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                     fontFamily: AnsibleDesign.sans,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: _dark ? AnsibleDesign.darkPaper : AnsibleDesign.ink,
                   ),
                 ),
                 if (trailing != null) ...[
@@ -425,7 +425,9 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                     style: TextStyle(
                       fontFamily: AnsibleDesign.sans,
                       fontSize: 14,
-                      color: Colors.white.withValues(alpha: 0.82),
+                      color:
+                          (_dark ? AnsibleDesign.darkPaper : AnsibleDesign.ink)
+                              .withValues(alpha: 0.82),
                     ),
                   ),
                 ],

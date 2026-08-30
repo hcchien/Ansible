@@ -11,11 +11,11 @@ assert.match(
   /\[hidden\]\s*\{[^}]*display:\s*none\s*!important;/s,
   'hidden elements must stay hidden even when component classes define display',
 );
-// Palette contract — Threads Signal (white / ink / lichen / reaction).
+// Palette contract — Forest Letter (Mist / Ink / lavender / sky / yellow).
 assert.match(
   css,
-  /--background:\s*#FFFFFF;/,
-  'Elix Web paper background token is required',
+  /--background:\s*#F4F3EC;/,
+  'Elix Web Mist background token is required',
 );
 assert.match(
   css,
@@ -24,43 +24,43 @@ assert.match(
 );
 assert.match(
   css,
-  /--surface-raised:\s*#F3F5F1;/,
+  /--surface-raised:\s*#ECEAE0;/,
   'Elix Web soft surface token is required',
 );
 assert.match(
   css,
-  /--surface-deep:\s*#D0D9CD;/,
+  /--surface-deep:\s*#E2DFD2;/,
   'Elix Web deep surface token is required',
 );
 assert.match(
   css,
-  /--border:\s*#D0D9CD;/,
+  /--border:\s*#D8D3C4;/,
   'Elix Web rule token is required',
 );
 assert.match(
   css,
-  /--muted-fill:\s*#D0D9CD;/,
+  /--muted-fill:\s*#E2DFD2;/,
   'Elix Web muted fill token is required',
 );
 assert.match(
   css,
-  /--accent:\s*#78900D;/,
-  'Elix lichen identity token is required',
+  /--accent:\s*#C9AEEB;/,
+  'Elix lavender identity token is required',
 );
 assert.match(
   css,
-  /--lavender:\s*#222222;/,
-  'Elix true-ink compatibility token is required',
+  /--lavender:\s*#C9AEEB;/,
+  'Elix lavender compatibility token is required',
 );
 assert.match(
   css,
-  /--highlight:\s*#D94EE8;/,
-  'Elix magenta reaction token is required',
+  /--highlight:\s*#EBE21C;/,
+  'Elix yellow interaction token is required',
 );
 assert.match(
   css,
-  /--sky:\s*#ADB3A9;/,
-  'Elix sage secondary token is required',
+  /--sky:\s*#6FB2E8;/,
+  'Elix sky secondary token is required',
 );
 assert.match(
   css,
@@ -74,19 +74,19 @@ assert.match(
 );
 assert.match(
   css,
-  /--text:\s*#222222;/,
+  /--text:\s*#2A2A0A;/,
   'Elix Web ink text token is required',
 );
 assert.match(
   css,
-  /--muted:\s*#5D645E;/,
+  /--muted:\s*#625F3C;/,
   'Elix Web muted text token is required',
 );
 // Ink (dark) ground.
 assert.match(
   css,
-  /--background:\s*#222222;/,
-  'Elix Ink background token is required',
+  /--background:\s*#17130A;/,
+  'Elix Pine background token is required',
 );
 // Design anatomy: the post card is a lane + body grid with an icon action row.
 assert.match(
@@ -97,7 +97,7 @@ assert.match(
 assert.match(
   css,
   /\.mobile-compose-fab\s*\{[^}]*background:\s*var\(--accent\);/s,
-  'mobile compose must be an independent Threads Signal FAB',
+  'mobile compose must be an independent Forest Letter FAB',
 );
 assert.match(
   css,

@@ -4,63 +4,63 @@ import '../l10n/app_l10n.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Elix Design System — "Threads Signal".
-// Canonical source: Elix Screens.html in the 2026-08-30 handoff. The system is
-// near-white / true-ink with lichen green trust signals, magenta reactions,
-// rounded 18px content cards and intentionally quiet chrome.
+// Elix Design System — "Forest Letter".
+// Canonical source: Elix Brand System.html plus the Forest Letter tokens in the
+// 2026-08-30 12:30 handoff. Mist + Ink carry the product; lavender is the
+// identity/CTA signal, sky blue is secondary trust, and yellow marks energy.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AnsibleDesign {
   static const brandName = 'Elix';
 
-  // ── Light (Paper — canonical) ─────────────────────────────────────────────
-  static const paper = Color(0xFFFFFFFF);
-  static const paperElev = Color(0xFFF3F5F1);
-  static const paperDeep = Color(0xFFD0D9CD);
+  // ── Light (Mist — canonical) ──────────────────────────────────────────────
+  static const paper = Color(0xFFF4F3EC);
+  static const paperElev = Color(0xFFECEAE0);
+  static const paperDeep = Color(0xFFE2DFD2);
   static const paperWhite = Color(0xFFFFFFFF);
-  static const ink = Color(0xFF222222);
-  static const inkMuted = Color(0xFF5D645E);
-  static const inkFaint = Color(0xFF93998F);
-  static const rule = Color(0xFFD0D9CD);
-  static const ruleSoft = Color(0xFFE5EAE2);
-  static const accent = Color(0xFF78900D);
-  static const accentSoft = Color(0xFFE8EED0);
-  static const signalSoft = Color(0xFFADB3A9);
-  static const tintSky = Color(0xFFF3F5F1);
-  static const tintLavender = accentSoft;
-  static const tintCitron = Color(0xFFF2F5E7);
-  static const spore = Color(0xFF78900D);
-  static const moss = Color(0xFF5D645E);
-  static const lavender = Color(0xFF222222);
-  static const highlight = Color(0xFFD94EE8);
+  static const ink = Color(0xFF2A2A0A);
+  static const inkMuted = Color(0xFF625F3C);
+  static const inkFaint = Color(0xFF9C9974);
+  static const rule = Color(0xFFD8D3C4);
+  static const ruleSoft = Color(0xFFE6E2D6);
+  static const accent = Color(0xFFC9AEEB);
+  static const accentSoft = Color(0xFFDCC9F0);
+  static const signalSoft = Color(0xFFC7DDF1);
+  static const tintSky = Color(0xFFE3EFF8);
+  static const tintLavender = Color(0xFFEDE4F7);
+  static const tintCitron = Color(0xFFF5F1BE);
+  static const spore = accent;
+  static const moss = Color(0xFF6FB2E8);
+  static const lavender = accent;
+  static const highlight = Color(0xFFEBE21C);
   static const danger = Color(0xFFC0475C);
-  static const ember = danger;
+  static const ember = highlight;
   static const ochre = accent;
 
-  // ── Dark (Ink — warm black counterpart) ───────────────────────────────────
-  static const darkPaper = Color(0xFF222222);
-  static const darkPaperElev = Color(0xFF2A2A28);
-  static const darkPaperDeep = Color(0xFF34362F);
-  static const darkPaperWhite = Color(0xFF2A2A28);
-  static const darkInk = Color(0xFFF3F5F1);
-  static const darkInkMuted = Color(0xFFADB3A9);
-  static const darkInkFaint = Color(0xFF7A8076);
-  static const darkRule = Color(0xFF3D3F39);
-  static const darkRuleSoft = Color(0xFF2E302B);
-  static const darkSignalSoft = Color(0xFFADB3A9);
-  static const darkTintSky = Color(0xFF2A2A28);
-  static const darkTintLavender = Color(0xFF303328);
-  static const darkTintCitron = Color(0xFF303328);
-  static const darkOchre = Color(0xFF9AC02E);
-  static const darkMoss = Color(0xFFADB3A9);
-  static const darkLavender = Color(0xFFF3F5F1);
-  static const darkHighlight = Color(0xFFE876F0);
-  static const darkEmber = Color(0xFFE876F0);
+  // ── Dark (Pine) ───────────────────────────────────────────────────────────
+  static const darkPaper = Color(0xFF17130A);
+  static const darkPaperElev = Color(0xFF1F1A0E);
+  static const darkPaperDeep = Color(0xFF2A2413);
+  static const darkPaperWhite = Color(0xFF1F1A0E);
+  static const darkInk = Color(0xFFF4EEDA);
+  static const darkInkMuted = Color(0xFFB7AD8E);
+  static const darkInkFaint = Color(0xFF726B4F);
+  static const darkRule = Color(0xFF362E17);
+  static const darkRuleSoft = Color(0xFF221D10);
+  static const darkSignalSoft = Color(0xFF36536A);
+  static const darkTintSky = Color(0xFF1C2A33);
+  static const darkTintLavender = Color(0xFF31283D);
+  static const darkTintCitron = Color(0xFF302D12);
+  static const darkOchre = Color(0xFFD9C6F2);
+  static const darkMoss = Color(0xFF8FC4F5);
+  static const darkLavender = darkOchre;
+  static const darkHighlight = Color(0xFFF5EE3A);
+  static const darkEmber = darkHighlight;
 
   // ── Typography ────────────────────────────────────────────────────────────
-  static const display = 'Noto Sans TC';
-  static const serif = 'Noto Sans TC';
-  static const serifEn = 'Noto Sans TC';
+  static const display = 'Noto Serif TC';
+  static const serif = 'Noto Serif TC';
+  static const serifEn = 'Newsreader';
   static const sans = 'Noto Sans TC';
   static const mono = 'JetBrains Mono';
   static const appTextScale = 1.06;
@@ -68,9 +68,9 @@ class AnsibleDesign {
   static const readingTextSize = 16.0;
   static const previewTextSize = 15.5;
   static const fallback = [
-    'Noto Sans TC',
     'Noto Serif TC',
     'Newsreader',
+    'Noto Sans TC',
     'PingFang TC',
     'Songti TC',
     'PMingLiU',
@@ -166,10 +166,10 @@ class AnsibleDesign {
       if (states.contains(WidgetState.disabled)) {
         return selected ? moss.withValues(alpha: 0.52) : paperDeep;
       }
-      return selected ? moss : rule;
+      return selected ? accent : rule;
     }),
     trackOutlineColor: WidgetStateProperty.resolveWith((states) {
-      return states.contains(WidgetState.selected) ? moss : rule;
+      return states.contains(WidgetState.selected) ? accent : rule;
     }),
   );
 
@@ -181,7 +181,7 @@ class AnsibleDesign {
       primary: ink,
       onPrimary: paper,
       secondary: accent,
-      onSecondary: paperWhite,
+      onSecondary: ink,
       surface: paper,
       onSurface: ink,
       surfaceContainerHighest: paperElev,
@@ -214,15 +214,15 @@ class AnsibleDesign {
         filled: true,
         fillColor: paperElev,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: rule, width: 0.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: rule, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: accent, width: 1.2),
         ),
         labelStyle: const TextStyle(color: inkMuted),
@@ -234,7 +234,7 @@ class AnsibleDesign {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: accent,
-          foregroundColor: paperWhite,
+          foregroundColor: ink,
           shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           textStyle: const TextStyle(
@@ -261,8 +261,8 @@ class AnsibleDesign {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: ruleSoft, width: 0.5),
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: rule, width: 0.5),
         ),
       ),
       chipTheme: base.chipTheme.copyWith(
@@ -275,7 +275,7 @@ class AnsibleDesign {
         backgroundColor: paperWhite,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14),
           side: const BorderSide(color: rule, width: 0.5),
         ),
         titleTextStyle: const TextStyle(
@@ -368,15 +368,15 @@ class AnsibleDesign {
         filled: true,
         fillColor: darkPaperElev,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: darkRule, width: 0.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: darkRule, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: darkOchre, width: 1.2),
         ),
         labelStyle: const TextStyle(color: darkInkMuted),
@@ -415,8 +415,8 @@ class AnsibleDesign {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: darkRuleSoft, width: 0.5),
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: darkRule, width: 0.5),
         ),
       ),
       chipTheme: base.chipTheme.copyWith(
@@ -429,7 +429,7 @@ class AnsibleDesign {
         backgroundColor: darkPaperWhite,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14),
           side: const BorderSide(color: darkRule, width: 0.5),
         ),
         titleTextStyle: const TextStyle(
@@ -483,10 +483,10 @@ class AnsibleDesign {
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.disabled)) return darkPaperDeep;
-          return states.contains(WidgetState.selected) ? darkMoss : darkRule;
+          return states.contains(WidgetState.selected) ? darkOchre : darkRule;
         }),
         trackOutlineColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return darkMoss;
+          if (states.contains(WidgetState.selected)) return darkOchre;
           return darkRule;
         }),
       ),
@@ -565,21 +565,97 @@ class ElixWordmark extends StatelessWidget {
     return Semantics(
       label: AnsibleDesign.brandName,
       child: ExcludeSemantics(
-        child: Text(
-          AnsibleDesign.brandName,
-          style: TextStyle(
-            fontFamily: AnsibleDesign.sans,
-            fontFamilyFallback: AnsibleDesign.fallback,
-            fontSize: fontSize,
-            fontWeight: FontWeight.w600,
-            height: 1,
-            letterSpacing: -0.3,
-            color: ink,
+        child: SizedBox(
+          width: fontSize * 2.92,
+          height: fontSize,
+          child: CustomPaint(
+            painter: _ElixWordmarkPainter(
+              color: ink,
+              accent: dark ? AnsibleDesign.darkOchre : AnsibleDesign.accent,
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+/// The geometric ELIX wordmark from the handoff. The X is four independent
+/// strokes with a diamond-shaped centre gap; the I tittle carries the trust
+/// lavender even when the surrounding wordmark is rendered in another colour.
+class _ElixWordmarkPainter extends CustomPainter {
+  const _ElixWordmarkPainter({required this.color, required this.accent});
+
+  final Color color;
+  final Color accent;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final scale = size.height / 100;
+    canvas.save();
+    canvas.scale(scale, scale);
+
+    const sw = 14.0;
+    const mid = 43.0;
+    const bot = 86.0;
+    final fill = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = sw
+      ..strokeCap = StrokeCap.butt;
+
+    final e = Path()
+      ..moveTo(0, 0)
+      ..lineTo(64, 0)
+      ..lineTo(64, sw)
+      ..lineTo(sw, sw)
+      ..lineTo(sw, mid)
+      ..lineTo(50, mid)
+      ..lineTo(50, mid + sw)
+      ..lineTo(sw, mid + sw)
+      ..lineTo(sw, bot)
+      ..lineTo(64, bot)
+      ..lineTo(64, 100)
+      ..lineTo(0, 100)
+      ..close();
+    final l = Path()
+      ..moveTo(88, 0)
+      ..lineTo(88 + sw, 0)
+      ..lineTo(88 + sw, bot)
+      ..lineTo(152, bot)
+      ..lineTo(152, 100)
+      ..lineTo(88, 100)
+      ..close();
+    final i = Path()
+      ..moveTo(176, 23.8)
+      ..lineTo(176 + sw, 23.8)
+      ..lineTo(176 + sw, 100)
+      ..lineTo(176, 100)
+      ..close();
+
+    canvas.drawPath(e, fill);
+    canvas.drawPath(l, fill);
+    canvas.drawPath(i, fill);
+    canvas.drawCircle(
+      const Offset(183, 8.68),
+      8.68,
+      Paint()
+        ..color = accent
+        ..style = PaintingStyle.fill,
+    );
+    canvas.drawLine(const Offset(214, 0), const Offset(246.7, 43), stroke);
+    canvas.drawLine(const Offset(290, 0), const Offset(257.3, 43), stroke);
+    canvas.drawLine(const Offset(214, 100), const Offset(246.7, 57), stroke);
+    canvas.drawLine(const Offset(290, 100), const Offset(257.3, 57), stroke);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _ElixWordmarkPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.accent != accent;
 }
 
 class _ElixMarkPainter extends CustomPainter {
@@ -594,11 +670,11 @@ class _ElixMarkPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     Offset p(double x, double y) => center + Offset(x * s, y * s);
     final stroke = Paint()
-      ..color = color.withValues(alpha: 0.74)
+      ..color = color
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
-      ..strokeWidth = 3.2 * s;
+      ..strokeWidth = 9 * s;
     final fill = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
@@ -1431,7 +1507,7 @@ class ElixAIDot extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: bg,
-          border: Border.all(color: ring, width: 3),
+          border: Border.all(color: ring, width: 0.5),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.22),
@@ -1440,7 +1516,12 @@ class ElixAIDot extends StatelessWidget {
             ),
           ],
         ),
-        child: const Center(child: AnsibleMark(size: 26, color: Colors.white)),
+        child: Center(
+          child: AnsibleMark(
+            size: 26,
+            color: dark ? AnsibleDesign.darkPaper : AnsibleDesign.ink,
+          ),
+        ),
       ),
     );
   }

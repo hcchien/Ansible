@@ -243,16 +243,16 @@ class TimelineBoardView extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
       child: Material(
         color: AnsibleDesign.ochre.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         child: InkWell(
           key: const Key('timeline_discovery_entry'),
           onTap: () => _openDiscover(context),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AnsibleDesign.ochre, width: 1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AnsibleDesign.ochre, width: 0.5),
             ),
             child: Row(
               children: [
@@ -265,7 +265,7 @@ class TimelineBoardView extends StatelessWidget {
                   ),
                   child: const Icon(
                     Icons.explore_outlined,
-                    color: Colors.white,
+                    color: AnsibleDesign.ink,
                     size: 23,
                   ),
                 ),
@@ -322,11 +322,11 @@ class TimelineBoardView extends StatelessWidget {
       child: InkWell(
         key: key,
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(color: style.rule, width: 0.5),
           ),
           child: Row(

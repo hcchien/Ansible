@@ -539,7 +539,11 @@ class _PostCardState extends State<PostCard> {
     VoidCallback? onTap,
     String? tooltip,
   }) {
-    final tint = active ? color.accent : color.muted;
+    final tint = active
+        ? (Theme.of(context).brightness == Brightness.dark
+              ? AnsibleDesign.darkHighlight
+              : AnsibleDesign.highlight)
+        : color.muted;
     final action = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -588,8 +592,8 @@ class _PostCardState extends State<PostCard> {
             screenStyle: screenStyle,
             systemBrightness: Theme.of(context).brightness,
           ),
-          border: Border.all(color: style.rule, width: 1),
-          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: style.rule, width: 0.5),
+          borderRadius: BorderRadius.circular(12),
         ),
         padding: const EdgeInsets.fromLTRB(16, 15, 16, 13),
         child: Column(

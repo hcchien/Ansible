@@ -50,7 +50,7 @@ class AutoHidingHomeBottomBar extends StatelessWidget {
   }
 }
 
-/// Elix "Threads-style" bottom tabbar: icon-only cells — home (時間軸) ·
+/// Elix Forest Letter bottom tabbar: icon-only cells — home (時間軸) ·
 /// circle (討論區) · a bordered center ＋ · bell (通知) · eye (我). Active cells
 /// switch to ink; inactive stay faint (no labels, no filled variants). The
 /// center ＋ is a rounded-rect with a soft fill + hairline rule, not a solid
@@ -222,8 +222,7 @@ class HomeBottomBar extends StatelessWidget {
     );
   }
 
-  /// Center ＋ — a flat 52×40 rounded-rect sticker: ochre fill and white glyph.
-  /// The latest handoff intentionally removes the old lavender outer ring.
+  /// Center ＋ — a flat lavender rounded-rect with an Ink glyph.
   Widget _compose(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 7),
@@ -241,7 +240,13 @@ class HomeBottomBar extends StatelessWidget {
               color: AnsibleDesign.ochre,
               borderRadius: BorderRadius.circular(13),
             ),
-            child: const Icon(Icons.add, size: 23, color: Colors.white),
+            child: Icon(
+              Icons.add,
+              size: 23,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AnsibleDesign.darkPaper
+                  : AnsibleDesign.ink,
+            ),
           ),
         ),
       ),
