@@ -34,6 +34,10 @@ void main() {
 
     expect(find.text('尚未設定公開身分'), findsOneWidget);
     expect(find.text('目前沒有公開發布'), findsOneWidget);
+    final avatar = tester.widget<Container>(
+      find.byKey(const Key('profile_screen_avatar')),
+    );
+    expect((avatar.decoration as BoxDecoration).color, AnsibleDesign.highlight);
     _expectNoLegacyMockText();
   });
 
@@ -86,6 +90,10 @@ void main() {
     expect(find.text('Tris'), findsNothing);
     expect(find.text('3 台裝置 · 點對點'), findsNothing);
     expect(find.text('松茸 · 大'), findsNothing);
+    final avatar = tester.widget<Container>(
+      find.byKey(const Key('settings_identity_avatar')),
+    );
+    expect((avatar.decoration as BoxDecoration).color, AnsibleDesign.ink);
   });
 }
 

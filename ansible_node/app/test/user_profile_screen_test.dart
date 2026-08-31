@@ -1,6 +1,7 @@
 import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_node/screens/user_profile_screen.dart';
 import 'package:ansible_node/services/handle_resolver.dart';
+import 'package:ansible_node/theme/ansible_design.dart';
 import 'package:ansible_node/widgets/follow_button.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
@@ -246,6 +247,10 @@ void main() {
     expect(find.text('Public words only'), findsOneWidget);
     expect(find.text('已滿 18 歲'), findsOneWidget);
     expect(find.textContaining('私鑰與原始憑證不會進入'), findsOneWidget);
+    final avatar = tester.widget<Container>(
+      find.byKey(const Key('public_profile_avatar')),
+    );
+    expect((avatar.decoration as BoxDecoration).color, AnsibleDesign.highlight);
   });
 
   testWidgets('mobile profile stays single-column at 375 points', (

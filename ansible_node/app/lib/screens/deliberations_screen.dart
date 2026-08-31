@@ -1475,6 +1475,9 @@ class _DeliberationDetailScreenState extends State<DeliberationDetailScreen> {
     final faint = dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
     final rule = dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
     final accent = dark ? AnsibleDesign.darkLavender : AnsibleDesign.lavender;
+    final highlight = dark
+        ? AnsibleDesign.darkHighlight
+        : AnsibleDesign.highlight;
     final participantCount = report['participant_count'] ?? 0;
     final responseCount = report['response_count'] ?? 0;
     final statementCount = report['statement_count'] ?? 0;
@@ -1568,14 +1571,12 @@ class _DeliberationDetailScreenState extends State<DeliberationDetailScreen> {
           if (consensus.isNotEmpty) ...[
             const SizedBox(height: 14),
             Container(
+              key: const Key('deliberation_consensus_card'),
               padding: const EdgeInsets.all(15),
               decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.13),
+                color: highlight.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: dark ? AnsibleDesign.darkOchre : AnsibleDesign.accent,
-                  style: BorderStyle.solid,
-                ),
+                border: Border.all(color: highlight, style: BorderStyle.solid),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

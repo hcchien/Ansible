@@ -1,6 +1,6 @@
 /* ─────────────────────────────────────────────
    ELIX WEB — Threads-style RWA
-   Canonical source: top-level Elix Web.html in the 2026-08-30 handoff.
+   Canonical source: top-level Elix Web.html in the 2026-08-31 handoff.
    True white, true ink, lichen green identity and magenta interaction energy.
    ───────────────────────────────────────────── */
 :root {
@@ -1260,14 +1260,16 @@ p {
 .gate-badge {
   display: inline-flex;
   align-items: center;
-  border: 1px solid var(--accent);
+  gap: 4px;
+  border: 1px solid var(--highlight);
   border-radius: 999px;
-  padding: 2px 9px;
+  padding: 3px 10px;
+  background: color-mix(in srgb, var(--highlight) 14%, var(--surface));
   font-family: var(--mono);
-  font-size: 9.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--highlight);
   vertical-align: middle;
 }
 
@@ -1307,6 +1309,34 @@ p {
 .deliberation-list {
   display: grid;
   gap: 0.8rem;
+}
+
+.deliberation-list.is-populated {
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--highlight);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.deliberation-list.is-populated .head h3 {
+  color: var(--highlight);
+  font-family: var(--sans);
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+}
+
+.deliberation-list.is-populated .deliberation-row {
+  padding: 4px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.deliberation-list.is-populated .deliberation-row strong {
+  font-family: var(--serif);
+  font-size: 16.5px;
+  line-height: 1.5;
 }
 
 .deliberation-list .head,
@@ -1575,9 +1605,9 @@ p {
 
 .opinion-consensus {
   padding: 15px;
-  border: 1px dashed var(--accent);
+  border: 1px dashed var(--highlight);
   border-radius: 14px;
-  background: color-mix(in oklab, var(--lavender) 13%, transparent);
+  background: color-mix(in srgb, var(--highlight) 10%, transparent);
 }
 
 .opinion-consensus > span {
@@ -1722,8 +1752,8 @@ p {
 }
 
 .board-thread-row.is-signed .board-thread-avatar {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--lavender);
+  color: var(--background);
 }
 
 .board-thread-copy {
@@ -1804,17 +1834,17 @@ p {
 .pk-pill {
   display: inline-flex;
   align-items: center;
-  border: 1.5px dashed var(--accent);
+  border: 1px solid var(--accent);
   border-radius: 5px;
-  padding: 2px 7px;
+  padding: 1px 6px;
   font-family: var(--mono);
-  font-size: 9.5px;
-  letter-spacing: 0.08em;
+  font-size: 9px;
+  line-height: 1.4;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--accent);
   background: var(--surface);
   white-space: nowrap;
-  transform: rotate(-2deg);
 }
 
 .board-thread-time,
@@ -1908,7 +1938,8 @@ p {
   font-size: 10px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--success);
+  color: var(--highlight);
+  font-weight: 700;
 }
 
 .thread-hd h1 {
@@ -1954,14 +1985,14 @@ p {
 }
 
 .thread-op-avatar {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--lavender);
+  color: var(--background);
   font-size: 18px;
 }
 
 .thread-reply-avatar {
-  background: var(--surface-deep);
-  color: var(--muted);
+  background: var(--highlight);
+  color: #FFFFFF;
   font-size: 17px;
 }
 
@@ -2794,8 +2825,8 @@ p {
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--lavender);
+  color: var(--background);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3415,8 +3446,8 @@ p {
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--highlight);
+  color: #FFFFFF;
   font-family: var(--serif);
   font-size: 26px;
   font-weight: 600;
@@ -4081,8 +4112,8 @@ h2 {
 }
 
 .post.signed .av {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--lavender);
+  color: var(--background);
 }
 
 .post .thread-line {
@@ -4304,8 +4335,8 @@ h2 {
 }
 
 .board-thread-row.is-signed .board-thread-avatar {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--lavender);
+  color: var(--background);
 }
 
 .board-thread-title {

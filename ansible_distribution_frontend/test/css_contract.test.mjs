@@ -243,6 +243,51 @@ assert.match(
 );
 assert.match(
   css,
+  /\.public-profile-avatar\s*\{[^}]*background:\s*var\(--highlight\);[^}]*color:\s*#FFFFFF;/s,
+  'public profile avatar must use the revised magenta identity highlight',
+);
+assert.match(
+  css,
+  /\.settings-avatar\s*\{[^}]*background:\s*var\(--lavender\);[^}]*color:\s*var\(--background\);/s,
+  'settings identity avatar must use the revised ink-on-ground treatment',
+);
+assert.match(
+  css,
+  /\.post\.signed \.av\s*\{[^}]*background:\s*var\(--lavender\);[^}]*color:\s*var\(--background\);/s,
+  'signed web posts must use the revised ink avatar',
+);
+assert.match(
+  css,
+  /\.thread-reply-avatar\s*\{[^}]*background:\s*var\(--highlight\);[^}]*color:\s*#FFFFFF;/s,
+  'signed replies must use the revised magenta avatar',
+);
+assert.match(
+  css,
+  /\.thread-crumb\s*\{[^}]*color:\s*var\(--highlight\);[^}]*font-weight:\s*700;/s,
+  'thread context label must use the revised magenta emphasis',
+);
+assert.match(
+  css,
+  /\.pk-pill\s*\{[^}]*border:\s*1px solid var\(--accent\);[^}]*line-height:\s*1\.4;/s,
+  'PK pills must use the compact solid-border treatment',
+);
+assert.match(
+  css,
+  /\.gate-badge\s*\{[^}]*border:\s*1px solid var\(--highlight\);[^}]*background:\s*color-mix\(in srgb, var\(--highlight\) 14%, var\(--surface\)\);/s,
+  'credential gates must use the magenta qualification badge',
+);
+assert.match(
+  css,
+  /\.deliberation-list\.is-populated\s*\{[^}]*border-left:\s*4px solid var\(--highlight\);[^}]*border-radius:\s*14px;/s,
+  'board deliberations must use the highlighted teaser layout',
+);
+assert.match(
+  css,
+  /\.opinion-consensus\s*\{[^}]*border:\s*1px dashed var\(--highlight\);[^}]*background:\s*color-mix\(in srgb, var\(--highlight\) 10%, transparent\);/s,
+  'opinion-map consensus must use the revised magenta surface',
+);
+assert.match(
+  css,
   /@media\s*\(max-width:\s*1023px\) and \(min-width:\s*768px\)[\s\S]*\.cols\.profile-layout\s*\{[^}]*grid-template-columns:\s*64px minmax\(0,\s*1fr\);/,
   'tablet profile must collapse to the app-style rail and content layout',
 );

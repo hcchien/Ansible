@@ -1137,12 +1137,14 @@ class _Avatar extends StatelessWidget {
     final initial = trimmed.isEmpty
         ? '?'
         : trimmed.substring(0, 1).toUpperCase();
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
+      key: const Key('public_profile_avatar'),
       width: 64,
       height: 64,
       alignment: Alignment.center,
-      decoration: const BoxDecoration(
-        color: AnsibleDesign.paperDeep,
+      decoration: BoxDecoration(
+        color: dark ? AnsibleDesign.darkHighlight : AnsibleDesign.highlight,
         shape: BoxShape.circle,
       ),
       child: Text(
@@ -1150,7 +1152,7 @@ class _Avatar extends StatelessWidget {
         style: const TextStyle(
           fontSize: 26,
           fontWeight: FontWeight.w600,
-          color: AnsibleDesign.inkMuted,
+          color: Colors.white,
         ),
       ),
     );

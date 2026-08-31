@@ -136,6 +136,12 @@ void main() {
       );
       expect(find.byKey(const Key('deliberation_results')), findsOneWidget);
       expect(find.textContaining('意見群組分析尚未啟用'), findsOneWidget);
+      final consensus = tester.widget<Container>(
+        find.byKey(const Key('deliberation_consensus_card')),
+      );
+      final decoration = consensus.decoration as BoxDecoration;
+      expect(decoration.color, AnsibleDesign.highlight.withValues(alpha: 0.10));
+      expect((decoration.border as Border).top.color, AnsibleDesign.highlight);
     },
   );
 

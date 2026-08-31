@@ -223,6 +223,13 @@ const gatedForum = {
   boards: [gatedBoard],
   board: gatedBoard,
   threads: [],
+  deliberations: [{
+    id: 'deliberation-1',
+    title: '怎麼產生第二個有本土意識的政黨',
+    prompt: '比較不同路徑與代價。',
+    statementCount: 2,
+    participantCount: 0,
+  }],
   capabilities: { canCreateThread: true, canReply: true },
 };
 const gatedRoute = { pageId: PAGE_IDS.board, params: { boardId: 'verified-humans' } };
@@ -240,6 +247,8 @@ const belowTierVm = buildAppViewModel({
 });
 const belowTierHtml = renderPageBody(belowTierVm);
 assert.match(belowTierHtml, /class="gate-badge"/);
+assert.match(belowTierHtml, /class="card deliberation-list is-populated"/);
+assert.match(belowTierHtml, /怎麼產生第二個有本土意識的政黨/);
 assert.match(belowTierHtml, /真人驗證版/);
 assert.match(belowTierHtml, /這個板需要「已驗證真人」層級才能發文/);
 assert.match(belowTierHtml, /class="gate-blocked"/);

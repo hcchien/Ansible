@@ -147,9 +147,6 @@ class SettingsHomeScreen extends StatelessWidget {
     final foreground = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
     final muted = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
     final accent = dark ? AnsibleDesign.darkLavender : AnsibleDesign.lavender;
-    final tint = dark
-        ? AnsibleDesign.darkTintLavender
-        : AnsibleDesign.tintLavender;
     return AnsibleScreenScaffold(
       title: text.settingsTitle,
       leadingLabel: '',
@@ -178,18 +175,21 @@ class SettingsHomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
+                    key: const Key('settings_identity_avatar'),
                     width: 64,
                     height: 64,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: tint,
-                      border: Border.all(
-                        color: accent,
-                        width: AnsibleDesign.hairline,
-                      ),
+                      color: accent,
                     ),
                     alignment: Alignment.center,
-                    child: Icon(Icons.person_outline, size: 30, color: accent),
+                    child: Icon(
+                      Icons.person_outline,
+                      size: 30,
+                      color: dark
+                          ? AnsibleDesign.darkPaper
+                          : AnsibleDesign.paper,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(

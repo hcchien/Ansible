@@ -307,7 +307,7 @@ function renderBoard(viewModel, uiState = {}) {
           </div>
           ${postAction}
         </section>
-        <section class="card deliberation-list" aria-labelledby="deliberation-list-title">
+        <section class="card deliberation-list${deliberations.length ? ' is-populated' : ''}" aria-labelledby="deliberation-list-title">
           <div class="head">
             <h3 id="deliberation-list-title">${escapeHtml(t('deliberation.boardTitle', { count: deliberations.length }))}</h3>
             ${viewModel.session?.authenticated && viewModel.actions?.canCreateThread && !gate.blocked

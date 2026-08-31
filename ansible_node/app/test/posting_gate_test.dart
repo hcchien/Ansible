@@ -2,6 +2,7 @@ import 'package:ansible_node/l10n/user_facing_error.dart';
 import 'package:ansible_node/screens/threads_list_screen.dart';
 import 'package:ansible_node/services/forum_host_client.dart';
 import 'package:ansible_node/services/posting_gate.dart';
+import 'package:ansible_node/theme/ansible_design.dart';
 import 'package:ansible_node/widgets/board_gate_badge.dart';
 import 'package:ansible_store/ansible_store.dart' hide Board;
 import 'package:ansible_store/ansible_store.dart' as store show Board;
@@ -88,6 +89,11 @@ void main() {
     );
 
     expect(find.text('真人版'), findsOneWidget);
+    final badge = tester.widget<Container>(
+      find.byKey(const Key('board_gate_badge')),
+    );
+    final decoration = badge.decoration as BoxDecoration;
+    expect((decoration.border as Border).top.color, AnsibleDesign.highlight);
   });
 
   group('ThreadsListScreen posting gate', () {

@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Elix Design System — Threads-influenced Elix.
-// Canonical app source: the top-level Elix Screens.html from the 2026-08-30
+// Canonical app source: the top-level Elix Screens.html from the 2026-08-31
 // handoff. It renders a true-white / true-ink interface with lichen-green
 // identity accents and a magenta interaction highlight.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1028,8 +1028,9 @@ class AnsibleSectionHead extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Trust badge pill. [kind] is one of: 'PK', 'DID', 'WEB', 'BASIC'.
-/// Restyle: hand-stamped look — white paper chip, dashed colored border,
-/// slight counter-clockwise rotation (matches the web `.pk-badge`).
+/// Compact identity proof chip. The 2026-08-31 handoff uses a solid hairline
+/// and reserves magenta for the PK marker while keeping the slight stamped
+/// rotation.
 class ElixSignedPill extends StatelessWidget {
   const ElixSignedPill({super.key, required this.kind});
 
@@ -1038,7 +1039,7 @@ class ElixSignedPill extends StatelessWidget {
   Color _fg(bool dark) {
     switch (kind) {
       case 'PK':
-        return dark ? AnsibleDesign.darkOchre : AnsibleDesign.ochre;
+        return dark ? AnsibleDesign.darkHighlight : AnsibleDesign.highlight;
       case 'DID':
         return dark ? AnsibleDesign.darkMoss : AnsibleDesign.moss;
       case 'WEB':
@@ -1052,11 +1053,17 @@ class ElixSignedPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final fg = _fg(dark);
-    final bg = dark ? AnsibleDesign.darkPaperWhite : AnsibleDesign.paperWhite;
+    final bg = kind == 'PK'
+        ? fg.withValues(alpha: 0.11)
+        : (dark ? AnsibleDesign.darkPaperWhite : AnsibleDesign.paperWhite);
     return Transform.rotate(
       angle: -0.035, // ≈ -2°
-      child: CustomPaint(
-        painter: _DashedRectPainter(color: fg, fill: bg),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(5),
+          border: Border.all(color: fg, width: 1),
+        ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2.5),
           child: Row(
@@ -1083,48 +1090,6 @@ class ElixSignedPill extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-/// Rounded rect with a dashed hairline border — the "hand-stamped" chip
-/// treatment used by trust badges in the yellow-paper restyle.
-class _DashedRectPainter extends CustomPainter {
-  const _DashedRectPainter({required this.color, required this.fill});
-
-  final Color color;
-  final Color fill;
-
-  static const double radius = 5;
-  static const double strokeWidth = 1.5;
-  static const double dash = 4;
-  static const double gap = 3;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rrect = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      Radius.circular(radius),
-    );
-    canvas.drawRRect(rrect, Paint()..color = fill);
-
-    final border = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth;
-    final path = Path()..addRRect(rrect.deflate(strokeWidth / 2));
-    for (final metric in path.computeMetrics()) {
-      var distance = 0.0;
-      while (distance < metric.length) {
-        final next = (distance + dash).clamp(0.0, metric.length);
-        canvas.drawPath(metric.extractPath(distance, next), border);
-        distance = next + gap;
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DashedRectPainter oldDelegate) {
-    return oldDelegate.color != color || oldDelegate.fill != fill;
   }
 }
 

@@ -61,22 +61,20 @@ class ProfileScreen extends StatelessWidget {
                   Row(
                     children: [
                       Container(
+                        key: const Key('profile_screen_avatar'),
                         width: 60,
                         height: 60,
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AnsibleDesign.paperDeep,
-                          border: Border.all(
-                            color: AnsibleDesign.rule,
-                            width: 0.5,
-                          ),
+                          color: AnsibleDesign.highlight,
                         ),
                         alignment: Alignment.center,
                         child: Text(
                           name.characters.first,
                           style: const TextStyle(
                             fontSize: 26,
-                            color: AnsibleDesign.inkMuted,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -89,7 +87,7 @@ class ProfileScreen extends StatelessWidget {
                               name,
                               style: const TextStyle(
                                 fontSize: 22,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w700,
                                 color: AnsibleDesign.ink,
                               ),
                             ),
@@ -99,7 +97,6 @@ class ProfileScreen extends StatelessWidget {
                               style: const TextStyle(
                                 fontSize: 13,
                                 color: AnsibleDesign.inkMuted,
-                                fontStyle: FontStyle.italic,
                               ),
                             ),
                             const SizedBox(height: 4),
