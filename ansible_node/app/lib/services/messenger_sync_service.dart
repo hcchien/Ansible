@@ -110,6 +110,7 @@ class MessengerSyncService {
           localDeviceId: localDevice.deviceId,
           remoteDid: recipientDid,
           remoteDeviceId: remoteDevice.deviceId,
+          protocolVersion: encrypted.protocolVersion,
           sessionState: await _secureSecret(
             namespace:
                 'session.${localDevice.deviceId}.${remoteDevice.deviceId}',
@@ -288,6 +289,7 @@ class MessengerSyncService {
         localDeviceId: localDevice.deviceId,
         remoteDid: message.senderDid,
         remoteDeviceId: message.senderDeviceId,
+        protocolVersion: message.protocolVersion,
         sessionState: sessionRef,
         updatedAt: updatedAt,
       ),

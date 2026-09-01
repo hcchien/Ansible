@@ -16,3 +16,4 @@ pub mod atproto;
 pub mod api_atproto;
 pub mod api_messenger;
 pub mod messenger;
+pub mod messenger_security;

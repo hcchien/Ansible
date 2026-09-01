@@ -9,11 +9,13 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
 
+use crate::messenger_security::LEGACY_PROTOCOL_VERSION;
+
 // Legacy wire identifier. This module implements only the initial pre-key
 // envelope; it is not a complete Signal Protocol or Double Ratchet
 // implementation. Keep the value for stored-message compatibility until the
 // audited provider migration is designed and reviewed.
-const PROTOCOL_VERSION: &str = "signal-mvp-v1";
+const PROTOCOL_VERSION: &str = LEGACY_PROTOCOL_VERSION;
 const CIPHERTEXT_TYPE: &str = "pre_key_signal_message";
 const ROOT_KEY_INFO: &[u8] = b"ansible messenger signal-mvp-v1 root key";
 const AEAD_KEY_INFO: &[u8] = b"ansible messenger signal-mvp-v1 aead key";
@@ -135,7 +137,9 @@ pub fn create_messenger_device(subject_did: String) -> Result<MessengerDevice, S
         signed_pre_key_id,
         signed_pre_key_public: encode_bytes(signed_pre_key_public.as_bytes()),
         signed_pre_key_private: encode_bytes(signed_pre_key_secret.to_bytes().as_slice()),
-        signed_pre_key_signature: signed_pre_key_signature(
+        // Compatibility-only digest. This is not a digital signature and the
+        // legacy provider therefore cannot pass the production security gate.
+        signed_pre_key_signature: legacy_signed_pre_key_digest(
             identity_public.as_bytes(),
             signed_pre_key_public.as_bytes(),
             signed_pre_key_id,
@@ -401,7 +405,7 @@ fn initial_aad(
     .into_bytes()
 }
 
-fn signed_pre_key_signature(
+fn legacy_signed_pre_key_digest(
     identity_public: &[u8; 32],
     signed_pre_key_public: &[u8; 32],
     signed_pre_key_id: u32,

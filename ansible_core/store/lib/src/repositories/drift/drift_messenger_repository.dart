@@ -153,6 +153,7 @@ class DriftMessengerRepository
             localDeviceId: session.localDeviceId,
             remoteDeviceId: session.remoteDeviceId,
             remoteDid: session.remoteDid,
+            protocolVersion: Value(session.protocolVersion),
             sessionState: session.sessionState,
             updatedAt: session.updatedAt,
           ),
@@ -337,6 +338,7 @@ class DriftMessengerRepository
       localDeviceId: row.localDeviceId,
       remoteDid: row.remoteDid,
       remoteDeviceId: row.remoteDeviceId,
+      protocolVersion: row.protocolVersion,
       sessionState: row.sessionState,
       updatedAt: row.updatedAt,
     );

@@ -25600,6 +25600,18 @@ class $MessengerSessionsTable extends MessengerSessions
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _protocolVersionMeta = const VerificationMeta(
+    'protocolVersion',
+  );
+  @override
+  late final GeneratedColumn<String> protocolVersion = GeneratedColumn<String>(
+    'protocol_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('signal-mvp-v1'),
+  );
   static const VerificationMeta _sessionStateMeta = const VerificationMeta(
     'sessionState',
   );
@@ -25627,6 +25639,7 @@ class $MessengerSessionsTable extends MessengerSessions
     localDeviceId,
     remoteDeviceId,
     remoteDid,
+    protocolVersion,
     sessionState,
     updatedAt,
   ];
@@ -25672,6 +25685,15 @@ class $MessengerSessionsTable extends MessengerSessions
     } else if (isInserting) {
       context.missing(_remoteDidMeta);
     }
+    if (data.containsKey('protocol_version')) {
+      context.handle(
+        _protocolVersionMeta,
+        protocolVersion.isAcceptableOrUnknown(
+          data['protocol_version']!,
+          _protocolVersionMeta,
+        ),
+      );
+    }
     if (data.containsKey('session_state')) {
       context.handle(
         _sessionStateMeta,
@@ -25712,6 +25734,10 @@ class $MessengerSessionsTable extends MessengerSessions
         DriftSqlType.string,
         data['${effectivePrefix}remote_did'],
       )!,
+      protocolVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}protocol_version'],
+      )!,
       sessionState: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}session_state'],
@@ -25734,12 +25760,14 @@ class MessengerSession extends DataClass
   final String localDeviceId;
   final String remoteDeviceId;
   final String remoteDid;
+  final String protocolVersion;
   final String sessionState;
   final DateTime updatedAt;
   const MessengerSession({
     required this.localDeviceId,
     required this.remoteDeviceId,
     required this.remoteDid,
+    required this.protocolVersion,
     required this.sessionState,
     required this.updatedAt,
   });
@@ -25749,6 +25777,7 @@ class MessengerSession extends DataClass
     map['local_device_id'] = Variable<String>(localDeviceId);
     map['remote_device_id'] = Variable<String>(remoteDeviceId);
     map['remote_did'] = Variable<String>(remoteDid);
+    map['protocol_version'] = Variable<String>(protocolVersion);
     map['session_state'] = Variable<String>(sessionState);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -25759,6 +25788,7 @@ class MessengerSession extends DataClass
       localDeviceId: Value(localDeviceId),
       remoteDeviceId: Value(remoteDeviceId),
       remoteDid: Value(remoteDid),
+      protocolVersion: Value(protocolVersion),
       sessionState: Value(sessionState),
       updatedAt: Value(updatedAt),
     );
@@ -25773,6 +25803,7 @@ class MessengerSession extends DataClass
       localDeviceId: serializer.fromJson<String>(json['localDeviceId']),
       remoteDeviceId: serializer.fromJson<String>(json['remoteDeviceId']),
       remoteDid: serializer.fromJson<String>(json['remoteDid']),
+      protocolVersion: serializer.fromJson<String>(json['protocolVersion']),
       sessionState: serializer.fromJson<String>(json['sessionState']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -25784,6 +25815,7 @@ class MessengerSession extends DataClass
       'localDeviceId': serializer.toJson<String>(localDeviceId),
       'remoteDeviceId': serializer.toJson<String>(remoteDeviceId),
       'remoteDid': serializer.toJson<String>(remoteDid),
+      'protocolVersion': serializer.toJson<String>(protocolVersion),
       'sessionState': serializer.toJson<String>(sessionState),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -25793,12 +25825,14 @@ class MessengerSession extends DataClass
     String? localDeviceId,
     String? remoteDeviceId,
     String? remoteDid,
+    String? protocolVersion,
     String? sessionState,
     DateTime? updatedAt,
   }) => MessengerSession(
     localDeviceId: localDeviceId ?? this.localDeviceId,
     remoteDeviceId: remoteDeviceId ?? this.remoteDeviceId,
     remoteDid: remoteDid ?? this.remoteDid,
+    protocolVersion: protocolVersion ?? this.protocolVersion,
     sessionState: sessionState ?? this.sessionState,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -25811,6 +25845,9 @@ class MessengerSession extends DataClass
           ? data.remoteDeviceId.value
           : this.remoteDeviceId,
       remoteDid: data.remoteDid.present ? data.remoteDid.value : this.remoteDid,
+      protocolVersion: data.protocolVersion.present
+          ? data.protocolVersion.value
+          : this.protocolVersion,
       sessionState: data.sessionState.present
           ? data.sessionState.value
           : this.sessionState,
@@ -25824,6 +25861,7 @@ class MessengerSession extends DataClass
           ..write('localDeviceId: $localDeviceId, ')
           ..write('remoteDeviceId: $remoteDeviceId, ')
           ..write('remoteDid: $remoteDid, ')
+          ..write('protocolVersion: $protocolVersion, ')
           ..write('sessionState: $sessionState, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -25835,6 +25873,7 @@ class MessengerSession extends DataClass
     localDeviceId,
     remoteDeviceId,
     remoteDid,
+    protocolVersion,
     sessionState,
     updatedAt,
   );
@@ -25845,6 +25884,7 @@ class MessengerSession extends DataClass
           other.localDeviceId == this.localDeviceId &&
           other.remoteDeviceId == this.remoteDeviceId &&
           other.remoteDid == this.remoteDid &&
+          other.protocolVersion == this.protocolVersion &&
           other.sessionState == this.sessionState &&
           other.updatedAt == this.updatedAt);
 }
@@ -25853,6 +25893,7 @@ class MessengerSessionsCompanion extends UpdateCompanion<MessengerSession> {
   final Value<String> localDeviceId;
   final Value<String> remoteDeviceId;
   final Value<String> remoteDid;
+  final Value<String> protocolVersion;
   final Value<String> sessionState;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -25860,6 +25901,7 @@ class MessengerSessionsCompanion extends UpdateCompanion<MessengerSession> {
     this.localDeviceId = const Value.absent(),
     this.remoteDeviceId = const Value.absent(),
     this.remoteDid = const Value.absent(),
+    this.protocolVersion = const Value.absent(),
     this.sessionState = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -25868,6 +25910,7 @@ class MessengerSessionsCompanion extends UpdateCompanion<MessengerSession> {
     required String localDeviceId,
     required String remoteDeviceId,
     required String remoteDid,
+    this.protocolVersion = const Value.absent(),
     required String sessionState,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -25880,6 +25923,7 @@ class MessengerSessionsCompanion extends UpdateCompanion<MessengerSession> {
     Expression<String>? localDeviceId,
     Expression<String>? remoteDeviceId,
     Expression<String>? remoteDid,
+    Expression<String>? protocolVersion,
     Expression<String>? sessionState,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -25888,6 +25932,7 @@ class MessengerSessionsCompanion extends UpdateCompanion<MessengerSession> {
       if (localDeviceId != null) 'local_device_id': localDeviceId,
       if (remoteDeviceId != null) 'remote_device_id': remoteDeviceId,
       if (remoteDid != null) 'remote_did': remoteDid,
+      if (protocolVersion != null) 'protocol_version': protocolVersion,
       if (sessionState != null) 'session_state': sessionState,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -25898,6 +25943,7 @@ class MessengerSessionsCompanion extends UpdateCompanion<MessengerSession> {
     Value<String>? localDeviceId,
     Value<String>? remoteDeviceId,
     Value<String>? remoteDid,
+    Value<String>? protocolVersion,
     Value<String>? sessionState,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -25906,6 +25952,7 @@ class MessengerSessionsCompanion extends UpdateCompanion<MessengerSession> {
       localDeviceId: localDeviceId ?? this.localDeviceId,
       remoteDeviceId: remoteDeviceId ?? this.remoteDeviceId,
       remoteDid: remoteDid ?? this.remoteDid,
+      protocolVersion: protocolVersion ?? this.protocolVersion,
       sessionState: sessionState ?? this.sessionState,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -25923,6 +25970,9 @@ class MessengerSessionsCompanion extends UpdateCompanion<MessengerSession> {
     }
     if (remoteDid.present) {
       map['remote_did'] = Variable<String>(remoteDid.value);
+    }
+    if (protocolVersion.present) {
+      map['protocol_version'] = Variable<String>(protocolVersion.value);
     }
     if (sessionState.present) {
       map['session_state'] = Variable<String>(sessionState.value);
@@ -25942,6 +25992,7 @@ class MessengerSessionsCompanion extends UpdateCompanion<MessengerSession> {
           ..write('localDeviceId: $localDeviceId, ')
           ..write('remoteDeviceId: $remoteDeviceId, ')
           ..write('remoteDid: $remoteDid, ')
+          ..write('protocolVersion: $protocolVersion, ')
           ..write('sessionState: $sessionState, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -49264,6 +49315,7 @@ typedef $$MessengerSessionsTableCreateCompanionBuilder =
       required String localDeviceId,
       required String remoteDeviceId,
       required String remoteDid,
+      Value<String> protocolVersion,
       required String sessionState,
       required DateTime updatedAt,
       Value<int> rowid,
@@ -49273,6 +49325,7 @@ typedef $$MessengerSessionsTableUpdateCompanionBuilder =
       Value<String> localDeviceId,
       Value<String> remoteDeviceId,
       Value<String> remoteDid,
+      Value<String> protocolVersion,
       Value<String> sessionState,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -49299,6 +49352,11 @@ class $$MessengerSessionsTableFilterComposer
 
   ColumnFilters<String> get remoteDid => $composableBuilder(
     column: $table.remoteDid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get protocolVersion => $composableBuilder(
+    column: $table.protocolVersion,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -49337,6 +49395,11 @@ class $$MessengerSessionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get protocolVersion => $composableBuilder(
+    column: $table.protocolVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get sessionState => $composableBuilder(
     column: $table.sessionState,
     builder: (column) => ColumnOrderings(column),
@@ -49369,6 +49432,11 @@ class $$MessengerSessionsTableAnnotationComposer
 
   GeneratedColumn<String> get remoteDid =>
       $composableBuilder(column: $table.remoteDid, builder: (column) => column);
+
+  GeneratedColumn<String> get protocolVersion => $composableBuilder(
+    column: $table.protocolVersion,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get sessionState => $composableBuilder(
     column: $table.sessionState,
@@ -49422,6 +49490,7 @@ class $$MessengerSessionsTableTableManager
                 Value<String> localDeviceId = const Value.absent(),
                 Value<String> remoteDeviceId = const Value.absent(),
                 Value<String> remoteDid = const Value.absent(),
+                Value<String> protocolVersion = const Value.absent(),
                 Value<String> sessionState = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -49429,6 +49498,7 @@ class $$MessengerSessionsTableTableManager
                 localDeviceId: localDeviceId,
                 remoteDeviceId: remoteDeviceId,
                 remoteDid: remoteDid,
+                protocolVersion: protocolVersion,
                 sessionState: sessionState,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -49438,6 +49508,7 @@ class $$MessengerSessionsTableTableManager
                 required String localDeviceId,
                 required String remoteDeviceId,
                 required String remoteDid,
+                Value<String> protocolVersion = const Value.absent(),
                 required String sessionState,
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -49445,6 +49516,7 @@ class $$MessengerSessionsTableTableManager
                 localDeviceId: localDeviceId,
                 remoteDeviceId: remoteDeviceId,
                 remoteDid: remoteDid,
+                protocolVersion: protocolVersion,
                 sessionState: sessionState,
                 updatedAt: updatedAt,
                 rowid: rowid,

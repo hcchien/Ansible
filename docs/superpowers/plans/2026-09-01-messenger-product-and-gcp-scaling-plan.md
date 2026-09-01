@@ -89,6 +89,11 @@ messages. The label remains only for wire compatibility with existing MVP data.
 Production must not market it as Signal-grade or enable it for sensitive use
 until the audited-library dependency spike, protocol replacement/migration,
 cross-client test vectors, and independent cryptographic review are complete.
+The dependency spike and migration decision are recorded in
+`docs/superpowers/specs/2026-09-01-messenger-signal-provider-spike.md`. Schema
+v36 now versions session state and the Rust security registry fails closed for
+the legacy provider; official `libsignal` integration remains blocked on
+distribution-license clearance, so this does not open the production gate.
 
 ## Architecture Decision
 

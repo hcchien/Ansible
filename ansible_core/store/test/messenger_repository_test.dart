@@ -39,10 +39,14 @@ void main() {
         localDeviceId: 'msgdev_alice',
         remoteDid: 'did:plc:bob',
         remoteDeviceId: 'msgdev_bob',
+        protocolVersion: 'signal-reviewed-v2',
         sessionState: 'serialized-session',
         updatedAt: DateTime.utc(2026, 5, 14),
       ),
     );
+
+    final session = await repo.sessionFor('msgdev_alice', 'msgdev_bob');
+    expect(session!.protocolVersion, 'signal-reviewed-v2');
 
     await repo.saveMessage(
       MessengerMessageRecord(

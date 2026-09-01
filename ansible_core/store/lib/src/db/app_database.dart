@@ -119,7 +119,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 35;
+  int get schemaVersion => 36;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -276,6 +276,17 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 35) {
         await _createTableIfMissing(m, deliberationExports);
+      }
+      if (from < 36) {
+        // Existing messenger state is the legacy initial-envelope format.
+        // Persist the protocol beside every session so a reviewed provider can
+        // migrate pair-by-pair without interpreting legacy state as ratchet
+        // state or deleting locally-held history.
+        await _addColumnIfMissing(
+          m,
+          messengerSessions,
+          messengerSessions.protocolVersion,
+        );
       }
       if (from < 26) {
         // Compliance-review gap #2: persist the host-declared constitution

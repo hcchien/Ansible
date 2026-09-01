@@ -103,6 +103,7 @@ class MessengerSessionRecord {
   final String localDeviceId;
   final String remoteDid;
   final String remoteDeviceId;
+  final String protocolVersion;
   final String sessionState;
   final DateTime updatedAt;
 
@@ -110,6 +111,7 @@ class MessengerSessionRecord {
     required this.localDeviceId,
     required this.remoteDid,
     required this.remoteDeviceId,
+    this.protocolVersion = 'signal-mvp-v1',
     required this.sessionState,
     required this.updatedAt,
   });

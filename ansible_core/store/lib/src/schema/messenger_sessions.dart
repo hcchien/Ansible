@@ -4,6 +4,8 @@ class MessengerSessions extends Table {
   TextColumn get localDeviceId => text()();
   TextColumn get remoteDeviceId => text()();
   TextColumn get remoteDid => text()();
+  TextColumn get protocolVersion =>
+      text().withDefault(const Constant('signal-mvp-v1'))();
   TextColumn get sessionState => text()();
   DateTimeColumn get updatedAt => dateTime()();
 

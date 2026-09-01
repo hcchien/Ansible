@@ -2,6 +2,33 @@ use ansible_rust_core::messenger::{
     create_messenger_device, decrypt_inbound_message, encrypt_initial_message,
     generate_one_time_pre_keys, MessengerEncryptInput,
 };
+use ansible_rust_core::messenger_security::{
+    require_production_ready, security_profile_for, LEGACY_PROTOCOL_VERSION,
+};
+
+#[test]
+fn legacy_initial_envelope_fails_the_production_crypto_gate() {
+    let profile = security_profile_for(LEGACY_PROTOCOL_VERSION).unwrap();
+
+    assert!(!profile.signed_pre_key_verification);
+    assert!(!profile.double_ratchet);
+    assert!(!profile.multi_device_session_management);
+    assert!(!profile.cross_client_vectors);
+    assert!(!profile.independent_review);
+    assert!(!profile.production_ready());
+    assert_eq!(
+        require_production_ready(LEGACY_PROTOCOL_VERSION).unwrap_err(),
+        "messenger_crypto_provider_not_production_ready"
+    );
+}
+
+#[test]
+fn unknown_protocol_cannot_bypass_the_production_crypto_gate() {
+    assert_eq!(
+        require_production_ready("future-unregistered-provider").unwrap_err(),
+        "messenger_protocol_version_unsupported"
+    );
+}
 
 #[test]
 fn messenger_crypto_round_trip_encrypts_for_remote_device() {

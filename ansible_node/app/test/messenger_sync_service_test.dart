@@ -105,6 +105,7 @@ void main() {
     expect(rawAliceMessage.status, MessengerMessageStatus.sent);
     expect(rawAliceMessage.plaintext, startsWith('secure-storage:v1:'));
     expect(aliceSecretStore.values.values, contains('hello bob'));
+    expect(aliceRepo.savedSessions.single.protocolVersion, 'signal-mvp-v1');
 
     await bob.pullAndDecrypt(recipientDid: 'did:plc:bob');
     final rawBobMessage = (await bobRepo.messagesForConversation(
@@ -119,6 +120,7 @@ void main() {
       bobRepo.savedSessions.single.sessionState,
       startsWith('secure-storage:v1:'),
     );
+    expect(bobRepo.savedSessions.single.protocolVersion, 'signal-mvp-v1');
     expect(
       bobSecretStore.values.values,
       containsAll(['hello bob', 'session:hello bob']),
