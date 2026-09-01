@@ -65,6 +65,7 @@ import '../services/sync_authorization_controller.dart';
 import '../services/self_backfill_state_store.dart';
 import '../widgets/ai_provider_setup_sheet.dart';
 import '../widgets/feed_filter_tabs.dart';
+import '../widgets/global_sync_shortcut.dart';
 import 'notifications_screen.dart';
 import 'sync_settings_screen.dart';
 import 'package:ansible_store/ansible_store.dart' as store;
@@ -113,11 +114,13 @@ class HomeShell extends StatefulWidget {
     this.readingPreferencesController,
     this.autoSeedDefaultRelay = true,
     this.initialBoard = HomeBoard.timeline,
+    this.globalSyncController,
   });
 
   /// Board shown on launch. Defaults to the Timeline (時間軸); overridable so
   /// tests can land on a specific board.
   final HomeBoard initialBoard;
+  final ElixGlobalSyncController? globalSyncController;
 
   final AppDatabase db;
   final String did;
@@ -312,6 +315,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _lastNetworkStatus = _networkStatusService.status;
     _networkStatusService.addListener(_handleNetworkStatusChanged);
     WidgetsBinding.instance.addObserver(this);
+    widget.globalSyncController?.attach(_runGlobalSync);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       // Seed the default relay (from the build config) on a fresh install so the
@@ -396,6 +400,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    widget.globalSyncController?.detach(_runGlobalSync);
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_syncAuthorizationController.invalidate());
     _networkStatusService.removeListener(_handleNetworkStatusChanged);
@@ -427,6 +432,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   @override
   void didUpdateWidget(covariant HomeShell oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.globalSyncController != widget.globalSyncController) {
+      oldWidget.globalSyncController?.detach(_runGlobalSync);
+      widget.globalSyncController?.attach(_runGlobalSync);
+    }
     if (oldWidget.did != widget.did) {
       unawaited(_syncAuthorizationController.invalidate());
     }
@@ -2520,6 +2529,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       }
     }
   }
+
+  Future<void> _runGlobalSync() => _runHeaderSync();
 
   /// Opens the network DiscoverScreen so the user can find + subscribe to
   /// boards (討論區). Constructed exactly like the top-bar / Timeline entries

@@ -96,70 +96,75 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
           ),
         ),
         Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 26),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const AnsibleMark(size: 50),
-                const SizedBox(height: 20),
-                const ElixWordmark(fontSize: 46),
-                const SizedBox(height: 14),
-                Transform.rotate(
-                  angle: -0.035,
-                  alignment: Alignment.centerLeft,
-                  child: Container(width: 56, height: 6, color: _accent),
-                ),
-                Transform.translate(
-                  offset: const Offset(8, -1),
-                  child: Transform.rotate(
-                    angle: 0.035,
-                    alignment: Alignment.centerLeft,
-                    child: Container(
-                      width: 26,
-                      height: 6,
-                      color: _dark
-                          ? AnsibleDesign.darkHighlight
-                          : AnsibleDesign.highlight,
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 26),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const AnsibleMark(size: 50),
+                    const SizedBox(height: 20),
+                    const ElixWordmark(fontSize: 46),
+                    const SizedBox(height: 14),
+                    Transform.rotate(
+                      angle: -0.035,
+                      alignment: Alignment.centerLeft,
+                      child: Container(width: 56, height: 6, color: _accent),
                     ),
-                  ),
+                    Transform.translate(
+                      offset: const Offset(8, -1),
+                      child: Transform.rotate(
+                        angle: 0.035,
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          width: 26,
+                          height: 6,
+                          color: _dark
+                              ? AnsibleDesign.darkHighlight
+                              : AnsibleDesign.highlight,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      context.uiCopy(
+                        zh: '你的話、你的圈、\n你的鑰匙。',
+                        en: 'Your words, your circle,\nyour keys.',
+                      ),
+                      style: TextStyle(
+                        fontFamily: AnsibleDesign.serif,
+                        fontSize: 30,
+                        height: 1.32,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.3,
+                        color: _fg,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      // Benefit-led, not mechanism-led (UX review P1 + 行銷策略書:
+                      // 「不要賣機制，要賣機制帶來的感受」).
+                      context.uiCopy(
+                        zh: '一個每個人都是真人的討論社群。沒有機器人、沒有網軍，你的帳號和內容永遠是你的。',
+                        en:
+                            'A community where everyone is a real person. No bots, '
+                            'no troll armies — and your account and words stay '
+                            'yours, always.',
+                      ),
+                      style: TextStyle(
+                        fontFamily: AnsibleDesign.serif,
+                        fontStyle: FontStyle.italic,
+                        fontSize: 15.5,
+                        height: 1.78,
+                        color: _muted,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 14),
-                Text(
-                  context.uiCopy(
-                    zh: '你的話、你的圈、\n你的鑰匙。',
-                    en: 'Your words, your circle,\nyour keys.',
-                  ),
-                  style: TextStyle(
-                    fontFamily: AnsibleDesign.serif,
-                    fontSize: 30,
-                    height: 1.32,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.3,
-                    color: _fg,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  // Benefit-led, not mechanism-led (UX review P1 + 行銷策略書:
-                  // 「不要賣機制，要賣機制帶來的感受」).
-                  context.uiCopy(
-                    zh: '一個每個人都是真人的討論社群。沒有機器人、沒有網軍，你的帳號和內容永遠是你的。',
-                    en:
-                        'A community where everyone is a real person. No bots, '
-                        'no troll armies — and your account and words stay '
-                        'yours, always.',
-                  ),
-                  style: TextStyle(
-                    fontFamily: AnsibleDesign.serif,
-                    fontStyle: FontStyle.italic,
-                    fontSize: 15.5,
-                    height: 1.78,
-                    color: _muted,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),

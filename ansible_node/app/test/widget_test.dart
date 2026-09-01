@@ -77,6 +77,15 @@ void main() {
 
     // First run now opens on the onboarding intro; skip through to the
     // identity-creation (passkey) screen.
+    expect(find.byKey(const Key('global_sync_shortcut')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('global_sync_shortcut_button')));
+    await tester.pump();
+    expect(
+      find.text(
+        'Create a local identity before syncing. Nothing was uploaded.',
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Enter'), findsOneWidget);
     await tester.tap(find.text('Skip'));
     await tester.pumpAndSettle();
@@ -146,6 +155,7 @@ void main() {
     }
 
     expect(find.byKey(const Key('board_swipe_page_view')), findsOneWidget);
+    expect(find.byKey(const Key('global_sync_shortcut')), findsOneWidget);
     expect(find.byKey(const Key('screen_style_button')), findsNothing);
     expect(find.byKey(const Key('settings_button')), findsOneWidget);
     // 個人版 moved out of the bottom bar into 我/Settings; 時間軸 + 討論區 remain
@@ -163,7 +173,13 @@ void main() {
 
     expect(find.text('SETTINGS'), findsOneWidget);
     expect(find.text('Wallet'), findsOneWidget);
-    expect(find.text('Sync'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(SettingsHomeScreen),
+        matching: find.text('Sync'),
+      ),
+      findsOneWidget,
+    );
     final securityRow = find.byKey(const Key('settings_identity_security_row'));
     final settingsScroll = find.descendant(
       of: find.byType(SettingsHomeScreen),

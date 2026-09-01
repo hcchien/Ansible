@@ -15,6 +15,7 @@ import 'config/app_environment.dart';
 import 'l10n/app_l10n.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/home_shell.dart';
+import 'widgets/global_sync_shortcut.dart';
 import 'screens/identity_backup_screen.dart'; // Backup blob creation (nag-once)
 import 'screens/edit_profile_screen.dart';
 import 'screens/onboarding_backup_step_screen.dart'; // Post-registration backup + initial anchor
@@ -365,6 +366,7 @@ class _MyAppState extends State<MyApp> {
   late final bool _ownsReadingPreferencesController;
   final _navigatorKey = GlobalKey<NavigatorState>();
   final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+  final _globalSyncController = ElixGlobalSyncController();
   StreamSubscription<Uri>? _webSessionLinkSubscription;
 
   bool get _googlePlayReviewAccessEnabled =>
@@ -417,7 +419,20 @@ class _MyAppState extends State<MyApp> {
       _readingPreferencesController.dispose();
     }
     _webSessionLinkSubscription?.cancel();
+    _globalSyncController.dispose();
     super.dispose();
+  }
+
+  void _showSyncUnavailable() {
+    _scaffoldMessengerKey.currentState?.showSnackBar(
+      SnackBar(
+        content: Text(
+          _localeController.locale?.languageCode == 'zh'
+              ? '建立本機身分後即可同步；目前未上傳任何資料。'
+              : 'Create a local identity before syncing. Nothing was uploaded.',
+        ),
+      ),
+    );
   }
 
   void _handleWebSessionLink(Uri uri) {
@@ -699,11 +714,27 @@ class _MyAppState extends State<MyApp> {
             final effectiveScale = mediaQuery.textScaler.scale(
               _readingPreferencesController.textScaleFactor,
             );
+            final scaledMediaQuery = mediaQuery.copyWith(
+              textScaler: TextScaler.linear(effectiveScale),
+            );
+            final topInset = scaledMediaQuery.padding.top;
             return MediaQuery(
-              data: mediaQuery.copyWith(
-                textScaler: TextScaler.linear(effectiveScale),
+              data: scaledMediaQuery.copyWith(
+                padding: scaledMediaQuery.padding.copyWith(top: 0),
               ),
-              child: child ?? const SizedBox.shrink(),
+              child: ColoredBox(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                child: Column(
+                  children: [
+                    SizedBox(height: topInset),
+                    ElixGlobalSyncShortcutRow(
+                      controller: _globalSyncController,
+                      onUnavailable: _showSyncUnavailable,
+                    ),
+                    Expanded(child: child ?? const SizedBox.shrink()),
+                  ],
+                ),
+              ),
             );
           },
           home: _loadingIdentity || _loadingTerms
@@ -733,6 +764,7 @@ class _MyAppState extends State<MyApp> {
                         onClearIdentity: () =>
                             setState(() => _anchoredDid = null),
                         initialBoard: widget.initialBoard,
+                        globalSyncController: _globalSyncController,
                       )
               : _introDone && !_termsAccepted
               ? TermsAcceptanceScreen(
