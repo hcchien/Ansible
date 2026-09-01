@@ -27,6 +27,8 @@ defmodule AnsibleRelay.MessengerStore do
       field(:expires_at, :string)
       field(:binding, :map, default: %{})
       field(:binding_signature, :string)
+      field(:revoked_at, :utc_datetime_usec)
+      field(:revocation_reason, :string)
 
       timestamps()
     end
@@ -61,6 +63,7 @@ defmodule AnsibleRelay.MessengerStore do
       field(:ciphertext, :string)
       field(:protocol_version, :string)
       field(:message_created_at, :string)
+      field(:expires_at, :utc_datetime_usec)
 
       timestamps()
     end
@@ -138,7 +141,7 @@ defmodule AnsibleRelay.MessengerStore do
     with {:ok, subject_did} <- fetch_string(attrs, "subject_did"),
          {:ok, device_id} <- fetch_string(attrs, "device_id"),
          {:ok, pre_keys} <- fetch_list(attrs, "pre_keys"),
-         :ok <- ensure_device_exists(subject_did, device_id),
+         :ok <- ensure_active_device(subject_did, device_id),
          {:ok, normalized_pre_keys} <- normalize_pre_keys(pre_keys) do
       now = now()
 
@@ -165,13 +168,40 @@ defmodule AnsibleRelay.MessengerStore do
     end
   end
 
+  def revoke_device(subject_did, device_id, reason) do
+    now = now()
+
+    case Repo.get_by(Device, subject_did: subject_did, device_id: device_id) do
+      nil ->
+        {:error, :device_not_found}
+
+      %Device{} = device ->
+        revoked_at = device.revoked_at || now
+
+        {1, _} =
+          Device
+          |> where([candidate], candidate.id == ^device.id)
+          |> Repo.update_all(
+            set: [revoked_at: revoked_at, revocation_reason: reason, updated_at: now]
+          )
+
+        PreKey
+        |> where([pre_key], pre_key.subject_did == ^subject_did and pre_key.device_id == ^device_id)
+        |> Repo.delete_all()
+
+        {:ok, Map.put(device_map(device), "revoked_at", revoked_at)}
+    end
+  end
+
   def reserve_bundle(subject_did) do
     Repo.transaction(fn ->
       devices =
         Device
         |> where([device], device.subject_did == ^subject_did)
+        |> where([device], is_nil(device.revoked_at))
         |> order_by([device], asc: device.device_id)
         |> Repo.all()
+        |> Enum.filter(&device_active?/1)
 
       Enum.map(devices, fn device ->
         pre_key = reserve_next_pre_key(device.subject_did, device.device_id)
@@ -188,8 +218,10 @@ defmodule AnsibleRelay.MessengerStore do
     devices =
       Device
       |> where([device], device.subject_did == ^subject_did)
+      |> where([device], is_nil(device.revoked_at))
       |> order_by([device], asc: device.device_id)
       |> Repo.all()
+      |> Enum.filter(&device_active?/1)
       |> Enum.map(fn device ->
         device
         |> device_map()
@@ -209,7 +241,8 @@ defmodule AnsibleRelay.MessengerStore do
          {:ok, ciphertext_type} <- fetch_string(attrs, "ciphertext_type"),
          {:ok, ciphertext} <- fetch_string(attrs, "ciphertext"),
          {:ok, protocol_version} <- fetch_string(attrs, "protocol_version"),
-         :ok <- reject_duplicate_message(message_id) do
+         :ok <- ensure_active_device(sender_did, sender_device_id),
+         :ok <- ensure_active_device(recipient_did, recipient_device_id) do
       now = now()
 
       message = %Message{
@@ -222,71 +255,125 @@ defmodule AnsibleRelay.MessengerStore do
         ciphertext: ciphertext,
         protocol_version: protocol_version,
         message_created_at: Map.get(attrs, "created_at"),
+        expires_at: DateTime.add(now, ciphertext_retention_days() * 86_400, :second),
         inserted_at: now,
         updated_at: now
       }
 
-      {:ok, message} = Repo.insert(message)
+      case Repo.insert(message,
+             on_conflict: :nothing,
+             conflict_target: [:message_id],
+             returning: true
+           ) do
+        {:ok, %Message{id: nil}} ->
+          existing = Repo.get_by!(Message, message_id: message_id)
 
-      # Fire-and-forget (async cast): mailbox delivery wakes the recipient's
-      # registered devices with a content-free hint. Self-sends are skipped
-      # inside the scheduler; failures never affect message acceptance.
-      AnsibleRelay.Push.WakeScheduler.mailbox_delivered(sender_did, recipient_did)
+          if same_message?(existing, message) do
+            {:ok, message_map(existing)}
+          else
+            {:error, :message_id_conflict}
+          end
 
-      {:ok, message_map(message)}
+        {:ok, %Message{} = inserted} ->
+          # Fire-and-forget: the push contains only an opaque sync hint.
+          AnsibleRelay.Push.WakeScheduler.mailbox_delivered(sender_did, recipient_did)
+          {:ok, message_map(inserted)}
+      end
     else
       {:error, reason} -> {:error, reason}
     end
   end
 
-  def mailbox(recipient_did, recipient_device_id) do
-    acked_message_ids =
-      Ack
-      |> where([ack], ack.recipient_device_id == ^recipient_device_id)
-      |> select([ack], ack.message_id)
-      |> Repo.all()
-      |> MapSet.new()
+  def mailbox(recipient_did, recipient_device_id, cursor \\ nil, limit \\ 100) do
+    with :ok <- ensure_active_device(recipient_did, recipient_device_id),
+         {:ok, cursor_id} <- decode_cursor(cursor) do
+      purge_expired_messages()
 
-    messages =
-      Message
-      |> where(
-        [message],
-        message.recipient_did == ^recipient_did and
-          message.recipient_device_id == ^recipient_device_id
-      )
-      |> order_by([message], asc: message.message_created_at, asc: message.inserted_at)
-      |> Repo.all()
-      |> Enum.reject(&MapSet.member?(acked_message_ids, &1.message_id))
-      |> Enum.map(&message_map/1)
+      acked_message_ids =
+        Ack
+        |> where([ack], ack.recipient_device_id == ^recipient_device_id)
+        |> select([ack], ack.message_id)
+        |> Repo.all()
+        |> MapSet.new()
 
-    {:ok, messages}
+      fetched_rows =
+        Message
+        |> where(
+          [message],
+          message.recipient_did == ^recipient_did and
+            message.recipient_device_id == ^recipient_device_id
+        )
+        |> where([message], message.id > ^cursor_id)
+        |> order_by([message], asc: message.id)
+        |> limit(^limit)
+        |> Repo.all()
+
+      rows =
+        fetched_rows
+        |> Enum.reject(&MapSet.member?(acked_message_ids, &1.message_id))
+
+      next_cursor =
+        case List.last(fetched_rows) do
+          nil -> cursor
+          row -> encode_cursor(row.id)
+        end
+
+      {:ok, %{messages: Enum.map(rows, &message_map/1), next_cursor: next_cursor}}
+    end
   end
 
   def ack(message_id, recipient_did, recipient_device_id) do
-    case Repo.get_by(Message, message_id: message_id) do
-      nil ->
-        {:error, :not_found}
+    with :ok <- ensure_active_device(recipient_did, recipient_device_id) do
+      case Repo.get_by(Message, message_id: message_id) do
+        nil ->
+          {:error, :not_found}
 
-      %Message{recipient_did: ^recipient_did, recipient_device_id: ^recipient_device_id} =
-          message ->
-        now = now()
+        %Message{recipient_did: ^recipient_did, recipient_device_id: ^recipient_device_id} =
+            message ->
+          now = now()
 
-        %Ack{
-          message_id: message_id,
-          recipient_device_id: recipient_device_id,
-          acked_at: now,
-          inserted_at: now,
-          updated_at: now
-        }
-        |> Repo.insert(
-          on_conflict: :nothing,
-          conflict_target: [:message_id, :recipient_device_id]
-        )
+          %Ack{
+            message_id: message_id,
+            recipient_device_id: recipient_device_id,
+            acked_at: now,
+            inserted_at: now,
+            updated_at: now
+          }
+          |> Repo.insert(
+            on_conflict: :nothing,
+            conflict_target: [:message_id, :recipient_device_id]
+          )
 
-        {:ok, message_map(message)}
+          {:ok, message_map(message)}
 
-      _message ->
-        {:error, :recipient_mismatch}
+        _message ->
+          {:error, :recipient_mismatch}
+      end
+    end
+  end
+
+  def purge_expired_messages do
+    Repo.transaction(fn ->
+      expired_ids =
+        Message
+        |> where([message], message.expires_at <= ^now())
+        |> select([message], message.message_id)
+        |> Repo.all()
+
+      Ack
+      |> where([ack], ack.message_id in ^expired_ids)
+      |> Repo.delete_all()
+
+      {count, _} =
+        Message
+        |> where([message], message.message_id in ^expired_ids)
+        |> Repo.delete_all()
+
+      count
+    end)
+    |> case do
+      {:ok, count} -> count
+      {:error, _reason} -> 0
     end
   end
 
@@ -378,15 +465,28 @@ defmodule AnsibleRelay.MessengerStore do
     )
   end
 
-  defp ensure_device_exists(subject_did, device_id) do
-    if Repo.exists?(
-         from(device in Device,
-           where: device.subject_did == ^subject_did and device.device_id == ^device_id
-         )
-       ) do
-      :ok
-    else
-      {:error, :device_not_found}
+  defp ensure_active_device(subject_did, device_id) do
+    case Repo.one(
+           from(device in Device,
+             where:
+               device.subject_did == ^subject_did and device.device_id == ^device_id and
+                 is_nil(device.revoked_at),
+             limit: 1
+           )
+         ) do
+      %Device{} = device -> if device_active?(device), do: :ok, else: {:error, :device_not_active}
+      nil -> {:error, :device_not_active}
+    end
+  end
+
+  defp device_active?(%Device{revoked_at: revoked_at}) when not is_nil(revoked_at), do: false
+  defp device_active?(%Device{expires_at: nil}), do: true
+  defp device_active?(%Device{expires_at: ""}), do: true
+
+  defp device_active?(%Device{expires_at: expires_at}) do
+    case DateTime.from_iso8601(expires_at) do
+      {:ok, expiry, _offset} -> DateTime.compare(expiry, now()) == :gt
+      _ -> false
     end
   end
 
@@ -414,13 +514,27 @@ defmodule AnsibleRelay.MessengerStore do
     end
   end
 
-  defp reject_duplicate_message(message_id) do
-    if Repo.exists?(from(message in Message, where: message.message_id == ^message_id)) do
-      {:error, :duplicate_message}
+  defp same_message?(left, right) do
+    Enum.all?(
+      ~w(message_id sender_did sender_device_id recipient_did recipient_device_id ciphertext_type ciphertext protocol_version message_created_at)a,
+      &(Map.get(left, &1) == Map.get(right, &1))
+    )
+  end
+
+  defp decode_cursor(nil), do: {:ok, 0}
+  defp decode_cursor(""), do: {:ok, 0}
+
+  defp decode_cursor(cursor) when is_binary(cursor) do
+    with {:ok, raw} <- Base.url_decode64(cursor, padding: false),
+         {value, ""} <- Integer.parse(raw),
+         true <- value >= 0 do
+      {:ok, value}
     else
-      :ok
+      _ -> {:error, :invalid_cursor}
     end
   end
+
+  defp encode_cursor(id), do: id |> Integer.to_string() |> Base.url_encode64(padding: false)
 
   defp fetch_map(attrs, key) do
     case Map.get(attrs, key) do
@@ -454,4 +568,8 @@ defmodule AnsibleRelay.MessengerStore do
   end
 
   defp now, do: DateTime.utc_now()
+
+  defp ciphertext_retention_days do
+    Application.get_env(:ansible_relay, :messenger_ciphertext_retention_days, 30)
+  end
 end

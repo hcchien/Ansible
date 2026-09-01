@@ -63,18 +63,8 @@ class MessengerSyncService {
       throw StateError('No messenger devices available for $recipientDid');
     }
 
-    final remoteDevice = recipientBundle.devices.first;
-    final encrypted = await crypto.encryptInitialMessage(
-      MessengerEncryptRequest(
-        localDevice: _bundleFromRecord(localDevice),
-        remoteBundle: _remoteBundleJson(recipientBundle, remoteDevice),
-        plaintext: Uint8List.fromList(utf8.encode(text)),
-      ),
-    );
-
     final createdAt = now().toUtc();
     final messageId = idGenerator();
-    final ciphertext = base64Encode(encrypted.ciphertext);
     final plaintextRef = await _secureSecret(
       namespace: 'message.$messageId',
       secretId: 'plaintext',
@@ -86,39 +76,52 @@ class MessengerSyncService {
       direction: MessengerMessageDirection.outbound,
       status: MessengerMessageStatus.pending,
       plaintext: plaintextRef,
-      ciphertextType: encrypted.ciphertextType,
-      ciphertext: ciphertext,
       createdAt: createdAt,
       updatedAt: createdAt,
     );
 
     await repository.saveMessage(pending);
-    await repository.saveSession(
-      MessengerSessionRecord(
-        localDeviceId: localDevice.deviceId,
-        remoteDid: recipientDid,
-        remoteDeviceId: remoteDevice.deviceId,
-        sessionState: await _secureSecret(
-          namespace: 'session.${localDevice.deviceId}.${remoteDevice.deviceId}',
-          secretId: 'state',
-          value: encrypted.updatedSessionState,
-        ),
-        updatedAt: createdAt,
-      ),
-    );
 
-    await relayClient.sendMessage(
-      messageId: messageId,
-      senderDid: senderDid,
-      senderDeviceId: localDevice.deviceId,
-      recipientDid: recipientDid,
-      recipientDeviceId: remoteDevice.deviceId,
-      ciphertextType: encrypted.ciphertextType,
-      ciphertext: ciphertext,
-      protocolVersion: encrypted.protocolVersion,
-      createdAt: createdAt,
-      requestSignature: await _signJson({
-        'message_id': messageId,
+    String? firstCiphertext;
+    String? firstCiphertextType;
+    var deliveredDevices = 0;
+    for (var index = 0; index < recipientBundle.devices.length; index += 1) {
+      final remoteDevice = recipientBundle.devices[index];
+      if (remoteDevice.oneTimePreKeyId == null ||
+          remoteDevice.oneTimePreKey == null) {
+        continue;
+      }
+      await _pinRemoteDevice(recipientDid, remoteDevice, createdAt);
+      final encrypted = await crypto.encryptInitialMessage(
+        MessengerEncryptRequest(
+          localDevice: await _bundleFromRecord(localDevice),
+          remoteBundle: _remoteBundleJson(recipientBundle, remoteDevice),
+          plaintext: Uint8List.fromList(utf8.encode(text)),
+        ),
+      );
+      final ciphertext = base64Encode(encrypted.ciphertext);
+      firstCiphertext ??= ciphertext;
+      firstCiphertextType ??= encrypted.ciphertextType;
+      await repository.saveSession(
+        MessengerSessionRecord(
+          localDeviceId: localDevice.deviceId,
+          remoteDid: recipientDid,
+          remoteDeviceId: remoteDevice.deviceId,
+          sessionState: await _secureSecret(
+            namespace:
+                'session.${localDevice.deviceId}.${remoteDevice.deviceId}',
+            secretId: 'state',
+            value: encrypted.updatedSessionState,
+          ),
+          updatedAt: createdAt,
+        ),
+      );
+
+      final envelopeId = recipientBundle.devices.length == 1
+          ? messageId
+          : '$messageId.${remoteDevice.deviceId}';
+      final signedPayload = {
+        'message_id': envelopeId,
         'sender_did': senderDid,
         'sender_device_id': localDevice.deviceId,
         'recipient_did': recipientDid,
@@ -127,8 +130,25 @@ class MessengerSyncService {
         'ciphertext': ciphertext,
         'protocol_version': encrypted.protocolVersion,
         'created_at': createdAt.toIso8601String(),
-      }),
-    );
+      };
+      await relayClient.sendMessage(
+        messageId: envelopeId,
+        senderDid: senderDid,
+        senderDeviceId: localDevice.deviceId,
+        recipientDid: recipientDid,
+        recipientDeviceId: remoteDevice.deviceId,
+        ciphertextType: encrypted.ciphertextType,
+        ciphertext: ciphertext,
+        protocolVersion: encrypted.protocolVersion,
+        createdAt: createdAt,
+        requestSignature: await _signJson(signedPayload),
+      );
+      deliveredDevices += 1;
+    }
+
+    if (deliveredDevices == 0) {
+      throw StateError('No one-time pre-keys available for $recipientDid');
+    }
 
     final sent = MessengerMessageRecord(
       messageId: pending.messageId,
@@ -136,8 +156,8 @@ class MessengerSyncService {
       direction: pending.direction,
       status: MessengerMessageStatus.sent,
       plaintext: plaintextRef,
-      ciphertextType: pending.ciphertextType,
-      ciphertext: pending.ciphertext,
+      ciphertextType: firstCiphertextType,
+      ciphertext: firstCiphertext,
       createdAt: pending.createdAt,
       updatedAt: now().toUtc(),
     );
@@ -200,7 +220,7 @@ class MessengerSyncService {
     try {
       final plaintext = await crypto.decryptInboundMessage(
         MessengerDecryptRequest(
-          localDevice: _bundleFromRecord(localDevice),
+          localDevice: await _bundleFromRecord(localDevice),
           ciphertext: MessengerCiphertextEnvelope(
             protocolVersion: message.protocolVersion,
             ciphertextType: message.ciphertextType,
@@ -210,6 +230,17 @@ class MessengerSyncService {
         ),
       );
       final plaintextBody = utf8.decode(plaintext.body);
+      final consumedPreKeyId = _oneTimePreKeyId(message.ciphertext);
+      final lifecycleRepository =
+          repository is MessengerPreKeyLifecycleRepository
+          ? repository as MessengerPreKeyLifecycleRepository
+          : null;
+      if (consumedPreKeyId != null && lifecycleRepository != null) {
+        await lifecycleRepository.markPreKeyConsumed(
+          localDevice.deviceId,
+          consumedPreKeyId,
+        );
+      }
       final updatedAt = now().toUtc();
       await repository.saveMessage(
         MessengerMessageRecord(
@@ -318,7 +349,13 @@ class MessengerSyncService {
         existing.source == 'message_request';
   }
 
-  MessengerDeviceBundle _bundleFromRecord(MessengerDeviceRecord record) {
+  Future<MessengerDeviceBundle> _bundleFromRecord(
+    MessengerDeviceRecord record,
+  ) async {
+    final preKeys = repository is MessengerPreKeyLifecycleRepository
+        ? await (repository as MessengerPreKeyLifecycleRepository)
+              .unconsumedPreKeys(record.deviceId)
+        : const <MessengerPreKeyRecord>[];
     return MessengerDeviceBundle(
       subjectDid: record.subjectDid,
       deviceId: record.deviceId,
@@ -328,6 +365,61 @@ class MessengerSyncService {
       signedPreKeyPublic: record.signedPreKeyPublic ?? '',
       signedPreKeyPrivateRef: record.signedPreKeyPrivateRef ?? '',
       signedPreKeySignature: record.signedPreKeySignature ?? '',
+      oneTimePreKeys: [
+        for (final preKey in preKeys)
+          if (preKey.privateKeyRef != null)
+            MessengerCryptoPreKey(
+              preKeyId: preKey.preKeyId,
+              publicKey: preKey.publicKey,
+              privateKeyRef: preKey.privateKeyRef!,
+            ),
+      ],
+    );
+  }
+
+  int? _oneTimePreKeyId(String encodedCiphertext) {
+    try {
+      final envelope = jsonDecode(utf8.decode(base64Decode(encodedCiphertext)));
+      if (envelope is Map && envelope['one_time_pre_key_id'] is int) {
+        return envelope['one_time_pre_key_id'] as int;
+      }
+    } catch (_) {
+      // A crypto provider may use a non-JSON wire envelope. In that case it
+      // must expose consumed-key metadata before this provider is enabled.
+    }
+    return null;
+  }
+
+  Future<void> _pinRemoteDevice(
+    String subjectDid,
+    MessengerPreKeyBundleDevice device,
+    DateTime timestamp,
+  ) async {
+    final trustRepository = repository is MessengerRemoteDeviceTrustRepository
+        ? repository as MessengerRemoteDeviceTrustRepository
+        : null;
+    final existing = await trustRepository?.remoteDeviceById(device.deviceId);
+    if (existing != null &&
+        (existing.subjectDid != subjectDid ||
+            existing.identityKeyPublic != device.messengerIdentityKey)) {
+      throw MessengerIdentityKeyChanged(
+        subjectDid: subjectDid,
+        deviceId: device.deviceId,
+      );
+    }
+    await repository.upsertRemoteDevice(
+      MessengerDeviceRecord(
+        subjectDid: subjectDid,
+        deviceId: device.deviceId,
+        identityKeyPublic: device.messengerIdentityKey,
+        signedPreKeyId: device.signedPreKeyId,
+        signedPreKeyPublic: device.signedPreKey,
+        signedPreKeySignature: device.signedPreKeySignature,
+        bindingJson: device.binding.isEmpty ? null : jsonEncode(device.binding),
+        bindingSignature: device.bindingSignature,
+        createdAt: existing?.createdAt ?? timestamp,
+        updatedAt: timestamp,
+      ),
     );
   }
 
@@ -418,6 +510,20 @@ class MessengerPullResult {
 
   final int receivedMessages;
   final int messageRequests;
+}
+
+class MessengerIdentityKeyChanged implements Exception {
+  const MessengerIdentityKeyChanged({
+    required this.subjectDid,
+    required this.deviceId,
+  });
+
+  final String subjectDid;
+  final String deviceId;
+
+  @override
+  String toString() =>
+      'MessengerIdentityKeyChanged(subjectDid: $subjectDid, deviceId: $deviceId)';
 }
 
 class _DecryptStoreResult {

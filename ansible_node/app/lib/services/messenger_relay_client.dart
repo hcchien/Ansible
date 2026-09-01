@@ -261,6 +261,22 @@ class MessengerRelayClient {
     });
   }
 
+  Future<void> revokeDevice({
+    required String subjectDid,
+    required String deviceId,
+    required String reason,
+    required String requestSignature,
+  }) async {
+    await _postJson(
+      '/api/v1/messenger/devices/${Uri.encodeComponent(deviceId)}/revoke',
+      {
+        'subject_did': subjectDid,
+        'reason': reason,
+        'request_signature': requestSignature,
+      },
+    );
+  }
+
   Future<MessengerPreKeyBundleResponse> fetchPreKeyBundle(
     String subjectDid,
   ) async {

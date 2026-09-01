@@ -135,6 +135,22 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
     )
   end
 
+  defp seed_store_device(subject_did, device_id) do
+    assert {:ok, _device} =
+             MessengerStore.publish_device(%{
+               "subject_did" => subject_did,
+               "device_id" => device_id,
+               "bundle" => %{
+                 "messenger_identity_key" => "#{device_id}_identity",
+                 "signed_pre_key_id" => 1,
+                 "signed_pre_key" => "#{device_id}_signed_pre_key",
+                 "signed_pre_key_signature" => "#{device_id}_signature"
+               },
+               "binding" => %{},
+               "binding_signature" => "seed-signature"
+             })
+  end
+
   defp mailbox_path(recipient_did, recipient_device_id, signature, extra_query \\ %{}) do
     query =
       Map.merge(
@@ -184,7 +200,7 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
       "signed_pre_key_id" => 42,
       "signed_pre_key" => "bob_signed_pre_key",
       "signed_pre_key_signature" => "bob_signed_pre_key_sig",
-      "expires_at" => "2026-06-13T00:00:00Z"
+      "expires_at" => "2027-06-13T00:00:00Z"
     }
 
     {bob_binding, bob_binding_signature} =
@@ -200,6 +216,24 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
       })
 
     assert publish.status == 201
+
+    alice_bundle = %{
+      "messenger_identity_key" => "alice_identity_public",
+      "signed_pre_key_id" => 43,
+      "signed_pre_key" => "alice_signed_pre_key",
+      "signed_pre_key_signature" => "alice_signed_pre_key_sig"
+    }
+
+    {alice_binding, alice_binding_signature} =
+      sign_device_binding(alice_private_key, "did:plc:alice", "msgdev_alice", alice_bundle)
+
+    assert post_json("/api/v1/messenger/devices", %{
+             "subject_did" => "did:plc:alice",
+             "device_id" => "msgdev_alice",
+             "bundle" => alice_bundle,
+             "binding" => alice_binding,
+             "binding_signature" => alice_binding_signature
+           }).status == 201
 
     bob_pre_keys = [%{"pre_key_id" => 1001, "pre_key" => "bob_one_time_pre_key"}]
 
@@ -257,7 +291,10 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
       )
 
     assert mailbox.status == 200
-    assert %{"messages" => [message]} = Jason.decode!(mailbox.resp_body)
+    assert %{"messages" => [message], "next_cursor" => cursor} =
+             Jason.decode!(mailbox.resp_body)
+
+    assert is_binary(cursor)
     assert message["message_id"] == "msg_test"
     assert message["ciphertext"] == "base64-ciphertext"
 
@@ -280,6 +317,18 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
       )
 
     assert %{"messages" => []} = Jason.decode!(empty_mailbox.resp_body)
+
+    invalid_cursor =
+      get_json(
+        mailbox_path(
+          "did:plc:bob",
+          "msgdev_bob",
+          sign_mailbox(bob_private_key, "did:plc:bob", "msgdev_bob"),
+          %{"cursor" => "not-base64!"}
+        )
+      )
+
+    assert invalid_cursor.status == 400
   end
 
   test "mailbox and ack authorization binds recipient DID to recipient device" do
@@ -287,6 +336,8 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
     {alice_public_key, alice_private_key} = ed25519_keypair()
     seed_did("did:plc:bob", bob_public_key)
     seed_did("did:plc:alice", alice_public_key)
+    seed_store_device("did:plc:alice", "msgdev_alice")
+    seed_store_device("did:plc:bob", "msgdev_bob")
 
     assert {:ok, _message} =
              MessengerStore.store_message(%{
@@ -310,8 +361,7 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
         )
       )
 
-    assert forged_mailbox.status == 200
-    assert Jason.decode!(forged_mailbox.resp_body)["messages"] == []
+    assert forged_mailbox.status == 403
 
     forged_ack =
       post_json("/api/v1/messenger/messages/msg_cross_did/ack", %{
@@ -379,6 +429,60 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
     consuming_bundle = get_json("/api/v1/messenger/pre-key-bundles/did:plc:bob")
     assert %{"devices" => [reserved_device]} = Jason.decode!(consuming_bundle.resp_body)
     assert reserved_device["one_time_pre_key_id"] == 1001
+  end
+
+  test "retries are idempotent and revoked devices cannot receive messages" do
+    {alice_public_key, alice_private_key} = ed25519_keypair()
+    {bob_public_key, bob_private_key} = ed25519_keypair()
+    seed_did("did:plc:alice", alice_public_key)
+    seed_did("did:plc:bob", bob_public_key)
+    seed_store_device("did:plc:alice", "msgdev_alice")
+    seed_store_device("did:plc:bob", "msgdev_bob")
+
+    message = %{
+      "message_id" => "msg_idempotent",
+      "sender_did" => "did:plc:alice",
+      "sender_device_id" => "msgdev_alice",
+      "recipient_did" => "did:plc:bob",
+      "recipient_device_id" => "msgdev_bob",
+      "ciphertext_type" => "pre_key_signal_message",
+      "ciphertext" => "opaque-ciphertext",
+      "protocol_version" => "signal-mvp-v1",
+      "created_at" => "2026-09-01T00:00:00Z"
+    }
+
+    signed = Map.put(message, "request_signature", sign_message(alice_private_key, message))
+    assert post_json("/api/v1/messenger/messages", signed).status == 202
+    assert post_json("/api/v1/messenger/messages", signed).status == 202
+
+    revoke_payload = %{
+      "subject_did" => "did:plc:bob",
+      "device_id" => "msgdev_bob",
+      "reason" => "user_revoked"
+    }
+
+    revoke_signature = sign(bob_private_key, canonical_json(revoke_payload))
+
+    assert post_json("/api/v1/messenger/devices/msgdev_bob/revoke", %{
+             "subject_did" => "did:plc:bob",
+             "reason" => "user_revoked",
+             "request_signature" => revoke_signature
+           }).status == 200
+
+    assert get_json("/api/v1/messenger/devices/did:plc:bob").resp_body
+           |> Jason.decode!()
+           |> Map.fetch!("devices") == []
+
+    mailbox =
+      get_json(
+        mailbox_path(
+          "did:plc:bob",
+          "msgdev_bob",
+          sign_mailbox(bob_private_key, "did:plc:bob", "msgdev_bob")
+        )
+      )
+
+    assert mailbox.status == 403
   end
 
   test "rejects message payloads that contain plaintext-shaped fields" do

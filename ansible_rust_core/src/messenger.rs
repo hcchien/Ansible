@@ -9,6 +9,10 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
 
+// Legacy wire identifier. This module implements only the initial pre-key
+// envelope; it is not a complete Signal Protocol or Double Ratchet
+// implementation. Keep the value for stored-message compatibility until the
+// audited provider migration is designed and reviewed.
 const PROTOCOL_VERSION: &str = "signal-mvp-v1";
 const CIPHERTEXT_TYPE: &str = "pre_key_signal_message";
 const ROOT_KEY_INFO: &[u8] = b"ansible messenger signal-mvp-v1 root key";
@@ -154,15 +158,19 @@ pub fn generate_one_time_pre_keys(
     for _ in 0..count {
         let secret = StaticSecret::random_from_rng(OsRng);
         let public = PublicKey::from(&secret);
+        let mut pre_key_id = random_u32_nonzero();
+        while device
+            .one_time_pre_keys
+            .iter()
+            .any(|key| key.pre_key_id == pre_key_id)
+        {
+            pre_key_id = random_u32_nonzero();
+        }
         let pre_key = MessengerPreKey {
-            pre_key_id: device.next_pre_key_id,
+            pre_key_id,
             public_key: encode_bytes(public.as_bytes()),
             private_key: encode_bytes(secret.to_bytes().as_slice()),
         };
-        device.next_pre_key_id = device
-            .next_pre_key_id
-            .checked_add(1)
-            .ok_or_else(|| "messenger_pre_key_id_exhausted".to_string())?;
         device.one_time_pre_keys.push(pre_key.clone());
         pre_keys.push(pre_key);
     }

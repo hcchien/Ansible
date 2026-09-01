@@ -14,6 +14,7 @@ class MessengerDeviceBundle {
   final String signedPreKeyPrivateRef;
   final String signedPreKeySignature;
   final String? sessionState;
+  final List<MessengerCryptoPreKey> oneTimePreKeys;
 
   const MessengerDeviceBundle({
     required this.subjectDid,
@@ -25,6 +26,7 @@ class MessengerDeviceBundle {
     required this.signedPreKeyPrivateRef,
     required this.signedPreKeySignature,
     this.sessionState,
+    this.oneTimePreKeys = const [],
   });
 }
 
@@ -270,6 +272,14 @@ class RustMessengerCryptoBridge implements MessengerCryptoBridge {
       ),
       signedPreKeySignature: device.signedPreKeySignature,
       sessionState: device.sessionState,
+      oneTimePreKeys: [
+        for (final preKey in device.oneTimePreKeys)
+          MessengerCryptoPreKey(
+            preKeyId: preKey.preKeyId,
+            publicKey: preKey.publicKey,
+            privateKeyRef: preKey.privateKey,
+          ),
+      ],
     );
   }
 
@@ -290,7 +300,14 @@ class RustMessengerCryptoBridge implements MessengerCryptoBridge {
       ),
       signedPreKeySignature: device.signedPreKeySignature,
       sessionState: device.sessionState,
-      oneTimePreKeys: const [],
+      oneTimePreKeys: [
+        for (final preKey in device.oneTimePreKeys)
+          frb.MessengerPreKey(
+            preKeyId: preKey.preKeyId,
+            publicKey: preKey.publicKey,
+            privateKey: await secretStore.resolveSecret(preKey.privateKeyRef),
+          ),
+      ],
       nextPreKeyId: 1,
     );
   }

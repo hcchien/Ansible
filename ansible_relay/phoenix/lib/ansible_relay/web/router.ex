@@ -560,6 +560,13 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.MessengerController.publish_pre_keys(conn, conn.body_params)
   end
 
+  post "/api/v1/messenger/devices/:device_id/revoke" do
+    AnsibleRelay.Web.Controllers.MessengerController.revoke_device(
+      conn,
+      Map.merge(conn.body_params, %{"device_id" => device_id})
+    )
+  end
+
   get "/api/v1/messenger/devices/:subject_did" do
     AnsibleRelay.Web.Controllers.MessengerController.devices(conn, %{
       "subject_did" => subject_did

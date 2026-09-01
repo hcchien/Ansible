@@ -4,7 +4,11 @@ import '../../db/app_database.dart';
 import '../../entities/messenger_entities.dart' as entity;
 import '../messenger_repository.dart';
 
-class DriftMessengerRepository implements MessengerRepository {
+class DriftMessengerRepository
+    implements
+        MessengerRepository,
+        MessengerPreKeyLifecycleRepository,
+        MessengerRemoteDeviceTrustRepository {
   DriftMessengerRepository(this._db);
 
   final AppDatabase _db;
@@ -33,6 +37,22 @@ class DriftMessengerRepository implements MessengerRepository {
   @override
   Future<void> upsertRemoteDevice(entity.MessengerDeviceRecord device) async {
     await _upsertDevice(device.copyWith(isLocal: false));
+  }
+
+  @override
+  Future<entity.MessengerDeviceRecord?> remoteDeviceById(
+    String deviceId,
+  ) async {
+    final row =
+        await (_db.select(_db.messengerDevices)
+              ..where(
+                (table) =>
+                    table.deviceId.equals(deviceId) &
+                    table.isLocal.equals(false),
+              )
+              ..limit(1))
+            .getSingleOrNull();
+    return row == null ? null : _mapDevice(row);
   }
 
   @override
@@ -74,6 +94,21 @@ class DriftMessengerRepository implements MessengerRepository {
   }
 
   @override
+  Future<List<entity.MessengerPreKeyRecord>> unconsumedPreKeys(
+    String deviceId,
+  ) async {
+    final rows =
+        await (_db.select(_db.messengerPreKeys)
+              ..where(
+                (table) =>
+                    table.deviceId.equals(deviceId) & table.consumedAt.isNull(),
+              )
+              ..orderBy([(table) => OrderingTerm.asc(table.preKeyId)]))
+            .get();
+    return rows.map(_mapPreKey).toList(growable: false);
+  }
+
+  @override
   Future<void> markPreKeyPublished(String deviceId, int preKeyId) async {
     await (_db.update(_db.messengerPreKeys)..where(
           (table) =>
@@ -81,6 +116,17 @@ class DriftMessengerRepository implements MessengerRepository {
         ))
         .write(
           MessengerPreKeysCompanion(publishedAt: Value(DateTime.now().toUtc())),
+        );
+  }
+
+  @override
+  Future<void> markPreKeyConsumed(String deviceId, int preKeyId) async {
+    await (_db.update(_db.messengerPreKeys)..where(
+          (table) =>
+              table.deviceId.equals(deviceId) & table.preKeyId.equals(preKeyId),
+        ))
+        .write(
+          MessengerPreKeysCompanion(consumedAt: Value(DateTime.now().toUtc())),
         );
   }
 

@@ -32,3 +32,13 @@ abstract class MessengerRepository {
 
   Future<void> saveMailboxCursor(String localDeviceId, String cursor);
 }
+
+abstract interface class MessengerPreKeyLifecycleRepository {
+  Future<List<MessengerPreKeyRecord>> unconsumedPreKeys(String deviceId);
+
+  Future<void> markPreKeyConsumed(String deviceId, int preKeyId);
+}
+
+abstract interface class MessengerRemoteDeviceTrustRepository {
+  Future<MessengerDeviceRecord?> remoteDeviceById(String deviceId);
+}

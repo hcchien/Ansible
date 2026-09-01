@@ -39,6 +39,25 @@ class MessengerDeviceService {
     return device;
   }
 
+  Future<void> revokeDevice({
+    required String subjectDid,
+    required String deviceId,
+    required String reason,
+    required DidSigner didSigner,
+  }) async {
+    final payload = {
+      'subject_did': subjectDid,
+      'device_id': deviceId,
+      'reason': reason,
+    };
+    await relayClient.revokeDevice(
+      subjectDid: subjectDid,
+      deviceId: deviceId,
+      reason: reason,
+      requestSignature: await _signJson(didSigner, payload),
+    );
+  }
+
   Future<MessengerDeviceRecord> _createAndPublishDevice(
     String subjectDid,
     DidSigner didSigner,

@@ -70,6 +70,24 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
     send_json(conn, 200, body)
   end
 
+  def revoke_device(conn, %{"device_id" => device_id} = params) do
+    with {:ok, subject_did} <- fetch_string(params, "subject_did"),
+         {:ok, reason} <- fetch_string(params, "reason"),
+         {:ok, request_signature} <- fetch_string(params, "request_signature"),
+         :ok <-
+           verify_subject_signature(
+             subject_did,
+             %{"subject_did" => subject_did, "device_id" => device_id, "reason" => reason},
+             request_signature
+           ),
+         {:ok, _device} <- MessengerStore.revoke_device(subject_did, device_id, reason) do
+      send_json(conn, 200, %{accepted: true, device_id: device_id})
+    else
+      {:error, :device_not_found} -> send_json(conn, 404, %{error: "device_not_found"})
+      {:error, reason} -> send_messenger_error(conn, reason)
+    end
+  end
+
   def send_message(conn, params) do
     with :ok <- reject_plaintext_fields(params),
          {:ok, message_id} <- fetch_string(params, "message_id"),
@@ -102,8 +120,7 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
       send_json(conn, 202, %{accepted: true, message_id: message["message_id"]})
     else
       {:error, reason} ->
-        status = if reason == :duplicate_message, do: 409, else: messenger_error_status(reason)
-        send_json(conn, status, %{error: to_string(reason)})
+        send_json(conn, messenger_error_status(reason), %{error: to_string(reason)})
     end
   end
 
@@ -120,8 +137,9 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
              },
              request_signature
            ),
-         {:ok, messages} <- MessengerStore.mailbox(recipient_did, recipient_device_id) do
-      send_json(conn, 200, %{messages: messages, next_cursor: nil})
+         {:ok, result} <-
+           MessengerStore.mailbox(recipient_did, recipient_device_id, Map.get(params, "cursor")) do
+      send_json(conn, 200, result)
     else
       {:error, reason} ->
         send_json(conn, messenger_error_status(reason), %{error: to_string(reason)})
@@ -231,6 +249,9 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
 
   defp messenger_error_status(:invalid_signature), do: 401
   defp messenger_error_status(:unverified_did), do: 401
+  defp messenger_error_status(:device_not_active), do: 403
+  defp messenger_error_status(:message_id_conflict), do: 409
+  defp messenger_error_status(:invalid_cursor), do: 400
   defp messenger_error_status(_reason), do: 422
 
   defp send_json(conn, status, body) do

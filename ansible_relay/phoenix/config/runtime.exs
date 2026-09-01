@@ -24,6 +24,17 @@ end
 if config_env() == :prod do
   config :ansible_relay, :port, env_int.("PORT", 8080)
 
+  messenger_ciphertext_retention_days =
+    env_int.("MESSENGER_CIPHERTEXT_RETENTION_DAYS", 30)
+
+  if messenger_ciphertext_retention_days < 1 do
+    raise "MESSENGER_CIPHERTEXT_RETENTION_DAYS must be at least 1"
+  end
+
+  config :ansible_relay,
+         :messenger_ciphertext_retention_days,
+         messenger_ciphertext_retention_days
+
   database_url =
     System.get_env("DATABASE_URL") ||
       raise """

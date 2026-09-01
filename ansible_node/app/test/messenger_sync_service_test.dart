@@ -160,6 +160,136 @@ void main() {
     expect(relay.ackedMessageIds, isEmpty);
   });
 
+  test('fans one logical message out to every recipient device', () async {
+    final relay = _FakeMessengerRelayClient();
+    final crypto = _FakeMessengerCryptoBridge();
+    final repository = _InMemoryMessengerRepository();
+    final secretStore = _RecordingMessengerSecretStore();
+    await repository.upsertLocalDevice(
+      _deviceRecord(subjectDid: 'did:plc:alice', deviceId: 'msgdev_alice'),
+    );
+    relay.registerBundle(
+      'did:plc:bob',
+      const MessengerPreKeyBundleResponse(
+        subjectDid: 'did:plc:bob',
+        devices: [
+          MessengerPreKeyBundleDevice(
+            deviceId: 'msgdev_bob_phone',
+            messengerIdentityKey: 'bob_phone_identity',
+            signedPreKeyId: 10,
+            signedPreKey: 'bob_phone_signed',
+            signedPreKeySignature: 'bob_phone_signature',
+            oneTimePreKeyId: 101,
+            oneTimePreKey: 'bob_phone_once',
+          ),
+          MessengerPreKeyBundleDevice(
+            deviceId: 'msgdev_bob_tablet',
+            messengerIdentityKey: 'bob_tablet_identity',
+            signedPreKeyId: 20,
+            signedPreKey: 'bob_tablet_signed',
+            signedPreKeySignature: 'bob_tablet_signature',
+            oneTimePreKeyId: 201,
+            oneTimePreKey: 'bob_tablet_once',
+          ),
+        ],
+      ),
+    );
+
+    final service = MessengerSyncService(
+      repository: repository,
+      deviceService: MessengerDeviceService(
+        repository: repository,
+        crypto: crypto,
+        relayClient: relay,
+        secretStore: secretStore,
+      ),
+      relayClient: relay,
+      crypto: crypto,
+      didSigner: _FakeDidSigner(),
+      secretStore: secretStore,
+      now: () => DateTime.utc(2026, 9, 1),
+      idGenerator: () => 'msg_multi_1',
+    );
+
+    final sent = await service.sendText(
+      senderDid: 'did:plc:alice',
+      recipientDid: 'did:plc:bob',
+      text: 'hello every device',
+    );
+
+    expect(sent.messageId, 'msg_multi_1');
+    expect(
+      relay.acceptedCiphertexts.map((message) => message.messageId).toSet(),
+      {'msg_multi_1.msgdev_bob_phone', 'msg_multi_1.msgdev_bob_tablet'},
+    );
+    expect(
+      repository.savedSessions.map((session) => session.remoteDeviceId).toSet(),
+      {'msgdev_bob_phone', 'msgdev_bob_tablet'},
+    );
+    expect((await repository.messagesForConversation('did:plc:bob')).length, 1);
+  });
+
+  test(
+    'fails closed when a known remote device changes identity key',
+    () async {
+      final relay = _FakeMessengerRelayClient();
+      final crypto = _FakeMessengerCryptoBridge();
+      final repository = _InMemoryMessengerRepository();
+      final secretStore = _RecordingMessengerSecretStore();
+      await repository.upsertLocalDevice(
+        _deviceRecord(subjectDid: 'did:plc:alice', deviceId: 'msgdev_alice'),
+      );
+      await repository.upsertRemoteDevice(
+        MessengerDeviceRecord(
+          subjectDid: 'did:plc:bob',
+          deviceId: 'msgdev_bob',
+          identityKeyPublic: 'trusted_identity',
+          createdAt: DateTime.utc(2026, 8, 1),
+        ),
+      );
+      relay.registerBundle(
+        'did:plc:bob',
+        const MessengerPreKeyBundleResponse(
+          subjectDid: 'did:plc:bob',
+          devices: [
+            MessengerPreKeyBundleDevice(
+              deviceId: 'msgdev_bob',
+              messengerIdentityKey: 'substituted_identity',
+              signedPreKeyId: 10,
+              signedPreKey: 'bob_signed',
+              signedPreKeySignature: 'bob_signature',
+              oneTimePreKeyId: 101,
+              oneTimePreKey: 'bob_once',
+            ),
+          ],
+        ),
+      );
+      final service = MessengerSyncService(
+        repository: repository,
+        deviceService: MessengerDeviceService(
+          repository: repository,
+          crypto: crypto,
+          relayClient: relay,
+          secretStore: secretStore,
+        ),
+        relayClient: relay,
+        crypto: crypto,
+        didSigner: _FakeDidSigner(),
+        secretStore: secretStore,
+      );
+
+      await expectLater(
+        service.sendText(
+          senderDid: 'did:plc:alice',
+          recipientDid: 'did:plc:bob',
+          text: 'must not send',
+        ),
+        throwsA(isA<MessengerIdentityKeyChanged>()),
+      );
+      expect(relay.acceptedCiphertexts, isEmpty);
+    },
+  );
+
   test('marks unknown inbound senders as message requests', () async {
     final relay = _FakeMessengerRelayClient();
     final crypto = _FakeMessengerCryptoBridge();
@@ -404,7 +534,8 @@ class _RecordingMessengerSecretStore implements MessengerSecretStore {
   Future<String> resolveSecret(String value) async => values[value] ?? value;
 }
 
-class _InMemoryMessengerRepository implements MessengerRepository {
+class _InMemoryMessengerRepository
+    implements MessengerRepository, MessengerRemoteDeviceTrustRepository {
   final devices = <MessengerDeviceRecord>[];
   final messages = <String, MessengerMessageRecord>{};
   final savedSessions = <MessengerSessionRecord>[];
@@ -430,6 +561,13 @@ class _InMemoryMessengerRepository implements MessengerRepository {
   Future<void> upsertRemoteDevice(MessengerDeviceRecord device) async {
     devices.removeWhere((item) => item.deviceId == device.deviceId);
     devices.add(device.copyWith(isLocal: false));
+  }
+
+  @override
+  Future<MessengerDeviceRecord?> remoteDeviceById(String deviceId) async {
+    return devices
+        .where((device) => device.deviceId == deviceId && !device.isLocal)
+        .firstOrNull;
   }
 
   @override
