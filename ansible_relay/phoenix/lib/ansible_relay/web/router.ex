@@ -574,13 +574,18 @@ defmodule AnsibleRelay.Web.Router do
   end
 
   get "/api/v1/messenger/pre-key-bundles/:subject_did" do
-    AnsibleRelay.Web.Controllers.MessengerController.pre_key_bundle(conn, %{
-      "subject_did" => subject_did
-    })
+    AnsibleRelay.Web.Controllers.MessengerController.pre_key_bundle(
+      conn,
+      Map.put(conn.query_params, "subject_did", subject_did)
+    )
   end
 
   post "/api/v1/messenger/messages" do
     AnsibleRelay.Web.Controllers.MessengerController.send_message(conn, conn.body_params)
+  end
+
+  post "/api/v1/messenger/messages/batch" do
+    AnsibleRelay.Web.Controllers.MessengerController.send_message_batch(conn, conn.body_params)
   end
 
   get "/api/v1/messenger/messages" do

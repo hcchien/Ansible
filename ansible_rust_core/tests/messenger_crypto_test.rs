@@ -7,6 +7,8 @@ use ansible_rust_core::messenger::{
 fn messenger_crypto_round_trip_encrypts_for_remote_device() {
     let alice = create_messenger_device("did:plc:alice".to_string()).unwrap();
     let mut bob = create_messenger_device("did:plc:bob".to_string()).unwrap();
+    assert!(alice.signed_pre_key_id <= i32::MAX as u32);
+    assert!(bob.signed_pre_key_id <= i32::MAX as u32);
     let bob_pre_keys = generate_one_time_pre_keys(&mut bob, 1).unwrap();
     let bob_bundle = bob.public_bundle(bob_pre_keys[0].clone());
 
@@ -39,6 +41,7 @@ fn generated_pre_key_ids_do_not_repeat_across_replenishment_batches() {
     ids.dedup();
 
     assert_eq!(ids.len(), 40);
+    assert!(ids.iter().all(|id| *id <= i32::MAX as u32));
 }
 
 #[test]

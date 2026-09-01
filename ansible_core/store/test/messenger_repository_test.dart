@@ -71,4 +71,36 @@ void main() {
     await repo.saveMailboxCursor('msgdev_alice', 'cursor-2');
     expect(await repo.mailboxCursorFor('msgdev_alice'), 'cursor-2');
   });
+
+  test('remote device id cannot overwrite a local device', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final repo = DriftMessengerRepository(db);
+
+    await repo.upsertLocalDevice(
+      MessengerDeviceRecord(
+        subjectDid: 'did:plc:alice',
+        deviceId: 'shared-device-id',
+        identityKeyPublic: 'alice-public',
+        identityKeyPrivateRef: 'secure:alice-private',
+        createdAt: DateTime.utc(2026, 9, 1),
+      ),
+    );
+
+    await expectLater(
+      repo.upsertRemoteDevice(
+        MessengerDeviceRecord(
+          subjectDid: 'did:plc:mallory',
+          deviceId: 'shared-device-id',
+          identityKeyPublic: 'mallory-public',
+          createdAt: DateTime.utc(2026, 9, 1),
+        ),
+      ),
+      throwsA(isA<MessengerDeviceIdCollision>()),
+    );
+
+    final local = await repo.localDeviceForSubject('did:plc:alice');
+    expect(local, isNotNull);
+    expect(local!.identityKeyPrivateRef, 'secure:alice-private');
+  });
 }

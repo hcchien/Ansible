@@ -19,13 +19,25 @@ void main() {
       }),
     );
 
-    final bundle = await client.fetchPreKeyBundle('did:plc:bob');
+    final bundle = await client.fetchPreKeyBundle(
+      subjectDid: 'did:plc:bob',
+      senderDid: 'did:plc:alice',
+      senderDeviceId: 'msgdev_alice',
+      requestId: 'msg_test',
+      requestSignature: 'request-signature',
+    );
 
     expect(bundle.devices, isEmpty);
     expect(
       requests.single.url.path,
       '/api/v1/messenger/pre-key-bundles/did%3Aplc%3Abob',
     );
+    expect(requests.single.url.queryParameters, {
+      'sender_did': 'did:plc:alice',
+      'sender_device_id': 'msgdev_alice',
+      'request_id': 'msg_test',
+      'request_signature': 'request-signature',
+    });
   });
 
   test('publishes device and sends ciphertext through relay APIs', () async {
@@ -59,8 +71,26 @@ void main() {
       requestSignature: 'dev-signature',
     );
 
+    await client.sendMessages(
+      messages: const [
+        {
+          'message_id': 'msg_test.msgdev_bob',
+          'sender_did': 'did:plc:alice',
+          'sender_device_id': 'msgdev_alice',
+          'recipient_did': 'did:plc:bob',
+          'recipient_device_id': 'msgdev_bob',
+          'ciphertext_type': 'pre_key_signal_message',
+          'ciphertext': 'batch-ciphertext',
+          'protocol_version': 'signal-mvp-v1',
+          'created_at': '2026-05-14T00:00:00.000Z',
+        },
+      ],
+      requestSignature: 'batch-signature',
+    );
+
     expect(requests[0].url.path, '/api/v1/messenger/devices');
     expect(requests[1].url.path, '/api/v1/messenger/messages');
+    expect(requests[2].url.path, '/api/v1/messenger/messages/batch');
 
     final publishBody = jsonDecode(requests[0].body) as Map<String, dynamic>;
     expect(publishBody['subject_did'], 'did:plc:alice');
@@ -73,6 +103,12 @@ void main() {
     expect(messageBody['ciphertext'], 'base64-ciphertext');
     expect(messageBody['created_at'], '2026-05-14T00:00:00.000Z');
     expect(messageBody.containsKey('plaintext'), isFalse);
+
+    final batchBody = jsonDecode(requests[2].body) as Map<String, dynamic>;
+    expect(batchBody['request_signature'], 'batch-signature');
+    expect(batchBody['messages'], hasLength(1));
+    expect(batchBody['messages'][0]['ciphertext'], 'batch-ciphertext');
+    expect(batchBody['messages'][0].containsKey('plaintext'), isFalse);
   });
 
   test('publishes pre-keys and reads reserved pre-key bundles', () async {
@@ -114,7 +150,13 @@ void main() {
       ],
       requestSignature: 'dev-signature',
     );
-    final bundle = await client.fetchPreKeyBundle('did:plc:bob');
+    final bundle = await client.fetchPreKeyBundle(
+      subjectDid: 'did:plc:bob',
+      senderDid: 'did:plc:alice',
+      senderDeviceId: 'msgdev_alice',
+      requestId: 'msg_test',
+      requestSignature: 'request-signature',
+    );
 
     expect(
       requests[0].url.toString(),
@@ -122,7 +164,7 @@ void main() {
     );
     expect(
       requests[1].url.toString(),
-      'http://localhost:4001/root/api/v1/messenger/pre-key-bundles/did%3Aplc%3Abob',
+      'http://localhost:4001/root/api/v1/messenger/pre-key-bundles/did%3Aplc%3Abob?sender_did=did%3Aplc%3Aalice&sender_device_id=msgdev_alice&request_id=msg_test&request_signature=request-signature',
     );
     expect(bundle.subjectDid, 'did:plc:bob');
     expect(bundle.devices.single.oneTimePreKeyId, 1001);
@@ -246,7 +288,13 @@ void main() {
     );
 
     await expectLater(
-      client.fetchPreKeyBundle('did:plc:bob'),
+      client.fetchPreKeyBundle(
+        subjectDid: 'did:plc:bob',
+        senderDid: 'did:plc:alice',
+        senderDeviceId: 'msgdev_alice',
+        requestId: 'msg_test',
+        requestSignature: 'request-signature',
+      ),
       throwsA(
         isA<MessengerRelayException>()
             .having((error) => error.statusCode, 'statusCode', 404)

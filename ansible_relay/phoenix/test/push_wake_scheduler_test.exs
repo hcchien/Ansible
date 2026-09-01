@@ -121,6 +121,9 @@ defmodule AnsibleRelay.Push.WakeSchedulerTest do
   end
 
   defp deliver_message(sender_did, recipient_did) do
+    seed_messenger_device(sender_did, "msgdev_sender")
+    seed_messenger_device(recipient_did, "msgdev_recipient")
+
     {:ok, _message} =
       MessengerStore.store_message(%{
         "message_id" => "msg-#{System.unique_integer([:positive])}",
@@ -132,6 +135,22 @@ defmodule AnsibleRelay.Push.WakeSchedulerTest do
         "ciphertext" => "base64-ciphertext",
         "protocol_version" => "signal-mvp-v1",
         "created_at" => DateTime.utc_now() |> DateTime.to_iso8601()
+      })
+  end
+
+  defp seed_messenger_device(subject_did, device_id) do
+    {:ok, _device} =
+      MessengerStore.publish_device(%{
+        "subject_did" => subject_did,
+        "device_id" => device_id,
+        "bundle" => %{
+          "messenger_identity_key" => "#{device_id}_identity",
+          "signed_pre_key_id" => 1,
+          "signed_pre_key" => "#{device_id}_signed_pre_key",
+          "signed_pre_key_signature" => "#{device_id}_signature"
+        },
+        "binding" => %{},
+        "binding_signature" => "test-signature"
       })
   end
 

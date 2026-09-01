@@ -85,10 +85,25 @@ class MessengerDeviceService {
   ) async {
     var unpublished = await repository.unpublishedPreKeys(record.deviceId);
     unpublished = await _secureExistingPreKeys(record, unpublished);
-    if (unpublished.length >= minUnpublishedPreKeys) return;
+
+    if (unpublished.isNotEmpty) {
+      await _publishPreKeys(record, unpublished, didSigner);
+    }
+
+    final lifecycleRepository = repository is MessengerPreKeyLifecycleRepository
+        ? repository as MessengerPreKeyLifecycleRepository
+        : null;
+    final unconsumed = lifecycleRepository == null
+        ? unpublished
+        : await lifecycleRepository.unconsumedPreKeys(record.deviceId);
+    if (unconsumed.length >= minUnpublishedPreKeys) return;
+
+    final existingPreKeys = lifecycleRepository == null
+        ? unconsumed
+        : await lifecycleRepository.allPreKeys(record.deviceId);
 
     final generated = await crypto.generatePreKeys(
-      _bundleFromRecord(record),
+      _bundleFromRecord(record, preKeys: existingPreKeys),
       preKeyReplenishCount,
     );
     if (generated.isEmpty) return;
@@ -112,8 +127,16 @@ class MessengerDeviceService {
     }
     await repository.savePreKeys(preKeyRecords);
 
+    await _publishPreKeys(record, preKeyRecords, didSigner);
+  }
+
+  Future<void> _publishPreKeys(
+    MessengerDeviceRecord record,
+    List<MessengerPreKeyRecord> preKeys,
+    DidSigner didSigner,
+  ) async {
     final relayPreKeys = [
-      for (final preKey in generated)
+      for (final preKey in preKeys)
         {'pre_key_id': preKey.preKeyId, 'pre_key': preKey.publicKey},
     ];
     final requestSignature = await _signJson(didSigner, {
@@ -128,7 +151,7 @@ class MessengerDeviceService {
       requestSignature: requestSignature,
     );
 
-    for (final preKey in generated) {
+    for (final preKey in preKeys) {
       await repository.markPreKeyPublished(record.deviceId, preKey.preKeyId);
     }
   }
@@ -236,7 +259,10 @@ class MessengerDeviceService {
     return secured;
   }
 
-  MessengerDeviceBundle _bundleFromRecord(MessengerDeviceRecord record) {
+  MessengerDeviceBundle _bundleFromRecord(
+    MessengerDeviceRecord record, {
+    List<MessengerPreKeyRecord> preKeys = const [],
+  }) {
     return MessengerDeviceBundle(
       subjectDid: record.subjectDid,
       deviceId: record.deviceId,
@@ -246,6 +272,14 @@ class MessengerDeviceService {
       signedPreKeyPublic: record.signedPreKeyPublic ?? '',
       signedPreKeyPrivateRef: record.signedPreKeyPrivateRef ?? '',
       signedPreKeySignature: record.signedPreKeySignature ?? '',
+      oneTimePreKeys: [
+        for (final preKey in preKeys)
+          MessengerCryptoPreKey(
+            preKeyId: preKey.preKeyId,
+            publicKey: preKey.publicKey,
+            privateKeyRef: preKey.privateKeyRef ?? '',
+          ),
+      ],
     );
   }
 

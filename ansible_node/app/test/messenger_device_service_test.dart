@@ -148,7 +148,10 @@ void main() {
       expect(device.deviceId, 'msgdev_existing');
       expect(crypto.createdDeviceCount, 0);
       expect(relay.publishedDevices, isEmpty);
-      expect(relay.publishedPreKeys.single.deviceId, 'msgdev_existing');
+      expect(relay.publishedPreKeys, hasLength(2));
+      expect(relay.publishedPreKeys.first.deviceId, 'msgdev_existing');
+      expect(relay.publishedPreKeys.first.preKeys, hasLength(4));
+      expect(relay.publishedPreKeys.last.preKeys, hasLength(20));
       expect(repository.savedPreKeys, hasLength(20));
     },
   );

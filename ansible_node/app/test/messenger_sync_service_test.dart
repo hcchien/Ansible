@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_node/services/messenger_crypto_bridge.dart';
+import 'package:ansible_node/services/messenger_device_binding_verifier.dart';
 import 'package:ansible_node/services/messenger_device_service.dart';
 import 'package:ansible_node/services/messenger_relay_client.dart';
 import 'package:ansible_node/services/messenger_sync_service.dart';
@@ -41,6 +42,7 @@ void main() {
       relayClient: relay,
       crypto: crypto,
       didSigner: signer,
+      deviceBindingVerifier: const _AllowMessengerDeviceBindingVerifier(),
       secretStore: aliceSecretStore,
       now: () => DateTime.utc(2026, 5, 14),
       idGenerator: () => 'msg_alice_1',
@@ -56,6 +58,7 @@ void main() {
       relayClient: relay,
       crypto: crypto,
       didSigner: signer,
+      deviceBindingVerifier: const _AllowMessengerDeviceBindingVerifier(),
       secretStore: bobSecretStore,
       now: () => DateTime.utc(2026, 5, 14),
       idGenerator: () => 'msg_bob_1',
@@ -89,6 +92,13 @@ void main() {
       relay.acceptedCiphertexts.single.ciphertext,
       isNot(contains('hello bob')),
     );
+    expect(relay.reservationRequests.single, {
+      'subject_did': 'did:plc:bob',
+      'sender_did': 'did:plc:alice',
+      'sender_device_id': 'msgdev_alice',
+      'request_id': 'msg_alice_1',
+      'request_signature': 'dev-signature',
+    });
     final rawAliceMessage = (await aliceRepo.messagesForConversation(
       'did:plc:bob',
     )).single;
@@ -124,20 +134,21 @@ void main() {
     final relay = _FakeMessengerRelayClient();
     final crypto = _FakeMessengerCryptoBridge(throwOnDecrypt: true);
     final repository = _InMemoryMessengerRepository();
+    final secretStore = _RecordingMessengerSecretStore();
     final device = _deviceRecord(
       subjectDid: 'did:plc:bob',
       deviceId: 'msgdev_bob',
     );
     await repository.upsertLocalDevice(device);
     relay.queueMessage(
-      const MessengerMailboxMessage(
+      MessengerMailboxMessage(
         messageId: 'msg_bad',
         senderDid: 'did:plc:alice',
         senderDeviceId: 'msgdev_alice',
         recipientDid: 'did:plc:bob',
         recipientDeviceId: 'msgdev_bob',
         ciphertextType: 'pre_key_signal_message',
-        ciphertext: 'not-decryptable',
+        ciphertext: base64Encode(utf8.encode('cipher:recovered')),
         protocolVersion: 'signal-mvp-v1',
       ),
     );
@@ -147,10 +158,13 @@ void main() {
         repository: repository,
         crypto: crypto,
         relayClient: relay,
+        secretStore: secretStore,
       ),
       relayClient: relay,
       crypto: crypto,
       didSigner: _FakeDidSigner(),
+      deviceBindingVerifier: const _AllowMessengerDeviceBindingVerifier(),
+      secretStore: secretStore,
     );
 
     await service.pullAndDecrypt(recipientDid: 'did:plc:bob');
@@ -158,6 +172,62 @@ void main() {
     final messages = await repository.messagesForConversation('did:plc:alice');
     expect(messages.single.status, MessengerMessageStatus.decryptFailed);
     expect(relay.ackedMessageIds, isEmpty);
+    expect(repository.cursors['msgdev_bob'], isNull);
+
+    crypto.throwOnDecrypt = false;
+    await service.pullAndDecrypt(recipientDid: 'did:plc:bob');
+
+    expect(relay.ackedMessageIds, ['msg_bad']);
+    expect(repository.cursors['msgdev_bob'], 'cursor-2');
+    expect(
+      (await service.messagesForConversation('did:plc:alice')).single.plaintext,
+      'recovered',
+    );
+  });
+
+  test('retries acknowledgement before advancing the mailbox cursor', () async {
+    final relay = _FakeMessengerRelayClient()..failNextAck = true;
+    final crypto = _FakeMessengerCryptoBridge();
+    final repository = _InMemoryMessengerRepository();
+    final secretStore = _RecordingMessengerSecretStore();
+    await repository.upsertLocalDevice(
+      _deviceRecord(subjectDid: 'did:plc:bob', deviceId: 'msgdev_bob'),
+    );
+    relay.queueMessage(
+      MessengerMailboxMessage(
+        messageId: 'msg_ack_retry',
+        senderDid: 'did:plc:alice',
+        senderDeviceId: 'msgdev_alice',
+        recipientDid: 'did:plc:bob',
+        recipientDeviceId: 'msgdev_bob',
+        ciphertextType: 'pre_key_signal_message',
+        ciphertext: base64Encode(utf8.encode('cipher:only decrypt once')),
+        protocolVersion: 'signal-mvp-v1',
+      ),
+    );
+    final service = MessengerSyncService(
+      repository: repository,
+      deviceService: MessengerDeviceService(
+        repository: repository,
+        crypto: crypto,
+        relayClient: relay,
+        secretStore: secretStore,
+      ),
+      relayClient: relay,
+      crypto: crypto,
+      didSigner: _FakeDidSigner(),
+      deviceBindingVerifier: const _AllowMessengerDeviceBindingVerifier(),
+      secretStore: secretStore,
+    );
+
+    await service.pullAndDecrypt(recipientDid: 'did:plc:bob');
+    expect(repository.cursors['msgdev_bob'], isNull);
+    expect(crypto.decryptCalls, 1);
+
+    await service.pullAndDecrypt(recipientDid: 'did:plc:bob');
+    expect(repository.cursors['msgdev_bob'], 'cursor-2');
+    expect(relay.ackedMessageIds, ['msg_ack_retry']);
+    expect(crypto.decryptCalls, 1);
   });
 
   test('fans one logical message out to every recipient device', () async {
@@ -206,6 +276,7 @@ void main() {
       relayClient: relay,
       crypto: crypto,
       didSigner: _FakeDidSigner(),
+      deviceBindingVerifier: const _AllowMessengerDeviceBindingVerifier(),
       secretStore: secretStore,
       now: () => DateTime.utc(2026, 9, 1),
       idGenerator: () => 'msg_multi_1',
@@ -227,6 +298,79 @@ void main() {
       {'msgdev_bob_phone', 'msgdev_bob_tablet'},
     );
     expect((await repository.messagesForConversation('did:plc:bob')).length, 1);
+  });
+
+  test('retries a failed fanout as one durable atomic batch', () async {
+    final relay = _FakeMessengerRelayClient()..failNextBatch = true;
+    final crypto = _FakeMessengerCryptoBridge();
+    final repository = _InMemoryMessengerRepository();
+    final secretStore = _RecordingMessengerSecretStore();
+    await repository.upsertLocalDevice(
+      _deviceRecord(subjectDid: 'did:plc:alice', deviceId: 'msgdev_alice'),
+    );
+    relay.registerBundle(
+      'did:plc:bob',
+      const MessengerPreKeyBundleResponse(
+        subjectDid: 'did:plc:bob',
+        devices: [
+          MessengerPreKeyBundleDevice(
+            deviceId: 'msgdev_bob_phone',
+            messengerIdentityKey: 'phone_identity',
+            signedPreKeyId: 10,
+            signedPreKey: 'phone_signed',
+            signedPreKeySignature: 'phone_signature',
+            oneTimePreKeyId: 101,
+            oneTimePreKey: 'phone_once',
+          ),
+          MessengerPreKeyBundleDevice(
+            deviceId: 'msgdev_bob_tablet',
+            messengerIdentityKey: 'tablet_identity',
+            signedPreKeyId: 20,
+            signedPreKey: 'tablet_signed',
+            signedPreKeySignature: 'tablet_signature',
+            oneTimePreKeyId: 201,
+            oneTimePreKey: 'tablet_once',
+          ),
+        ],
+      ),
+    );
+    final service = MessengerSyncService(
+      repository: repository,
+      deviceService: MessengerDeviceService(
+        repository: repository,
+        crypto: crypto,
+        relayClient: relay,
+        secretStore: secretStore,
+      ),
+      relayClient: relay,
+      crypto: crypto,
+      didSigner: _FakeDidSigner(),
+      deviceBindingVerifier: const _AllowMessengerDeviceBindingVerifier(),
+      secretStore: secretStore,
+      idGenerator: () => 'msg_atomic_retry',
+    );
+
+    await expectLater(
+      service.sendText(
+        senderDid: 'did:plc:alice',
+        recipientDid: 'did:plc:bob',
+        text: 'retry me',
+      ),
+      throwsStateError,
+    );
+    expect(relay.acceptedCiphertexts, isEmpty);
+    expect(
+      repository.messages['msg_atomic_retry']!.status,
+      MessengerMessageStatus.pending,
+    );
+
+    await service.ensureReady(subjectDid: 'did:plc:alice');
+    expect(relay.batchAttempts, 2);
+    expect(relay.acceptedCiphertexts, hasLength(2));
+    expect(
+      repository.messages['msg_atomic_retry']!.status,
+      MessengerMessageStatus.sent,
+    );
   });
 
   test(
@@ -275,6 +419,7 @@ void main() {
         relayClient: relay,
         crypto: crypto,
         didSigner: _FakeDidSigner(),
+        deviceBindingVerifier: const _AllowMessengerDeviceBindingVerifier(),
         secretStore: secretStore,
       );
 
@@ -325,6 +470,7 @@ void main() {
       relayClient: relay,
       crypto: crypto,
       didSigner: _FakeDidSigner(),
+      deviceBindingVerifier: const _AllowMessengerDeviceBindingVerifier(),
       secretStore: secretStore,
       now: () => DateTime.utc(2026, 5, 15),
     );
@@ -360,7 +506,8 @@ MessengerDeviceRecord _deviceRecord({
 class _FakeMessengerCryptoBridge implements MessengerCryptoBridge {
   _FakeMessengerCryptoBridge({this.throwOnDecrypt = false});
 
-  final bool throwOnDecrypt;
+  bool throwOnDecrypt;
+  var decryptCalls = 0;
 
   @override
   Future<MessengerDeviceBundle> createDevice(String subjectDid) async {
@@ -392,6 +539,7 @@ class _FakeMessengerCryptoBridge implements MessengerCryptoBridge {
   Future<MessengerPlaintextEnvelope> decryptInboundMessage(
     MessengerDecryptRequest request,
   ) async {
+    decryptCalls += 1;
     if (throwOnDecrypt) {
       throw StateError('decrypt failed');
     }
@@ -409,9 +557,13 @@ class _FakeMessengerRelayClient extends MessengerRelayClient {
 
   final bundles = <String, MessengerPreKeyBundleResponse>{};
   final acceptedCiphertexts = <_AcceptedCiphertext>[];
+  final reservationRequests = <Map<String, String>>[];
   final queuedMessages = <MessengerMailboxMessage>[];
   final ackedMessageIds = <String>[];
   final observedCursors = <String?>[];
+  var failNextBatch = false;
+  var failNextAck = false;
+  var batchAttempts = 0;
 
   void registerBundle(String subjectDid, MessengerPreKeyBundleResponse bundle) {
     bundles[subjectDid] = bundle;
@@ -422,9 +574,20 @@ class _FakeMessengerRelayClient extends MessengerRelayClient {
   }
 
   @override
-  Future<MessengerPreKeyBundleResponse> fetchPreKeyBundle(
-    String subjectDid,
-  ) async {
+  Future<MessengerPreKeyBundleResponse> fetchPreKeyBundle({
+    required String subjectDid,
+    required String senderDid,
+    required String senderDeviceId,
+    required String requestId,
+    required String requestSignature,
+  }) async {
+    reservationRequests.add({
+      'subject_did': subjectDid,
+      'sender_did': senderDid,
+      'sender_device_id': senderDeviceId,
+      'request_id': requestId,
+      'request_signature': requestSignature,
+    });
     final bundle = bundles[subjectDid];
     if (bundle == null) throw StateError('missing bundle');
     return bundle;
@@ -462,6 +625,32 @@ class _FakeMessengerRelayClient extends MessengerRelayClient {
   }
 
   @override
+  Future<void> sendMessages({
+    required List<Map<String, Object?>> messages,
+    required String requestSignature,
+  }) async {
+    batchAttempts += 1;
+    if (failNextBatch) {
+      failNextBatch = false;
+      throw StateError('batch failed before commit');
+    }
+    for (final message in messages) {
+      await sendMessage(
+        messageId: message['message_id']! as String,
+        senderDid: message['sender_did']! as String,
+        senderDeviceId: message['sender_device_id']! as String,
+        recipientDid: message['recipient_did']! as String,
+        recipientDeviceId: message['recipient_device_id']! as String,
+        ciphertextType: message['ciphertext_type']! as String,
+        ciphertext: message['ciphertext']! as String,
+        protocolVersion: message['protocol_version']! as String,
+        createdAt: DateTime.parse(message['created_at']! as String),
+        requestSignature: requestSignature,
+      );
+    }
+  }
+
+  @override
   Future<MessengerMailboxResponse> pullMailbox({
     required String recipientDid,
     required String recipientDeviceId,
@@ -488,6 +677,10 @@ class _FakeMessengerRelayClient extends MessengerRelayClient {
     required String recipientDeviceId,
     required String requestSignature,
   }) async {
+    if (failNextAck) {
+      failNextAck = false;
+      throw StateError('ack failed');
+    }
     ackedMessageIds.add(messageId);
     queuedMessages.removeWhere((message) => message.messageId == messageId);
   }
@@ -535,7 +728,11 @@ class _RecordingMessengerSecretStore implements MessengerSecretStore {
 }
 
 class _InMemoryMessengerRepository
-    implements MessengerRepository, MessengerRemoteDeviceTrustRepository {
+    implements
+        MessengerRepository,
+        MessengerRemoteDeviceTrustRepository,
+        MessengerMessageLookupRepository,
+        MessengerPendingOutboxRepository {
   final devices = <MessengerDeviceRecord>[];
   final messages = <String, MessengerMessageRecord>{};
   final savedSessions = <MessengerSessionRecord>[];
@@ -564,11 +761,8 @@ class _InMemoryMessengerRepository
   }
 
   @override
-  Future<MessengerDeviceRecord?> remoteDeviceById(String deviceId) async {
-    return devices
-        .where((device) => device.deviceId == deviceId && !device.isLocal)
-        .firstOrNull;
-  }
+  Future<MessengerDeviceRecord?> deviceById(String deviceId) async =>
+      devices.where((device) => device.deviceId == deviceId).firstOrNull;
 
   @override
   Future<void> savePreKeys(List<MessengerPreKeyRecord> records) async {
@@ -637,6 +831,20 @@ class _InMemoryMessengerRepository
   }
 
   @override
+  Future<MessengerMessageRecord?> messageById(String messageId) async =>
+      messages[messageId];
+
+  @override
+  Future<List<MessengerMessageRecord>> pendingOutboundMessages() async =>
+      messages.values
+          .where(
+            (message) =>
+                message.direction == MessengerMessageDirection.outbound &&
+                message.status == MessengerMessageStatus.pending,
+          )
+          .toList(growable: false);
+
+  @override
   Future<List<MessengerMessageRecord>> messagesForConversation(
     String conversationId,
   ) async {
@@ -654,6 +862,17 @@ class _InMemoryMessengerRepository
   Future<void> saveMailboxCursor(String localDeviceId, String cursor) async {
     cursors[localDeviceId] = cursor;
   }
+}
+
+class _AllowMessengerDeviceBindingVerifier
+    implements MessengerDeviceBindingVerifier {
+  const _AllowMessengerDeviceBindingVerifier();
+
+  @override
+  Future<void> verify({
+    required String subjectDid,
+    required MessengerPreKeyBundleDevice device,
+  }) async {}
 }
 
 class _FakeContactRepository implements ContactRepository {

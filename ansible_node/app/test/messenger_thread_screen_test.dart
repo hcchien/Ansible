@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_node/screens/messenger_thread_screen.dart';
 import 'package:ansible_node/services/messenger_crypto_bridge.dart';
+import 'package:ansible_node/services/messenger_device_binding_verifier.dart';
 import 'package:ansible_node/services/messenger_device_service.dart';
 import 'package:ansible_node/services/messenger_relay_client.dart';
 import 'package:ansible_node/services/messenger_sync_service.dart';
@@ -163,6 +164,7 @@ MessengerSyncService _serviceWith({
     relayClient: relayClient,
     crypto: crypto,
     didSigner: _FakeDidSigner(),
+    deviceBindingVerifier: const _AllowMessengerDeviceBindingVerifier(),
     secretStore: _RecordingMessengerSecretStore(),
     now: () => DateTime.utc(2026, 5, 14, 9, 3),
     idGenerator: () => 'msg_thread_1',
@@ -244,9 +246,13 @@ class _FakeMessengerRelayClient extends MessengerRelayClient {
   }
 
   @override
-  Future<MessengerPreKeyBundleResponse> fetchPreKeyBundle(
-    String subjectDid,
-  ) async {
+  Future<MessengerPreKeyBundleResponse> fetchPreKeyBundle({
+    required String subjectDid,
+    required String senderDid,
+    required String senderDeviceId,
+    required String requestId,
+    required String requestSignature,
+  }) async {
     return bundles[subjectDid]!;
   }
 
@@ -267,6 +273,38 @@ class _FakeMessengerRelayClient extends MessengerRelayClient {
       utf8.decode(base64Decode(ciphertext)).replaceFirst('cipher:', ''),
     );
   }
+
+  @override
+  Future<void> sendMessages({
+    required List<Map<String, Object?>> messages,
+    required String requestSignature,
+  }) async {
+    for (final message in messages) {
+      await sendMessage(
+        messageId: message['message_id']! as String,
+        senderDid: message['sender_did']! as String,
+        senderDeviceId: message['sender_device_id']! as String,
+        recipientDid: message['recipient_did']! as String,
+        recipientDeviceId: message['recipient_device_id']! as String,
+        ciphertextType: message['ciphertext_type']! as String,
+        ciphertext: message['ciphertext']! as String,
+        protocolVersion: message['protocol_version']! as String,
+        createdAt: DateTime.parse(message['created_at']! as String),
+        requestSignature: requestSignature,
+      );
+    }
+  }
+}
+
+class _AllowMessengerDeviceBindingVerifier
+    implements MessengerDeviceBindingVerifier {
+  const _AllowMessengerDeviceBindingVerifier();
+
+  @override
+  Future<void> verify({
+    required String subjectDid,
+    required MessengerPreKeyBundleDevice device,
+  }) async {}
 }
 
 class _FakeDidSigner implements DidSigner {
@@ -300,7 +338,8 @@ class _RecordingMessengerSecretStore implements MessengerSecretStore {
   Future<String> resolveSecret(String value) async => values[value] ?? value;
 }
 
-class _InMemoryMessengerRepository implements MessengerRepository {
+class _InMemoryMessengerRepository
+    implements MessengerRepository, MessengerRemoteDeviceTrustRepository {
   _InMemoryMessengerRepository({
     List<MessengerMessageRecord>? messages,
     List<MessengerDeviceRecord>? localDevices,
@@ -378,4 +417,8 @@ class _InMemoryMessengerRepository implements MessengerRepository {
 
   @override
   Future<void> upsertRemoteDevice(MessengerDeviceRecord device) async {}
+
+  @override
+  Future<MessengerDeviceRecord?> deviceById(String deviceId) async =>
+      _devices.where((device) => device.deviceId == deviceId).firstOrNull;
 }

@@ -34,11 +34,30 @@ abstract class MessengerRepository {
 }
 
 abstract interface class MessengerPreKeyLifecycleRepository {
+  Future<List<MessengerPreKeyRecord>> allPreKeys(String deviceId);
+
   Future<List<MessengerPreKeyRecord>> unconsumedPreKeys(String deviceId);
 
   Future<void> markPreKeyConsumed(String deviceId, int preKeyId);
 }
 
 abstract interface class MessengerRemoteDeviceTrustRepository {
-  Future<MessengerDeviceRecord?> remoteDeviceById(String deviceId);
+  Future<MessengerDeviceRecord?> deviceById(String deviceId);
+}
+
+abstract interface class MessengerMessageLookupRepository {
+  Future<MessengerMessageRecord?> messageById(String messageId);
+}
+
+abstract interface class MessengerPendingOutboxRepository {
+  Future<List<MessengerMessageRecord>> pendingOutboundMessages();
+}
+
+class MessengerDeviceIdCollision implements Exception {
+  const MessengerDeviceIdCollision(this.deviceId);
+
+  final String deviceId;
+
+  @override
+  String toString() => 'MessengerDeviceIdCollision($deviceId)';
 }

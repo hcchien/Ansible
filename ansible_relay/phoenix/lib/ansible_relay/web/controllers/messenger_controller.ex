@@ -7,7 +7,7 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
 
   import Plug.Conn
 
-  alias AnsibleRelay.{IdentityCache, MessengerStore}
+  alias AnsibleRelay.{AbuseDetector, IdentityCache, MessengerStore}
 
   @plaintext_fields ["plaintext", "body", "message", "text"]
 
@@ -55,13 +55,37 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
     end
   end
 
-  def pre_key_bundle(conn, %{"subject_did" => subject_did}) do
-    case MessengerStore.reserve_bundle(subject_did) do
-      {:ok, device} ->
-        send_json(conn, 200, device)
+  def pre_key_bundle(conn, %{"subject_did" => recipient_did} = params) do
+    with {:ok, sender_did} <- fetch_string(params, "sender_did"),
+         {:ok, sender_device_id} <- fetch_string(params, "sender_device_id"),
+         {:ok, request_id} <- fetch_string(params, "request_id"),
+         {:ok, request_signature} <- fetch_string(params, "request_signature"),
+         :ok <-
+           verify_subject_signature(
+             sender_did,
+             %{
+               "recipient_did" => recipient_did,
+               "sender_did" => sender_did,
+               "sender_device_id" => sender_device_id,
+               "request_id" => request_id
+             },
+             request_signature
+           ),
+         :ok <- AbuseDetector.check_did("messenger_pre_key:#{sender_did}"),
+         {:ok, device} <-
+           MessengerStore.reserve_bundle(
+             recipient_did,
+             sender_did,
+             sender_device_id,
+             request_id
+           ) do
+      send_json(conn, 200, device)
+    else
+      {:error, :rate_limited, detail} ->
+        send_json(conn, 429, %{error: "rate_limited", detail: detail})
 
       {:error, reason} ->
-        send_json(conn, 422, %{error: to_string(reason)})
+        send_messenger_error(conn, reason)
     end
   end
 
@@ -118,6 +142,27 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
            ),
          {:ok, message} <- MessengerStore.store_message(params) do
       send_json(conn, 202, %{accepted: true, message_id: message["message_id"]})
+    else
+      {:error, reason} ->
+        send_json(conn, messenger_error_status(reason), %{error: to_string(reason)})
+    end
+  end
+
+  def send_message_batch(conn, params) do
+    with {:ok, messages} <- fetch_list(params, "messages"),
+         {:ok, sender_did} <- validate_message_batch(messages),
+         {:ok, request_signature} <- fetch_string(params, "request_signature"),
+         :ok <-
+           verify_subject_signature(
+             sender_did,
+             %{"messages" => messages},
+             request_signature
+           ),
+         {:ok, stored} <- MessengerStore.store_messages(messages) do
+      send_json(conn, 202, %{
+        accepted: true,
+        message_ids: Enum.map(stored, & &1["message_id"])
+      })
     else
       {:error, reason} ->
         send_json(conn, messenger_error_status(reason), %{error: to_string(reason)})
@@ -184,6 +229,18 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
 
     if binding == expected, do: :ok, else: {:error, :binding_mismatch}
   end
+
+  defp validate_message_batch([first | _rest] = messages) when is_map(first) do
+    with {:ok, sender_did} <- fetch_string(first, "sender_did"),
+         true <- Enum.all?(messages, &is_map/1),
+         true <- Enum.all?(messages, &(Map.get(&1, "sender_did") == sender_did)) do
+      {:ok, sender_did}
+    else
+      _ -> {:error, :message_batch_sender_mismatch}
+    end
+  end
+
+  defp validate_message_batch(_messages), do: {:error, :messages_required}
 
   defp verify_subject_signature(subject_did, payload, signature) do
     cond do

@@ -125,7 +125,7 @@ pub fn create_messenger_device(subject_did: String) -> Result<MessengerDevice, S
     let identity_public = PublicKey::from(&identity_secret);
     let signed_pre_key_secret = StaticSecret::random_from_rng(OsRng);
     let signed_pre_key_public = PublicKey::from(&signed_pre_key_secret);
-    let signed_pre_key_id = random_u32_nonzero();
+    let signed_pre_key_id = random_postgres_integer_nonzero();
 
     Ok(MessengerDevice {
         subject_did,
@@ -158,13 +158,13 @@ pub fn generate_one_time_pre_keys(
     for _ in 0..count {
         let secret = StaticSecret::random_from_rng(OsRng);
         let public = PublicKey::from(&secret);
-        let mut pre_key_id = random_u32_nonzero();
+        let mut pre_key_id = random_postgres_integer_nonzero();
         while device
             .one_time_pre_keys
             .iter()
             .any(|key| key.pre_key_id == pre_key_id)
         {
-            pre_key_id = random_u32_nonzero();
+            pre_key_id = random_postgres_integer_nonzero();
         }
         let pre_key = MessengerPreKey {
             pre_key_id,
@@ -418,8 +418,8 @@ fn serialize_session_state(state: SessionState) -> Result<String, String> {
     serde_json::to_string(&state).map_err(|_| "messenger_session_state_encode_failed".to_string())
 }
 
-fn random_u32_nonzero() -> u32 {
-    let value = OsRng.next_u32();
+fn random_postgres_integer_nonzero() -> u32 {
+    let value = OsRng.next_u32() & i32::MAX as u32;
     if value == 0 {
         1
     } else {

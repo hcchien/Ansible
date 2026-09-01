@@ -8,7 +8,9 @@ class DriftMessengerRepository
     implements
         MessengerRepository,
         MessengerPreKeyLifecycleRepository,
-        MessengerRemoteDeviceTrustRepository {
+        MessengerRemoteDeviceTrustRepository,
+        MessengerMessageLookupRepository,
+        MessengerPendingOutboxRepository {
   DriftMessengerRepository(this._db);
 
   final AppDatabase _db;
@@ -36,23 +38,35 @@ class DriftMessengerRepository
 
   @override
   Future<void> upsertRemoteDevice(entity.MessengerDeviceRecord device) async {
-    await _upsertDevice(device.copyWith(isLocal: false));
+    await _db.transaction(() async {
+      final existing =
+          await (_db.select(_db.messengerDevices)
+                ..where((table) => table.deviceId.equals(device.deviceId))
+                ..limit(1))
+              .getSingleOrNull();
+      if (existing?.isLocal == true) {
+        throw MessengerDeviceIdCollision(device.deviceId);
+      }
+      await _upsertDevice(device.copyWith(isLocal: false));
+    });
   }
 
   @override
-  Future<entity.MessengerDeviceRecord?> remoteDeviceById(
-    String deviceId,
-  ) async {
+  Future<entity.MessengerDeviceRecord?> deviceById(String deviceId) async {
     final row =
         await (_db.select(_db.messengerDevices)
-              ..where(
-                (table) =>
-                    table.deviceId.equals(deviceId) &
-                    table.isLocal.equals(false),
-              )
+              ..where((table) => table.deviceId.equals(deviceId))
               ..limit(1))
             .getSingleOrNull();
     return row == null ? null : _mapDevice(row);
+  }
+
+  @override
+  Future<List<entity.MessengerPreKeyRecord>> allPreKeys(String deviceId) async {
+    final rows = await (_db.select(
+      _db.messengerPreKeys,
+    )..where((table) => table.deviceId.equals(deviceId))).get();
+    return rows.map(_mapPreKey).toList(growable: false);
   }
 
   @override
@@ -214,6 +228,34 @@ class DriftMessengerRepository
               ..orderBy([(table) => OrderingTerm.asc(table.createdAt)]))
             .get();
     return rows.map(_mapMessage).toList();
+  }
+
+  @override
+  Future<entity.MessengerMessageRecord?> messageById(String messageId) async {
+    final row =
+        await (_db.select(_db.messengerMessages)
+              ..where((table) => table.messageId.equals(messageId))
+              ..limit(1))
+            .getSingleOrNull();
+    return row == null ? null : _mapMessage(row);
+  }
+
+  @override
+  Future<List<entity.MessengerMessageRecord>> pendingOutboundMessages() async {
+    final rows =
+        await (_db.select(_db.messengerMessages)
+              ..where(
+                (table) =>
+                    table.direction.equals(
+                      entity.MessengerMessageDirection.outbound.name,
+                    ) &
+                    table.status.equals(
+                      entity.MessengerMessageStatus.pending.name,
+                    ),
+              )
+              ..orderBy([(table) => OrderingTerm.asc(table.createdAt)]))
+            .get();
+    return rows.map(_mapMessage).toList(growable: false);
   }
 
   @override

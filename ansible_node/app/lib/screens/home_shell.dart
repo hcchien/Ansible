@@ -34,8 +34,10 @@ import '../services/blocked_author_store.dart';
 import '../services/contact_resolver.dart';
 import '../services/canonical_identity_store.dart';
 import '../services/discovery_client.dart';
+import '../services/did_elix_resolver.dart';
 import '../services/contact_source_sync_service.dart';
 import '../services/messenger_contact_resolver.dart';
+import '../services/messenger_device_binding_verifier.dart';
 import '../services/messenger_device_service.dart';
 import '../services/messenger_relay_client.dart';
 import '../services/messenger_sync_service.dart';
@@ -154,6 +156,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   late final DriftMessengerRepository _messengerRepo;
   late final MessengerRelayClient _messengerRelayClient;
   late final MessengerDeviceService _messengerDeviceService;
+  late final DidElixResolver _messengerDidResolver;
+  late final MessengerDeviceBindingVerifier _messengerBindingVerifier;
   late final MessengerSyncService _messengerSyncService;
   late final store.NotificationRepository _notificationRepo;
   late final NotificationPreferencesController _notificationPrefs;
@@ -241,6 +245,30 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       repository: _messengerRepo,
       relayClient: _messengerRelayClient,
     );
+    _messengerDidResolver = DidElixResolver(
+      relays: [AppEnvironment.defaultRelayBaseUrl],
+    );
+    _messengerBindingVerifier = DidMessengerDeviceBindingVerifier(
+      resolveVerificationKey: (did) async {
+        if (did.startsWith('did:key:')) {
+          try {
+            return MessengerDidVerificationKey(
+              publicKeyHex: apiDecodeDidKey(did: did),
+              algorithm: 'ed25519',
+            );
+          } catch (_) {
+            return null;
+          }
+        }
+        if (!did.startsWith('did:elix:')) return null;
+        final resolved = await _messengerDidResolver.resolve(did);
+        if (resolved == null) return null;
+        return MessengerDidVerificationKey(
+          publicKeyHex: resolved.anchor.identityKey,
+          algorithm: resolved.anchor.identityKeyAlgorithm,
+        );
+      },
+    );
     _notificationRepo = store.DriftNotificationRepository(widget.db);
     _notificationPrefs = NotificationPreferencesController();
     _notificationProjector = NotificationProjector(
@@ -267,6 +295,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       relayClient: _messengerRelayClient,
       crypto: _messengerDeviceService.crypto,
       didSigner: DidSignerImpl(),
+      deviceBindingVerifier: _messengerBindingVerifier,
       notificationProjector: _notificationProjector,
     );
     _messengerContactResolver = MessengerContactResolver(
@@ -404,6 +433,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     }
     _pageController.dispose();
     _messengerRelayClient.close();
+    _messengerDidResolver.close();
     super.dispose();
   }
 

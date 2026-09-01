@@ -2,7 +2,7 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
   use ExUnit.Case, async: false
   use Plug.Test
 
-  alias AnsibleRelay.IdentityCache
+  alias AnsibleRelay.{AbuseDetector, IdentityCache}
   alias AnsibleRelay.Web.Router
   alias AnsibleRelay.MessengerStore
   alias AnsibleRelay.Repo
@@ -23,6 +23,7 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
       {:error, {:already_started, _pid}} -> :ok
     end
 
+    AbuseDetector.reset()
     :ok
   end
 
@@ -114,6 +115,10 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
     )
   end
 
+  defp sign_message_batch(private_key, messages) do
+    sign(private_key, canonical_json(%{"messages" => messages}))
+  end
+
   defp sign_ack(private_key, message_id, recipient_did, recipient_device_id) do
     sign(
       private_key,
@@ -133,6 +138,28 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
         "recipient_device_id" => recipient_device_id
       })
     )
+  end
+
+  defp pre_key_bundle_path(
+         recipient_did,
+         sender_did,
+         sender_device_id,
+         request_id,
+         private_key
+       ) do
+    payload = %{
+      "recipient_did" => recipient_did,
+      "sender_did" => sender_did,
+      "sender_device_id" => sender_device_id,
+      "request_id" => request_id
+    }
+
+    query =
+      payload
+      |> Map.put("request_signature", sign(private_key, canonical_json(payload)))
+      |> URI.encode_query()
+
+    "/api/v1/messenger/pre-key-bundles/#{URI.encode(recipient_did)}?#{query}"
   end
 
   defp seed_store_device(subject_did, device_id) do
@@ -248,13 +275,39 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
 
     assert prekeys.status == 201
 
-    bundle = get_json("/api/v1/messenger/pre-key-bundles/did:plc:bob")
+    anonymous_bundle = get_json("/api/v1/messenger/pre-key-bundles/did:plc:bob")
+    assert anonymous_bundle.status == 422
+
+    bundle_path =
+      pre_key_bundle_path(
+        "did:plc:bob",
+        "did:plc:alice",
+        "msgdev_alice",
+        "msg_reservation_1",
+        alice_private_key
+      )
+
+    bundle = get_json(bundle_path)
     assert bundle.status == 200
     assert %{"devices" => [device]} = Jason.decode!(bundle.resp_body)
     assert device["one_time_pre_key_id"] == 1001
     assert device["one_time_pre_key"] == "bob_one_time_pre_key"
 
-    second_bundle = get_json("/api/v1/messenger/pre-key-bundles/did:plc:bob")
+    retry_bundle = get_json(bundle_path)
+    assert %{"devices" => [retry_device]} = Jason.decode!(retry_bundle.resp_body)
+    assert retry_device["one_time_pre_key_id"] == 1001
+
+    second_bundle =
+      get_json(
+        pre_key_bundle_path(
+          "did:plc:bob",
+          "did:plc:alice",
+          "msgdev_alice",
+          "msg_reservation_2",
+          alice_private_key
+        )
+      )
+
     assert second_bundle.status == 200
     assert %{"devices" => [second_device]} = Jason.decode!(second_bundle.resp_body)
     refute Map.has_key?(second_device, "one_time_pre_key_id")
@@ -291,6 +344,7 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
       )
 
     assert mailbox.status == 200
+
     assert %{"messages" => [message], "next_cursor" => cursor} =
              Jason.decode!(mailbox.resp_body)
 
@@ -371,8 +425,8 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
           sign_ack(alice_private_key, "msg_cross_did", "did:plc:alice", "msgdev_bob")
       })
 
-    assert forged_ack.status == 422
-    assert Jason.decode!(forged_ack.resp_body)["error"] == "recipient_mismatch"
+    assert forged_ack.status == 403
+    assert Jason.decode!(forged_ack.resp_body)["error"] == "device_not_active"
 
     authorized_mailbox =
       get_json(
@@ -426,9 +480,74 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
     refute Map.has_key?(device, "one_time_pre_key")
     refute Map.has_key?(device, "one_time_pre_key_id")
 
-    consuming_bundle = get_json("/api/v1/messenger/pre-key-bundles/did:plc:bob")
+    consuming_bundle =
+      get_json(
+        pre_key_bundle_path(
+          "did:plc:bob",
+          "did:plc:bob",
+          "msgdev_bob",
+          "msg_self_reservation",
+          bob_private_key
+        )
+      )
+
     assert %{"devices" => [reserved_device]} = Jason.decode!(consuming_bundle.resp_body)
     assert reserved_device["one_time_pre_key_id"] == 1001
+  end
+
+  test "pre-key reservations are rate limited per authenticated sender DID" do
+    previous_policy = Application.get_env(:ansible_relay, :abuse_detector)
+
+    Application.put_env(:ansible_relay, :abuse_detector, %{
+      did: %{capacity: 2, refill_per_second: 0, suspension_ms: 60_000},
+      peer: %{capacity: 20, refill_per_second: 20, suspension_ms: 60_000}
+    })
+
+    on_exit(fn -> Application.put_env(:ansible_relay, :abuse_detector, previous_policy) end)
+
+    {alice_public_key, alice_private_key} = ed25519_keypair()
+    seed_did("did:plc:alice", alice_public_key)
+    seed_store_device("did:plc:alice", "msgdev_alice")
+    seed_store_device("did:plc:bob", "msgdev_bob")
+
+    assert {:ok, _pre_keys} =
+             MessengerStore.publish_pre_keys(%{
+               "subject_did" => "did:plc:bob",
+               "device_id" => "msgdev_bob",
+               "pre_keys" =>
+                 for id <- 1..3 do
+                   %{"pre_key_id" => id, "pre_key" => "bob_pre_key_#{id}"}
+                 end
+             })
+
+    for request_id <- ["reservation_1", "reservation_2"] do
+      response =
+        get_json(
+          pre_key_bundle_path(
+            "did:plc:bob",
+            "did:plc:alice",
+            "msgdev_alice",
+            request_id,
+            alice_private_key
+          )
+        )
+
+      assert response.status == 200
+    end
+
+    limited =
+      get_json(
+        pre_key_bundle_path(
+          "did:plc:bob",
+          "did:plc:alice",
+          "msgdev_alice",
+          "reservation_3",
+          alice_private_key
+        )
+      )
+
+    assert limited.status == 429
+    assert Jason.decode!(limited.resp_body)["error"] == "rate_limited"
   end
 
   test "retries are idempotent and revoked devices cannot receive messages" do
@@ -485,6 +604,102 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
     assert mailbox.status == 403
   end
 
+  test "multi-device fanout is atomic when one envelope conflicts" do
+    {alice_public_key, alice_private_key} = ed25519_keypair()
+    seed_did("did:plc:alice", alice_public_key)
+    seed_store_device("did:plc:alice", "msgdev_alice")
+    seed_store_device("did:plc:bob", "msgdev_bob_phone")
+    seed_store_device("did:plc:bob", "msgdev_bob_tablet")
+
+    existing = %{
+      "message_id" => "msg_batch_tablet",
+      "sender_did" => "did:plc:alice",
+      "sender_device_id" => "msgdev_alice",
+      "recipient_did" => "did:plc:bob",
+      "recipient_device_id" => "msgdev_bob_tablet",
+      "ciphertext_type" => "pre_key_signal_message",
+      "ciphertext" => "existing-ciphertext",
+      "protocol_version" => "signal-mvp-v1",
+      "created_at" => "2026-09-01T00:00:00Z"
+    }
+
+    assert post_json(
+             "/api/v1/messenger/messages",
+             Map.put(existing, "request_signature", sign_message(alice_private_key, existing))
+           ).status == 202
+
+    messages = [
+      %{
+        "message_id" => "msg_batch_phone",
+        "sender_did" => "did:plc:alice",
+        "sender_device_id" => "msgdev_alice",
+        "recipient_did" => "did:plc:bob",
+        "recipient_device_id" => "msgdev_bob_phone",
+        "ciphertext_type" => "pre_key_signal_message",
+        "ciphertext" => "phone-ciphertext",
+        "protocol_version" => "signal-mvp-v1",
+        "created_at" => "2026-09-01T00:00:01Z"
+      },
+      Map.put(existing, "ciphertext", "conflicting-ciphertext")
+    ]
+
+    response =
+      post_json("/api/v1/messenger/messages/batch", %{
+        "messages" => messages,
+        "request_signature" => sign_message_batch(alice_private_key, messages)
+      })
+
+    assert response.status == 409
+
+    assert Repo.get_by(AnsibleRelay.MessengerStore.Message,
+             message_id: "msg_batch_phone"
+           ) == nil
+
+    assert Repo.get_by!(AnsibleRelay.MessengerStore.Message,
+             message_id: "msg_batch_tablet"
+           ).ciphertext == "existing-ciphertext"
+  end
+
+  test "acked rows do not consume a mailbox page or advance its cursor" do
+    seed_store_device("did:plc:alice", "msgdev_alice")
+    seed_store_device("did:plc:bob", "msgdev_bob")
+
+    base = %{
+      "sender_did" => "did:plc:alice",
+      "sender_device_id" => "msgdev_alice",
+      "recipient_did" => "did:plc:bob",
+      "recipient_device_id" => "msgdev_bob",
+      "ciphertext_type" => "pre_key_signal_message",
+      "protocol_version" => "signal-mvp-v1",
+      "created_at" => "2026-09-01T00:00:00Z"
+    }
+
+    assert {:ok, _} =
+             MessengerStore.store_message(
+               Map.merge(base, %{
+                 "message_id" => "msg_already_acked",
+                 "ciphertext" => "acked-ciphertext"
+               })
+             )
+
+    assert {:ok, _} =
+             MessengerStore.store_message(
+               Map.merge(base, %{
+                 "message_id" => "msg_still_pending",
+                 "ciphertext" => "pending-ciphertext"
+               })
+             )
+
+    assert {:ok, _} =
+             MessengerStore.ack("msg_already_acked", "did:plc:bob", "msgdev_bob")
+
+    assert {:ok, %{messages: [message], next_cursor: cursor}} =
+             MessengerStore.mailbox("did:plc:bob", "msgdev_bob", nil, 1)
+
+    assert message["message_id"] == "msg_still_pending"
+    assert is_binary(cursor)
+  end
+
   test "rejects message payloads that contain plaintext-shaped fields" do
     response =
       post_json("/api/v1/messenger/messages", %{
@@ -539,7 +754,17 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
     MessengerStore |> Process.whereis() |> GenServer.stop(:normal)
     Process.sleep(50)
 
-    bundle = get_json("/api/v1/messenger/pre-key-bundles/did:plc:persisted")
+    bundle =
+      get_json(
+        pre_key_bundle_path(
+          "did:plc:persisted",
+          "did:plc:persisted",
+          "msgdev_persisted",
+          "msg_persisted_reservation",
+          private_key
+        )
+      )
+
     assert bundle.status == 200
     assert %{"devices" => [device]} = Jason.decode!(bundle.resp_body)
     assert device["device_id"] == "msgdev_persisted"

@@ -60,6 +60,8 @@ The contained Phase 1-2 hardening slice is implemented:
 - DID-signed device revocation with immediate pre-key removal;
 - revoked and expired devices excluded from availability and bundle lookup;
 - atomic one-time pre-key reservation remains protected by row locking;
+- consuming pre-key lookup requires an authenticated active sender device, is
+  rate-limited per sender DID, and retries idempotently by logical request ID;
 - idempotent same-payload message retries and conflicting-ID rejection;
 - opaque cursor mailbox pagination;
 - configurable ciphertext retention with expired message/ACK cleanup;
@@ -67,9 +69,15 @@ The contained Phase 1-2 hardening slice is implemented:
   reserved one-time pre-key;
 - separate local session state per local/remote device pair;
 - local one-time pre-key loading and consumed-key marking after decryption;
-- random non-zero pre-key identifiers across replenishment batches;
-- trust-on-first-use remote device key pinning with fail-closed key-change
-  detection;
+- PostgreSQL-safe non-zero signed and one-time pre-key identifiers, with
+  collision avoidance across historical replenishment batches;
+- independently verified DID-signed device bindings before remote key pinning,
+  with fail-closed resolution, signature, collision, and key-change checks;
+- mailbox cursors committed only after every fetched message is locally
+  decrypted, projected, and acknowledged, so retryable failures are not
+  skipped;
+- durable client outbox batches and transactional Relay fan-out, so a
+  multi-device send is either accepted for every envelope or for none;
 - client API and service support for DID-signed device revocation;
 - Rust replay/pre-key uniqueness tests, Flutter fan-out/key-substitution tests,
   and Phoenix controller coverage for revocation and retry idempotency.
@@ -349,10 +357,15 @@ the current compliance review.
 
 1. **Identity autonomy:** DID identity remains portable and authorizes
    separately revocable messaging devices. The Relay is not the sole identity
-   authority and never holds private identity or messaging keys.
+   authority and never holds private identity or messaging keys. First-contact
+   device bindings are verified against a self-certifying DID resolution path
+   rather than trusted merely because the Messenger Relay returned them.
 2. **Data autonomy:** plaintext, local search, ratchet state, and attachment
    keys remain local. Private data is encrypted before leaving the trusted
-   device boundary, and all private paths fail closed.
+   device boundary, and all private paths fail closed. Delivery state remains
+   retryable: cursors do not advance past incomplete local commits, while
+   pending multi-device ciphertext batches remain in the local outbox until an
+   atomic Relay acceptance succeeds.
 3. **Minimal disclosure:** messaging does not require legal identity or a
    high-assurance personhood credential. Any anti-abuse tier check uses only
    the minimum claim needed.

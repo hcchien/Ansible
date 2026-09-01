@@ -1,5 +1,6 @@
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_node/services/messenger_crypto_bridge.dart';
+import 'package:ansible_node/services/messenger_device_binding_verifier.dart';
 import 'package:ansible_node/services/messenger_device_service.dart';
 import 'package:ansible_node/services/messenger_relay_client.dart';
 import 'package:ansible_node/services/messenger_sync_service.dart';
@@ -70,6 +71,7 @@ class MessengerE2eHarness {
       relayClient: _relay,
       crypto: _crypto,
       didSigner: _signer,
+      deviceBindingVerifier: const _AllowMessengerDeviceBindingVerifier(),
       now: () => DateTime.utc(2026, 5, 14, 10, _nextMessageId),
       idGenerator: () => 'msg_${++_nextMessageId}',
     );
@@ -150,9 +152,13 @@ class _InMemoryRelayClient extends MessengerRelayClient {
   }
 
   @override
-  Future<MessengerPreKeyBundleResponse> fetchPreKeyBundle(
-    String subjectDid,
-  ) async {
+  Future<MessengerPreKeyBundleResponse> fetchPreKeyBundle({
+    required String subjectDid,
+    required String senderDid,
+    required String senderDeviceId,
+    required String requestId,
+    required String requestSignature,
+  }) async {
     final device = _devices[subjectDid];
     final preKey = _preKeys[subjectDid]?.firstOrNull;
     if (device == null || preKey == null) {
@@ -205,6 +211,27 @@ class _InMemoryRelayClient extends MessengerRelayClient {
         createdAt: createdAt,
       ),
     );
+  }
+
+  @override
+  Future<void> sendMessages({
+    required List<Map<String, Object?>> messages,
+    required String requestSignature,
+  }) async {
+    for (final message in messages) {
+      await sendMessage(
+        messageId: message['message_id']! as String,
+        senderDid: message['sender_did']! as String,
+        senderDeviceId: message['sender_device_id']! as String,
+        recipientDid: message['recipient_did']! as String,
+        recipientDeviceId: message['recipient_device_id']! as String,
+        ciphertextType: message['ciphertext_type']! as String,
+        ciphertext: message['ciphertext']! as String,
+        protocolVersion: message['protocol_version']! as String,
+        createdAt: DateTime.parse(message['created_at']! as String),
+        requestSignature: requestSignature,
+      );
+    }
   }
 
   @override
@@ -261,7 +288,13 @@ class _HarnessDidSigner implements DidSigner {
   }
 }
 
-class _InMemoryMessengerRepository implements MessengerRepository {
+class _InMemoryMessengerRepository
+    implements
+        MessengerRepository,
+        MessengerPreKeyLifecycleRepository,
+        MessengerRemoteDeviceTrustRepository,
+        MessengerMessageLookupRepository,
+        MessengerPendingOutboxRepository {
   final _devices = <MessengerDeviceRecord>[];
   final _preKeys = <String, MessengerPreKeyRecord>{};
   final _sessions = <MessengerSessionRecord>[];
@@ -313,6 +346,10 @@ class _InMemoryMessengerRepository implements MessengerRepository {
   }
 
   @override
+  Future<MessengerDeviceRecord?> deviceById(String deviceId) async =>
+      _devices.where((device) => device.deviceId == deviceId).firstOrNull;
+
+  @override
   Future<void> savePreKeys(List<MessengerPreKeyRecord> preKeys) async {
     for (final preKey in preKeys) {
       _preKeys['${preKey.deviceId}:${preKey.preKeyId}'] = preKey;
@@ -350,6 +387,37 @@ class _InMemoryMessengerRepository implements MessengerRepository {
   }
 
   @override
+  Future<List<MessengerPreKeyRecord>> allPreKeys(String deviceId) async =>
+      _preKeys.values
+          .where((preKey) => preKey.deviceId == deviceId)
+          .toList(growable: false);
+
+  @override
+  Future<List<MessengerPreKeyRecord>> unconsumedPreKeys(
+    String deviceId,
+  ) async => _preKeys.values
+      .where(
+        (preKey) => preKey.deviceId == deviceId && preKey.consumedAt == null,
+      )
+      .toList(growable: false);
+
+  @override
+  Future<void> markPreKeyConsumed(String deviceId, int preKeyId) async {
+    final key = '$deviceId:$preKeyId';
+    final existing = _preKeys[key];
+    if (existing == null) return;
+    _preKeys[key] = MessengerPreKeyRecord(
+      deviceId: existing.deviceId,
+      preKeyId: existing.preKeyId,
+      publicKey: existing.publicKey,
+      privateKeyRef: existing.privateKeyRef,
+      createdAt: existing.createdAt,
+      publishedAt: existing.publishedAt,
+      consumedAt: DateTime.utc(2026, 5, 14),
+    );
+  }
+
+  @override
   Future<void> saveSession(MessengerSessionRecord session) async {
     _sessions.add(session);
   }
@@ -374,6 +442,20 @@ class _InMemoryMessengerRepository implements MessengerRepository {
   }
 
   @override
+  Future<MessengerMessageRecord?> messageById(String messageId) async =>
+      _messages[messageId];
+
+  @override
+  Future<List<MessengerMessageRecord>> pendingOutboundMessages() async =>
+      _messages.values
+          .where(
+            (message) =>
+                message.direction == MessengerMessageDirection.outbound &&
+                message.status == MessengerMessageStatus.pending,
+          )
+          .toList(growable: false);
+
+  @override
   Future<List<MessengerMessageRecord>> messagesForConversation(
     String conversationId,
   ) async {
@@ -391,4 +473,15 @@ class _InMemoryMessengerRepository implements MessengerRepository {
   Future<void> saveMailboxCursor(String localDeviceId, String cursor) async {
     _cursors[localDeviceId] = cursor;
   }
+}
+
+class _AllowMessengerDeviceBindingVerifier
+    implements MessengerDeviceBindingVerifier {
+  const _AllowMessengerDeviceBindingVerifier();
+
+  @override
+  Future<void> verify({
+    required String subjectDid,
+    required MessengerPreKeyBundleDevice device,
+  }) async {}
 }

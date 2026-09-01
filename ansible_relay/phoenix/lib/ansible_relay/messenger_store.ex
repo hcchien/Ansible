@@ -44,6 +44,9 @@ defmodule AnsibleRelay.MessengerStore do
       field(:pre_key_id, :integer)
       field(:pre_key, :string)
       field(:reserved_at, :utc_datetime_usec)
+      field(:reserved_by_did, :string)
+      field(:reserved_by_device_id, :string)
+      field(:reservation_request_id, :string)
 
       timestamps()
     end
@@ -186,31 +189,45 @@ defmodule AnsibleRelay.MessengerStore do
           )
 
         PreKey
-        |> where([pre_key], pre_key.subject_did == ^subject_did and pre_key.device_id == ^device_id)
+        |> where(
+          [pre_key],
+          pre_key.subject_did == ^subject_did and pre_key.device_id == ^device_id
+        )
         |> Repo.delete_all()
 
         {:ok, Map.put(device_map(device), "revoked_at", revoked_at)}
     end
   end
 
-  def reserve_bundle(subject_did) do
-    Repo.transaction(fn ->
-      devices =
-        Device
-        |> where([device], device.subject_did == ^subject_did)
-        |> where([device], is_nil(device.revoked_at))
-        |> order_by([device], asc: device.device_id)
-        |> Repo.all()
-        |> Enum.filter(&device_active?/1)
+  def reserve_bundle(subject_did, requester_did, requester_device_id, request_id) do
+    with :ok <- ensure_active_device(requester_did, requester_device_id) do
+      Repo.transaction(fn ->
+        devices =
+          Device
+          |> where([device], device.subject_did == ^subject_did)
+          |> where([device], is_nil(device.revoked_at))
+          |> order_by([device], asc: device.device_id)
+          |> lock("FOR UPDATE")
+          |> Repo.all()
+          |> Enum.filter(&device_active?/1)
 
-      Enum.map(devices, fn device ->
-        pre_key = reserve_next_pre_key(device.subject_did, device.device_id)
-        bundle_device(device_map(device), pre_key)
+        Enum.map(devices, fn device ->
+          pre_key =
+            reserve_next_pre_key(
+              device.subject_did,
+              device.device_id,
+              requester_did,
+              requester_device_id,
+              request_id
+            )
+
+          bundle_device(device_map(device), pre_key)
+        end)
       end)
-    end)
-    |> case do
-      {:ok, devices} -> {:ok, %{subject_did: subject_did, devices: devices}}
-      {:error, reason} -> {:error, reason}
+      |> case do
+        {:ok, devices} -> {:ok, %{subject_did: subject_did, devices: devices}}
+        {:error, reason} -> {:error, reason}
+      end
     end
   end
 
@@ -232,6 +249,53 @@ defmodule AnsibleRelay.MessengerStore do
   end
 
   def store_message(attrs) do
+    case insert_message(attrs) do
+      {:ok, message, inserted?} ->
+        if inserted? do
+          AnsibleRelay.Push.WakeScheduler.mailbox_delivered(
+            message["sender_did"],
+            message["recipient_did"]
+          )
+        end
+
+        {:ok, message}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  def store_messages(messages) when is_list(messages) and messages != [] do
+    Repo.transaction(fn ->
+      Enum.map(messages, fn attrs ->
+        case insert_message(attrs) do
+          {:ok, message, inserted?} -> {message, inserted?}
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+    end)
+    |> case do
+      {:ok, results} ->
+        results
+        |> Enum.filter(fn {_message, inserted?} -> inserted? end)
+        |> Enum.map(fn {message, _inserted?} ->
+          {message["sender_did"], message["recipient_did"]}
+        end)
+        |> Enum.uniq()
+        |> Enum.each(fn {sender_did, recipient_did} ->
+          AnsibleRelay.Push.WakeScheduler.mailbox_delivered(sender_did, recipient_did)
+        end)
+
+        {:ok, Enum.map(results, fn {message, _inserted?} -> message end)}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  def store_messages(_messages), do: {:error, :messages_required}
+
+  defp insert_message(attrs) do
     with :ok <- reject_plaintext_fields(attrs),
          {:ok, message_id} <- fetch_string(attrs, "message_id"),
          {:ok, sender_did} <- fetch_string(attrs, "sender_did"),
@@ -269,15 +333,13 @@ defmodule AnsibleRelay.MessengerStore do
           existing = Repo.get_by!(Message, message_id: message_id)
 
           if same_message?(existing, message) do
-            {:ok, message_map(existing)}
+            {:ok, message_map(existing), false}
           else
             {:error, :message_id_conflict}
           end
 
         {:ok, %Message{} = inserted} ->
-          # Fire-and-forget: the push contains only an opaque sync hint.
-          AnsibleRelay.Push.WakeScheduler.mailbox_delivered(sender_did, recipient_did)
-          {:ok, message_map(inserted)}
+          {:ok, message_map(inserted), true}
       end
     else
       {:error, reason} -> {:error, reason}
@@ -289,28 +351,23 @@ defmodule AnsibleRelay.MessengerStore do
          {:ok, cursor_id} <- decode_cursor(cursor) do
       purge_expired_messages()
 
-      acked_message_ids =
-        Ack
-        |> where([ack], ack.recipient_device_id == ^recipient_device_id)
-        |> select([ack], ack.message_id)
-        |> Repo.all()
-        |> MapSet.new()
-
       fetched_rows =
         Message
-        |> where(
-          [message],
-          message.recipient_did == ^recipient_did and
-            message.recipient_device_id == ^recipient_device_id
+        |> join(:left, [message], ack in Ack,
+          on:
+            ack.message_id == message.message_id and
+              ack.recipient_device_id == ^recipient_device_id
         )
-        |> where([message], message.id > ^cursor_id)
-        |> order_by([message], asc: message.id)
+        |> where(
+          [message, ack],
+          message.recipient_did == ^recipient_did and
+            message.recipient_device_id == ^recipient_device_id and
+            is_nil(ack.id)
+        )
+        |> where([message, _ack], message.id > ^cursor_id)
+        |> order_by([message, _ack], asc: message.id)
         |> limit(^limit)
         |> Repo.all()
-
-      rows =
-        fetched_rows
-        |> Enum.reject(&MapSet.member?(acked_message_ids, &1.message_id))
 
       next_cursor =
         case List.last(fetched_rows) do
@@ -318,7 +375,7 @@ defmodule AnsibleRelay.MessengerStore do
           row -> encode_cursor(row.id)
         end
 
-      {:ok, %{messages: Enum.map(rows, &message_map/1), next_cursor: next_cursor}}
+      {:ok, %{messages: Enum.map(fetched_rows, &message_map/1), next_cursor: next_cursor}}
     end
   end
 
@@ -388,29 +445,63 @@ defmodule AnsibleRelay.MessengerStore do
   @impl true
   def init(_opts), do: {:ok, %{}}
 
-  defp reserve_next_pre_key(subject_did, device_id) do
-    query =
-      PreKey
-      |> where(
-        [pre_key],
-        pre_key.subject_did == ^subject_did and pre_key.device_id == ^device_id and
-          is_nil(pre_key.reserved_at)
+  defp reserve_next_pre_key(
+         subject_did,
+         device_id,
+         requester_did,
+         requester_device_id,
+         request_id
+       ) do
+    existing =
+      Repo.one(
+        from(pre_key in PreKey,
+          where:
+            pre_key.subject_did == ^subject_did and pre_key.device_id == ^device_id and
+              pre_key.reserved_by_did == ^requester_did and
+              pre_key.reserved_by_device_id == ^requester_device_id and
+              pre_key.reservation_request_id == ^request_id,
+          limit: 1
+        )
       )
-      |> order_by([pre_key], asc: pre_key.pre_key_id)
-      |> limit(1)
-      |> lock("FOR UPDATE SKIP LOCKED")
 
-    case Repo.one(query) do
-      nil ->
-        nil
-
-      pre_key ->
-        {1, _} =
-          PreKey
-          |> where([candidate], candidate.id == ^pre_key.id)
-          |> Repo.update_all(set: [reserved_at: now(), updated_at: now()])
-
+    case existing do
+      %PreKey{} = pre_key ->
         pre_key_map(pre_key)
+
+      nil ->
+        query =
+          PreKey
+          |> where(
+            [pre_key],
+            pre_key.subject_did == ^subject_did and pre_key.device_id == ^device_id and
+              is_nil(pre_key.reserved_at)
+          )
+          |> order_by([pre_key], asc: pre_key.pre_key_id)
+          |> limit(1)
+          |> lock("FOR UPDATE SKIP LOCKED")
+
+        case Repo.one(query) do
+          nil ->
+            nil
+
+          pre_key ->
+            timestamp = now()
+
+            {1, _} =
+              PreKey
+              |> where([candidate], candidate.id == ^pre_key.id)
+              |> Repo.update_all(
+                set: [
+                  reserved_at: timestamp,
+                  reserved_by_did: requester_did,
+                  reserved_by_device_id: requester_device_id,
+                  reservation_request_id: request_id,
+                  updated_at: timestamp
+                ]
+              )
+
+            pre_key_map(pre_key)
+        end
     end
   end
 

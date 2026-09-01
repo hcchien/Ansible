@@ -277,11 +277,21 @@ class MessengerRelayClient {
     );
   }
 
-  Future<MessengerPreKeyBundleResponse> fetchPreKeyBundle(
-    String subjectDid,
-  ) async {
+  Future<MessengerPreKeyBundleResponse> fetchPreKeyBundle({
+    required String subjectDid,
+    required String senderDid,
+    required String senderDeviceId,
+    required String requestId,
+    required String requestSignature,
+  }) async {
     final body = await _getJson(
       '/api/v1/messenger/pre-key-bundles/${Uri.encodeComponent(subjectDid)}',
+      query: {
+        'sender_did': senderDid,
+        'sender_device_id': senderDeviceId,
+        'request_id': requestId,
+        'request_signature': requestSignature,
+      },
     );
     return MessengerPreKeyBundleResponse.fromJson(body);
   }
@@ -317,6 +327,16 @@ class MessengerRelayClient {
       'ciphertext': ciphertext,
       'protocol_version': protocolVersion,
       'created_at': createdAt.toUtc().toIso8601String(),
+      'request_signature': requestSignature,
+    });
+  }
+
+  Future<void> sendMessages({
+    required List<Map<String, Object?>> messages,
+    required String requestSignature,
+  }) async {
+    await _postJson('/api/v1/messenger/messages/batch', {
+      'messages': messages,
       'request_signature': requestSignature,
     });
   }

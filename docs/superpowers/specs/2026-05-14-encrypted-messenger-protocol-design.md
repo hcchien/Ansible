@@ -203,6 +203,23 @@ Request:
 
 `GET /api/v1/messenger/pre-key-bundles/:subject_did`
 
+This consuming read requires an authenticated active sender device. Query
+parameters are `sender_did`, `sender_device_id`, `request_id`, and
+`request_signature`. The signature covers:
+
+```json
+{
+  "recipient_did": "did:plc:bob",
+  "sender_did": "did:plc:alice",
+  "sender_device_id": "msgdev_alice",
+  "request_id": "msg_..."
+}
+```
+
+`request_id` is stable for one logical send. Retrying the same signed request
+returns the same reserved one-time pre-key instead of consuming another key.
+The relay rate-limits reservations per authenticated sender DID.
+
 Response:
 
 ```json
