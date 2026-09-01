@@ -10,6 +10,15 @@ substitutions:
   _ELIXIR_IMAGE: hexpm/elixir:1.19.0-erlang-27.2-debian-bookworm-20260202-slim
   _ACTIVITY_PUB_DELIVERY_ENABLED: "true"
   _VPC_CONNECTOR: ansible-conn
+  # The in-process abuse limiter is correct only inside one instance. Keep the
+  # safe default at one until REDIS_URL is configured for the shared adapter.
+  _MIN_INSTANCES: "1"
+  _MAX_INSTANCES: "1"
+  _CONCURRENCY: "40"
+  _TIMEOUT: "30s"
+  _POOL_SIZE: "10"
+  _MESSENGER_CIPHERTEXT_RETENTION_DAYS: "30"
+  _MESSENGER_CLEANUP_INTERVAL_MS: "300000"
   # Derive these from _SERVICE_NAME unless a trigger deliberately overrides
   # them.  This keeps prod builds from ever reusing the dev migration job or
   # database secret.
@@ -177,8 +186,12 @@ steps:
           --image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA" \
           --region="${_REGION}" \
           --platform=managed \
+          --min-instances="${_MIN_INSTANCES}" \
+          --max-instances="${_MAX_INSTANCES}" \
+          --concurrency="${_CONCURRENCY}" \
+          --timeout="${_TIMEOUT}" \
           --labels="managed-by=gcp-cloud-build-deploy-cloud-run,commit-sha=$COMMIT_SHA,gcb-build-id=$BUILD_ID" \
-          --update-env-vars="ACTIVITY_PUB_DELIVERY_ENABLED=${_ACTIVITY_PUB_DELIVERY_ENABLED}" \
+          --update-env-vars="ACTIVITY_PUB_DELIVERY_ENABLED=${_ACTIVITY_PUB_DELIVERY_ENABLED},POOL_SIZE=${_POOL_SIZE},MESSENGER_CIPHERTEXT_RETENTION_DAYS=${_MESSENGER_CIPHERTEXT_RETENTION_DAYS},MESSENGER_CLEANUP_INTERVAL_MS=${_MESSENGER_CLEANUP_INTERVAL_MS}" \
           --update-secrets="ACTIVITY_PUB_PUBLIC_KEY_PEM=relay-activitypub-public-key-dev:latest,ACTIVITY_PUB_PRIVATE_KEY_PEM=relay-activitypub-private-key-dev:latest,COMMUNITY_NOTES_RATER_HMAC_SECRET=$$rater_secret" \
           --quiet
     waitFor: ["migrate-dev"]

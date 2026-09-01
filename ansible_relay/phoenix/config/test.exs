@@ -15,6 +15,9 @@ config :ansible_relay, :port, String.to_integer(System.get_env("RELAY_TEST_PORT"
 # burst-coalescing tests stay fast.
 config :ansible_relay, :push_sender, AnsibleRelay.Push.TestSender
 config :ansible_relay, :push_wake_debounce_ms, 100
+# Tests invoke retention cleanup explicitly so the application-level timer does
+# not race SQL sandbox ownership between unrelated cases.
+config :ansible_relay, :messenger_cleanup_interval_ms, 0
 config :ansible_relay, :persist_did_accounts, false
 config :ansible_relay, :allow_dev_zkp_proofs, true
 # Most controller fixtures exercise historical Ed25519 verification. Dedicated

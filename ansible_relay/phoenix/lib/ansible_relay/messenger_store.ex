@@ -9,7 +9,7 @@ defmodule AnsibleRelay.MessengerStore do
   use GenServer
   import Ecto.Query
 
-  alias AnsibleRelay.Repo
+  alias AnsibleRelay.{MessengerPolicy, Repo}
 
   @plaintext_fields ["plaintext", "body", "message", "text"]
 
@@ -93,6 +93,7 @@ defmodule AnsibleRelay.MessengerStore do
     with {:ok, subject_did} <- fetch_string(attrs, "subject_did"),
          {:ok, device_id} <- fetch_string(attrs, "device_id"),
          {:ok, bundle} <- fetch_map(attrs, "bundle"),
+         :ok <- MessengerPolicy.validate_device(subject_did, device_id, bundle),
          {:ok, messenger_identity_key} <- fetch_string(bundle, "messenger_identity_key"),
          {:ok, signed_pre_key_id} <- fetch_integer(bundle, "signed_pre_key_id"),
          {:ok, signed_pre_key} <- fetch_string(bundle, "signed_pre_key"),
@@ -144,6 +145,8 @@ defmodule AnsibleRelay.MessengerStore do
     with {:ok, subject_did} <- fetch_string(attrs, "subject_did"),
          {:ok, device_id} <- fetch_string(attrs, "device_id"),
          {:ok, pre_keys} <- fetch_list(attrs, "pre_keys"),
+         :ok <- MessengerPolicy.validate_database_strings([subject_did, device_id]),
+         :ok <- MessengerPolicy.validate_pre_keys(pre_keys),
          :ok <- ensure_active_device(subject_did, device_id),
          {:ok, normalized_pre_keys} <- normalize_pre_keys(pre_keys) do
       now = now()
@@ -266,37 +269,40 @@ defmodule AnsibleRelay.MessengerStore do
   end
 
   def store_messages(messages) when is_list(messages) and messages != [] do
-    Repo.transaction(fn ->
-      Enum.map(messages, fn attrs ->
-        case insert_message(attrs) do
-          {:ok, message, inserted?} -> {message, inserted?}
-          {:error, reason} -> Repo.rollback(reason)
-        end
+    with :ok <- MessengerPolicy.validate_messages(messages) do
+      Repo.transaction(fn ->
+        Enum.map(messages, fn attrs ->
+          case insert_message(attrs) do
+            {:ok, message, inserted?} -> {message, inserted?}
+            {:error, reason} -> Repo.rollback(reason)
+          end
+        end)
       end)
-    end)
-    |> case do
-      {:ok, results} ->
-        results
-        |> Enum.filter(fn {_message, inserted?} -> inserted? end)
-        |> Enum.map(fn {message, _inserted?} ->
-          {message["sender_did"], message["recipient_did"]}
-        end)
-        |> Enum.uniq()
-        |> Enum.each(fn {sender_did, recipient_did} ->
-          AnsibleRelay.Push.WakeScheduler.mailbox_delivered(sender_did, recipient_did)
-        end)
+      |> case do
+        {:ok, results} ->
+          results
+          |> Enum.filter(fn {_message, inserted?} -> inserted? end)
+          |> Enum.map(fn {message, _inserted?} ->
+            {message["sender_did"], message["recipient_did"]}
+          end)
+          |> Enum.uniq()
+          |> Enum.each(fn {sender_did, recipient_did} ->
+            AnsibleRelay.Push.WakeScheduler.mailbox_delivered(sender_did, recipient_did)
+          end)
 
-        {:ok, Enum.map(results, fn {message, _inserted?} -> message end)}
+          {:ok, Enum.map(results, fn {message, _inserted?} -> message end)}
 
-      {:error, reason} ->
-        {:error, reason}
+        {:error, reason} ->
+          {:error, reason}
+      end
     end
   end
 
   def store_messages(_messages), do: {:error, :messages_required}
 
   defp insert_message(attrs) do
-    with :ok <- reject_plaintext_fields(attrs),
+    with :ok <- MessengerPolicy.validate_message(attrs),
+         :ok <- reject_plaintext_fields(attrs),
          {:ok, message_id} <- fetch_string(attrs, "message_id"),
          {:ok, sender_did} <- fetch_string(attrs, "sender_did"),
          {:ok, sender_device_id} <- fetch_string(attrs, "sender_device_id"),
@@ -409,11 +415,14 @@ defmodule AnsibleRelay.MessengerStore do
     end
   end
 
-  def purge_expired_messages do
+  def purge_expired_messages(limit \\ 1_000) when is_integer(limit) and limit > 0 do
     Repo.transaction(fn ->
       expired_ids =
         Message
         |> where([message], message.expires_at <= ^now())
+        |> order_by([message], asc: message.id)
+        |> limit(^limit)
+        |> lock("FOR UPDATE SKIP LOCKED")
         |> select([message], message.message_id)
         |> Repo.all()
 
@@ -432,6 +441,34 @@ defmodule AnsibleRelay.MessengerStore do
       {:ok, count} -> count
       {:error, _reason} -> 0
     end
+  end
+
+  def metrics_snapshot do
+    message_count = Repo.aggregate(Message, :count, :id)
+
+    available_pre_keys =
+      PreKey
+      |> where([pre_key], is_nil(pre_key.reserved_at))
+      |> Repo.aggregate(:count, :id)
+
+    oldest_inserted_at =
+      Message
+      |> select([message], min(message.inserted_at))
+      |> Repo.one()
+
+    oldest_age_seconds =
+      case oldest_inserted_at do
+        nil -> 0
+        inserted_at -> max(DateTime.diff(now(), inserted_at, :second), 0)
+      end
+
+    %{
+      message_count: message_count,
+      available_pre_keys: available_pre_keys,
+      oldest_ciphertext_age_seconds: oldest_age_seconds
+    }
+  rescue
+    _ -> %{message_count: 0, available_pre_keys: 0, oldest_ciphertext_age_seconds: 0}
   end
 
   def reset do

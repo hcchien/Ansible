@@ -25,6 +25,16 @@ config :ansible_relay, :identity_challenge_ttl_seconds, 600
 config :ansible_relay, :identity_recovery_grace_seconds, 259_200
 config :ansible_relay, :port, 4000
 
+# Opaque Messenger transport resource bounds. The cleanup worker uses small,
+# repeatable batches so retention cannot monopolize the shared Cloud SQL pool.
+config :ansible_relay, :messenger_cleanup_interval_ms, 300_000
+config :ansible_relay, :messenger_cleanup_batch_size, 1_000
+config :ansible_relay, :messenger_cleanup_max_batches, 10
+config :ansible_relay, :messenger_max_pre_keys_per_request, 100
+config :ansible_relay, :messenger_max_batch_messages, 32
+config :ansible_relay, :messenger_max_ciphertext_bytes, 131_072
+config :ansible_relay, :messenger_max_key_bytes, 4_096
+
 # Phase 2.3 — op snapshot lifecycle.
 # Snapshot signing key: a 32-byte Ed25519 seed in lowercase hex (64 chars).
 # Unset here so dev/test derive a deterministic local key; production sets it

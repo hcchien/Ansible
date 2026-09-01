@@ -35,6 +35,26 @@ if config_env() == :prod do
          :messenger_ciphertext_retention_days,
          messenger_ciphertext_retention_days
 
+  messenger_cleanup_interval_ms = env_int.("MESSENGER_CLEANUP_INTERVAL_MS", 300_000)
+  messenger_cleanup_batch_size = env_int.("MESSENGER_CLEANUP_BATCH_SIZE", 1_000)
+  messenger_cleanup_max_batches = env_int.("MESSENGER_CLEANUP_MAX_BATCHES", 10)
+
+  if messenger_cleanup_interval_ms < 1_000 do
+    raise "MESSENGER_CLEANUP_INTERVAL_MS must be at least 1000"
+  end
+
+  if messenger_cleanup_batch_size < 1 do
+    raise "MESSENGER_CLEANUP_BATCH_SIZE must be at least 1"
+  end
+
+  if messenger_cleanup_max_batches < 1 do
+    raise "MESSENGER_CLEANUP_MAX_BATCHES must be at least 1"
+  end
+
+  config :ansible_relay, :messenger_cleanup_interval_ms, messenger_cleanup_interval_ms
+  config :ansible_relay, :messenger_cleanup_batch_size, messenger_cleanup_batch_size
+  config :ansible_relay, :messenger_cleanup_max_batches, messenger_cleanup_max_batches
+
   database_url =
     System.get_env("DATABASE_URL") ||
       raise """

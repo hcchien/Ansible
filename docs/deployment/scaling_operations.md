@@ -11,7 +11,10 @@ so they can run as **N stateless Cloud Run instances** (or a GKE deployment):
 
 - **Relay**: ops are Postgres-backed (`OpStore`); identity verification reads
   through to Postgres (`IdentityCache`); rate-limit checks are ETS (per-instance)
-  unless a shared limiter is configured (below).
+  unless a shared limiter is configured (below). Messenger device bundles,
+  pre-keys, opaque ciphertext, ACKs, cursors, and TTL cleanup are PostgreSQL-
+  backed; the cleanup worker uses `FOR UPDATE SKIP LOCKED`, so duplicate workers
+  do not delete the same batch.
 - **Issuer**: personhood-binding and provider-session stores are Postgres-backed
   when `DATABASE_URL` is set; duplicate-prevention is enforced by DB constraints
   across instances.
@@ -25,6 +28,9 @@ so they can run as **N stateless Cloud Run instances** (or a GKE deployment):
 | `REDIS_URL` | Shared cross-instance abuse limiter (accurate rate limits behind a load balancer; otherwise per-instance). |
 | `LIBCLUSTER_HOSTS` | Comma-separated node names → Erlang clustering (GKE/Presence). Unset = no clustering (Cloud Run scales via shared DB, no distribution needed). |
 | `POOL_SIZE`, `DATABASE_SSL` | DB pool size / TLS. |
+| `MESSENGER_CIPHERTEXT_RETENTION_DAYS` | Opaque Messenger ciphertext TTL; default 30 days. |
+| `MESSENGER_CLEANUP_INTERVAL_MS` | Periodic TTL cleanup interval; default 5 minutes. |
+| `MESSENGER_CLEANUP_BATCH_SIZE`, `MESSENGER_CLEANUP_MAX_BATCHES` | Bound delete work per tick; defaults 1000 rows × 10 batches. |
 | `eager_identity_cache` (config) | Opt back into loading all DIDs at boot; default is lazy read-through. |
 
 ### Issuer
@@ -97,9 +103,12 @@ Tracked here so they are not mistaken for done:
 2. **Polling → push** — clients poll the delta/timeline on intervals
    (thundering-herd at scale). Replace with a WebSocket firehose subscription
    (`genesis_hosting.md` C-3) + jittered backoff / ETag-304.
-3. **ActivityPub / messenger delivery** — outbound HTTP fan-out backed by a
-   Postgres retry queue can back up; move to dedicated workers (Oban) with
-   backpressure + dead-letter.
+3. **ActivityPub delivery** — outbound HTTP fan-out backed by a Postgres retry
+   queue can back up; move to dedicated workers (Oban) with backpressure +
+   dead-letter. Messenger's current server path stores only opaque mailbox rows
+   and sends content-free wake hints; its TTL cleanup is already bounded and
+   safe across instances, but high-volume load testing is still required before
+   raising the single-instance default.
 4. **Frontend** — serve static assets via CDN; put Cloud Armor in front.
 5. **AppView client-side re-verification** — clients currently trust the
    first-party AppView's ingest-time signature check; full re-verification needs
@@ -108,6 +117,8 @@ Tracked here so they are not mistaken for done:
    only needed when the building-block cache stops keeping up (measure first).
    (Phase C fan-out-on-write + celebrity handling is now implemented; see above.)
 7. **AbuseDetector** is per-instance unless `REDIS_URL` is set (see above).
+   Therefore the Relay Cloud Build default remains `_MAX_INSTANCES=1`; configure
+   Redis before increasing it.
 
 See `docs/superpowers/specs/2026-06-04-scalable-following-feed-appview-design.md`
 for the following-feed scale model and `docs/architecture/genesis_hosting.md` for

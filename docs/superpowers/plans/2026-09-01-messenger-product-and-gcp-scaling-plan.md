@@ -268,9 +268,18 @@ user, or prevent remaining devices from communicating.
 
 ### Phase 3: Production Delivery And GCP Scale
 
+Implementation status: the contained single-instance deploy baseline is ready.
+Cloud Build now pins explicit min/max instances, concurrency, timeout, DB pool,
+retention, and cleanup settings; the Relay enforces bounded Messenger inputs and
+per-operation abuse limits, exports aggregate Messenger metrics, and runs
+bounded PostgreSQL-backed TTL cleanup. Horizontal scale remains gated on shared
+Redis abuse controls and measured load/failure testing.
+
 - Deploy the Phoenix context on Cloud Run with explicit concurrency,
   min/max-instance, database pool, timeout, and secret settings.
-- Add Oban mailbox cleanup/delivery jobs and Redis-backed abuse controls.
+- Move cleanup to Oban only when measured volume needs retry/dead-letter
+  orchestration; configure Redis-backed abuse controls before scaling past one
+  instance.
 - Add content-free push wake-up, cursor catch-up, SLOs, dashboards, and alerts.
 - Load-test send, sync, ACK, reconnect, pre-key reservation, and TTL deletion.
 

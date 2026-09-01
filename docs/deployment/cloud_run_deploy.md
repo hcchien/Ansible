@@ -210,7 +210,10 @@ gcloud run deploy ansible-relay \
   --vpc-connector=ansible-conn \
   --vpc-egress=private-ranges-only \
   --min-instances=1 \
-  --set-env-vars="ISSUER_DID=${ISSUER_DID},ISSUER_PUBLIC_KEY_HEX=${ISSUER_PUB_HEX},RELAY_ORIGIN=https://${RELAY_HOST},FORUM_HOST_BASE_URL=https://${RELAY_HOST},WEB_ALLOWED_ORIGINS=https://${WEB_HOST},WEBAUTHN_RP_ID=${WEBAUTHN_RP_ID},WEBAUTHN_ORIGIN=${WEBAUTHN_ORIGIN},WEBAUTHN_SYNC_CAPABILITY_REQUIRED=true,DATABASE_SSL=false,POOL_SIZE=10" \
+  --max-instances=1 \
+  --concurrency=40 \
+  --timeout=30s \
+  --set-env-vars="ISSUER_DID=${ISSUER_DID},ISSUER_PUBLIC_KEY_HEX=${ISSUER_PUB_HEX},RELAY_ORIGIN=https://${RELAY_HOST},FORUM_HOST_BASE_URL=https://${RELAY_HOST},WEB_ALLOWED_ORIGINS=https://${WEB_HOST},WEBAUTHN_RP_ID=${WEBAUTHN_RP_ID},WEBAUTHN_ORIGIN=${WEBAUTHN_ORIGIN},WEBAUTHN_SYNC_CAPABILITY_REQUIRED=true,DATABASE_SSL=false,POOL_SIZE=10,MESSENGER_CIPHERTEXT_RETENTION_DAYS=30,MESSENGER_CLEANUP_INTERVAL_MS=300000" \
   --set-secrets="DATABASE_URL=relay-database-url:latest,ANSIBLE_RELAY_SNAPSHOT_SIGNING_KEY_HEX=relay-snapshot-signing-key:latest,SYNC_CAPABILITY_SECRET=relay-sync-capability-secret:latest" \
   --allow-unauthenticated
 ```
@@ -218,6 +221,11 @@ gcloud run deploy ansible-relay \
 `ISSUER_PUBLIC_KEY_HEX` must be the public half of `issuer-priv-key`.
 `WEB_ALLOWED_ORIGINS` must list the real frontend origin(s) — the default is
 localhost and would block the deployed frontend.
+
+The initial Relay is intentionally capped at one instance because its fallback
+abuse limiter is process-local. Configure `REDIS_URL` with the shared adapter,
+then calculate `max_instances * POOL_SIZE` against the Cloud SQL budget before
+raising `--max-instances`.
 
 ### 6b. Universal links (optional, fail-closed)
 

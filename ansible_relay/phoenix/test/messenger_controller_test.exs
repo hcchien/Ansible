@@ -604,6 +604,54 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
     assert mailbox.status == 403
   end
 
+  test "message ingestion is rate limited per operation without logging DID labels" do
+    previous_policy = Application.get_env(:ansible_relay, :abuse_detector)
+
+    Application.put_env(:ansible_relay, :abuse_detector, %{
+      did: %{capacity: 1, refill_per_second: 0, suspension_ms: 60_000},
+      peer: %{capacity: 20, refill_per_second: 20, suspension_ms: 60_000}
+    })
+
+    on_exit(fn -> Application.put_env(:ansible_relay, :abuse_detector, previous_policy) end)
+
+    {alice_public_key, alice_private_key} = ed25519_keypair()
+    seed_did("did:plc:alice", alice_public_key)
+    seed_store_device("did:plc:alice", "msgdev_alice")
+    seed_store_device("did:plc:bob", "msgdev_bob")
+
+    base = %{
+      "sender_did" => "did:plc:alice",
+      "sender_device_id" => "msgdev_alice",
+      "recipient_did" => "did:plc:bob",
+      "recipient_device_id" => "msgdev_bob",
+      "ciphertext_type" => "pre_key_signal_message",
+      "ciphertext" => "opaque-ciphertext",
+      "protocol_version" => "signal-mvp-v1",
+      "created_at" => "2026-09-01T00:00:00Z"
+    }
+
+    first = Map.put(base, "message_id", "msg_rate_1")
+    second = Map.put(base, "message_id", "msg_rate_2")
+
+    assert post_json(
+             "/api/v1/messenger/messages",
+             Map.put(first, "request_signature", sign_message(alice_private_key, first))
+           ).status == 202
+
+    limited =
+      post_json(
+        "/api/v1/messenger/messages",
+        Map.put(second, "request_signature", sign_message(alice_private_key, second))
+      )
+
+    assert limited.status == 429
+    assert Jason.decode!(limited.resp_body)["error"] == "rate_limited"
+
+    metrics = AnsibleRelay.Metrics.render()
+    assert metrics =~ ~s(messenger_rate_limit_rejections_total{operation="send_message")
+    refute metrics =~ "did:plc:alice"
+  end
+
   test "multi-device fanout is atomic when one envelope conflicts" do
     {alice_public_key, alice_private_key} = ed25519_keypair()
     seed_did("did:plc:alice", alice_public_key)

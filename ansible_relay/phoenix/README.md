@@ -39,6 +39,14 @@ POSTGRES_USER="$USER" POSTGRES_PASSWORD=postgres MIX_ENV=test mix test
 | `PORT`, `POOL_SIZE`, `DATABASE_SSL` | HTTP port (`8080` in the image) / DB pool / TLS |
 | `REDIS_URL` | Optional shared cross-instance abuse limiter |
 | `LIBCLUSTER_HOSTS` | Optional Erlang clustering (GKE) |
+| `MESSENGER_CIPHERTEXT_RETENTION_DAYS` | Opaque ciphertext retention (default `30`, minimum `1`) |
+| `MESSENGER_CLEANUP_INTERVAL_MS` | Retention cleanup interval (default `300000`, minimum `1000`) |
+| `MESSENGER_CLEANUP_BATCH_SIZE`, `MESSENGER_CLEANUP_MAX_BATCHES` | Bounded cleanup work per interval (defaults `1000` / `10`) |
+
+The checked-in Cloud Build deploy keeps the Relay at one instance by default.
+This preserves global Messenger abuse limits with the in-process limiter. Set
+`REDIS_URL` before raising `_MAX_INSTANCES`, and keep
+`max_instances * POOL_SIZE` within the Cloud SQL connection budget.
 
 Migrations on a release image (no `mix`): `bin/ansible_relay eval "AnsibleRelay.Release.migrate()"`.
 Full deploy: [`../../docs/deployment/cloud_run_deploy.md`](../../docs/deployment/cloud_run_deploy.md);
@@ -88,6 +96,15 @@ dependency-free ETS-backed module (`AnsibleRelay.Metrics`) supervised in
 | `relay_signature_verifications_total` | counter | `result` (`pass`/`fail`) | op Ed25519 verification |
 | `relay_abuse_rejections_total` | counter | `subject_type` | abuse-limiter rejections (`did` wired; `peer` TODO Phase 3) |
 | `relay_wake_sends_total` | counter | `category` | push wake-scheduler sends |
+| `messenger_requests_total` | counter | `operation`, `result` | Messenger API outcomes; identifiers are never labels |
+| `messenger_messages_accepted_total` | counter | — | opaque ciphertext envelopes accepted |
+| `messenger_mailbox_messages_returned_total` | counter | — | ciphertext envelopes returned to devices |
+| `messenger_acks_total` | counter | — | accepted ACKs |
+| `messenger_cleanup_runs_total` | counter | `result` | retention cleanup cycles |
+| `messenger_cleanup_deleted_total` | counter | — | expired ciphertext rows deleted |
+| `messenger_ciphertext_rows` | gauge | — | retained ciphertext rows |
+| `messenger_available_pre_keys` | gauge | — | unreserved one-time pre-keys |
+| `messenger_oldest_ciphertext_age_seconds` | gauge | — | age of oldest retained ciphertext |
 | `relay_reports_total` | counter | `rail` (`signed_intent`/`web_session`) | forum-host report intake |
 
 These back the later phases' exit criteria (op-table growth, delta-poll QPS,

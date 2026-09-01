@@ -17,6 +17,7 @@ defmodule AnsibleRelay.Application do
           AnsibleRelay.DidAccountCache,
           AnsibleRelay.WebSessionStore,
           AnsibleRelay.MessengerStore,
+          AnsibleRelay.MessengerCleanupWorker,
           AnsibleRelay.AbuseDetector,
           AnsibleRelay.ForumHost.ReportRateLimiter,
           AnsibleRelay.CommunityNotes.RateLimiter,

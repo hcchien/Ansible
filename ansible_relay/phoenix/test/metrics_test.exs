@@ -36,6 +36,10 @@ defmodule AnsibleRelay.MetricsTest do
     assert body =~ "# TYPE relay_op_table_rows gauge"
     assert body =~ "# TYPE relay_signature_verifications_total counter"
     assert body =~ "# TYPE relay_delta_request_duration_seconds histogram"
+    assert body =~ "# TYPE messenger_requests_total counter"
+    assert body =~ "# TYPE messenger_cleanup_runs_total counter"
+    assert body =~ "# TYPE messenger_mailbox_duration_seconds histogram"
+    assert body =~ "# TYPE messenger_ciphertext_rows gauge"
   end
 
   test "ingesting an op surfaces the ingest and signature counters at /metrics" do
@@ -56,6 +60,8 @@ defmodule AnsibleRelay.MetricsTest do
     assert Metrics.poll_gauges() == :ok
     body = Metrics.render()
     assert body =~ ~r/relay_op_table_rows \d+/
+    assert body =~ ~r/messenger_ciphertext_rows \d+/
+    assert body =~ ~r/messenger_available_pre_keys \d+/
   end
 
   # --- helpers (mirror ops_controller_test) ---

@@ -7,7 +7,7 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
 
   import Plug.Conn
 
-  alias AnsibleRelay.{AbuseDetector, IdentityCache, MessengerStore}
+  alias AnsibleRelay.{AbuseDetector, IdentityCache, MessengerPolicy, MessengerStore, Metrics}
 
   @plaintext_fields ["plaintext", "body", "message", "text"]
 
@@ -17,17 +17,21 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
          {:ok, bundle} <- fetch_map(params, "bundle"),
          {:ok, binding} <- fetch_map(params, "binding"),
          {:ok, binding_signature} <- fetch_string(params, "binding_signature"),
+         :ok <- MessengerPolicy.validate_device(subject_did, device_id, bundle),
          :ok <- validate_device_binding(subject_did, device_id, bundle, binding),
          :ok <- verify_subject_signature(subject_did, binding, binding_signature),
+         :ok <- check_did_rate_limit("publish_device", subject_did),
          {:ok, device} <- MessengerStore.publish_device(params) do
+      record_success("publish_device")
+
       send_json(conn, 201, %{
         accepted: true,
         subject_did: device["subject_did"],
         device_id: device["device_id"]
       })
     else
-      {:error, reason} ->
-        send_messenger_error(conn, reason)
+      error ->
+        send_messenger_error(conn, "publish_device", error)
     end
   end
 
@@ -35,6 +39,8 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
     with {:ok, subject_did} <- fetch_string(params, "subject_did"),
          {:ok, device_id} <- fetch_string(params, "device_id"),
          {:ok, pre_keys} <- fetch_list(params, "pre_keys"),
+         :ok <- MessengerPolicy.validate_database_strings([subject_did, device_id]),
+         :ok <- MessengerPolicy.validate_pre_keys(pre_keys),
          {:ok, request_signature} <- fetch_string(params, "request_signature"),
          :ok <-
            verify_subject_signature(
@@ -46,12 +52,13 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
              },
              request_signature
            ),
+         :ok <- check_did_rate_limit("publish_pre_keys", subject_did),
          {:ok, pre_keys} <- MessengerStore.publish_pre_keys(params) do
+      record_success("publish_pre_keys")
       send_json(conn, 201, %{accepted: true, published: length(pre_keys)})
     else
-      {:error, reason} ->
-        status = if reason == :device_not_found, do: 404, else: messenger_error_status(reason)
-        send_json(conn, status, %{error: to_string(reason)})
+      error ->
+        send_messenger_error(conn, "publish_pre_keys", error)
     end
   end
 
@@ -59,6 +66,13 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
     with {:ok, sender_did} <- fetch_string(params, "sender_did"),
          {:ok, sender_device_id} <- fetch_string(params, "sender_device_id"),
          {:ok, request_id} <- fetch_string(params, "request_id"),
+         :ok <-
+           MessengerPolicy.validate_database_strings([
+             recipient_did,
+             sender_did,
+             sender_device_id,
+             request_id
+           ]),
          {:ok, request_signature} <- fetch_string(params, "request_signature"),
          :ok <-
            verify_subject_signature(
@@ -71,7 +85,7 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
              },
              request_signature
            ),
-         :ok <- AbuseDetector.check_did("messenger_pre_key:#{sender_did}"),
+         :ok <- check_did_rate_limit("reserve_pre_key", sender_did),
          {:ok, device} <-
            MessengerStore.reserve_bundle(
              recipient_did,
@@ -79,24 +93,29 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
              sender_device_id,
              request_id
            ) do
+      record_success("reserve_pre_key")
       send_json(conn, 200, device)
     else
-      {:error, :rate_limited, detail} ->
-        send_json(conn, 429, %{error: "rate_limited", detail: detail})
-
-      {:error, reason} ->
-        send_messenger_error(conn, reason)
+      error ->
+        send_messenger_error(conn, "reserve_pre_key", error)
     end
   end
 
   def devices(conn, %{"subject_did" => subject_did}) do
-    {:ok, body} = MessengerStore.device_availability(subject_did)
-    send_json(conn, 200, body)
+    with :ok <- MessengerPolicy.validate_database_strings([subject_did]),
+         :ok <- check_peer_rate_limit("device_availability", peer_key(conn)),
+         {:ok, body} <- MessengerStore.device_availability(subject_did) do
+      record_success("device_availability")
+      send_json(conn, 200, body)
+    else
+      error -> send_messenger_error(conn, "device_availability", error)
+    end
   end
 
   def revoke_device(conn, %{"device_id" => device_id} = params) do
     with {:ok, subject_did} <- fetch_string(params, "subject_did"),
          {:ok, reason} <- fetch_string(params, "reason"),
+         :ok <- MessengerPolicy.validate_database_strings([subject_did, device_id, reason]),
          {:ok, request_signature} <- fetch_string(params, "request_signature"),
          :ok <-
            verify_subject_signature(
@@ -104,11 +123,12 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
              %{"subject_did" => subject_did, "device_id" => device_id, "reason" => reason},
              request_signature
            ),
+         :ok <- check_did_rate_limit("revoke_device", subject_did),
          {:ok, _device} <- MessengerStore.revoke_device(subject_did, device_id, reason) do
+      record_success("revoke_device")
       send_json(conn, 200, %{accepted: true, device_id: device_id})
     else
-      {:error, :device_not_found} -> send_json(conn, 404, %{error: "device_not_found"})
-      {:error, reason} -> send_messenger_error(conn, reason)
+      error -> send_messenger_error(conn, "revoke_device", error)
     end
   end
 
@@ -123,6 +143,7 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
          {:ok, ciphertext} <- fetch_string(params, "ciphertext"),
          {:ok, protocol_version} <- fetch_string(params, "protocol_version"),
          {:ok, created_at} <- fetch_string(params, "created_at"),
+         :ok <- MessengerPolicy.validate_message(params),
          {:ok, request_signature} <- fetch_string(params, "request_signature"),
          :ok <-
            verify_subject_signature(
@@ -140,16 +161,20 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
              },
              request_signature
            ),
+         :ok <- check_did_rate_limit("send_message", sender_did),
          {:ok, message} <- MessengerStore.store_message(params) do
+      record_success("send_message")
+      Metrics.inc("messenger_messages_accepted_total")
       send_json(conn, 202, %{accepted: true, message_id: message["message_id"]})
     else
-      {:error, reason} ->
-        send_json(conn, messenger_error_status(reason), %{error: to_string(reason)})
+      error ->
+        send_messenger_error(conn, "send_message", error)
     end
   end
 
   def send_message_batch(conn, params) do
     with {:ok, messages} <- fetch_list(params, "messages"),
+         :ok <- MessengerPolicy.validate_messages(messages),
          {:ok, sender_did} <- validate_message_batch(messages),
          {:ok, request_signature} <- fetch_string(params, "request_signature"),
          :ok <-
@@ -158,20 +183,26 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
              %{"messages" => messages},
              request_signature
            ),
+         :ok <- check_did_rate_limit("send_message_batch", sender_did),
          {:ok, stored} <- MessengerStore.store_messages(messages) do
+      record_success("send_message_batch")
+      Metrics.inc("messenger_messages_accepted_total", %{}, length(stored))
+
       send_json(conn, 202, %{
         accepted: true,
         message_ids: Enum.map(stored, & &1["message_id"])
       })
     else
-      {:error, reason} ->
-        send_json(conn, messenger_error_status(reason), %{error: to_string(reason)})
+      error ->
+        send_messenger_error(conn, "send_message_batch", error)
     end
   end
 
   def mailbox(conn, params) do
     with {:ok, recipient_did} <- fetch_string(params, "recipient_did"),
          {:ok, recipient_device_id} <- fetch_string(params, "recipient_device_id"),
+         :ok <-
+           MessengerPolicy.validate_database_strings([recipient_did, recipient_device_id]),
          {:ok, request_signature} <- fetch_string(params, "request_signature"),
          :ok <-
            verify_subject_signature(
@@ -182,18 +213,33 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
              },
              request_signature
            ),
+         :ok <- check_did_rate_limit("mailbox", recipient_did),
          {:ok, result} <-
-           MessengerStore.mailbox(recipient_did, recipient_device_id, Map.get(params, "cursor")) do
+           Metrics.time("messenger_mailbox_duration_seconds", fn ->
+             MessengerStore.mailbox(
+               recipient_did,
+               recipient_device_id,
+               Map.get(params, "cursor")
+             )
+           end) do
+      record_success("mailbox")
+      Metrics.inc("messenger_mailbox_messages_returned_total", %{}, length(result.messages))
       send_json(conn, 200, result)
     else
-      {:error, reason} ->
-        send_json(conn, messenger_error_status(reason), %{error: to_string(reason)})
+      error ->
+        send_messenger_error(conn, "mailbox", error)
     end
   end
 
   def ack(conn, %{"message_id" => message_id} = params) do
     with {:ok, recipient_did} <- fetch_string(params, "recipient_did"),
          {:ok, recipient_device_id} <- fetch_string(params, "recipient_device_id"),
+         :ok <-
+           MessengerPolicy.validate_database_strings([
+             message_id,
+             recipient_did,
+             recipient_device_id
+           ]),
          {:ok, request_signature} <- fetch_string(params, "request_signature"),
          :ok <-
            verify_subject_signature(
@@ -205,14 +251,14 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
              },
              request_signature
            ),
+         :ok <- check_did_rate_limit("ack", recipient_did),
          {:ok, message} <- MessengerStore.ack(message_id, recipient_did, recipient_device_id) do
+      record_success("ack")
+      Metrics.inc("messenger_acks_total")
       send_json(conn, 200, %{accepted: true, message_id: message["message_id"]})
     else
-      {:error, :not_found} ->
-        send_json(conn, 404, %{error: "not_found"})
-
-      {:error, reason} ->
-        send_json(conn, messenger_error_status(reason), %{error: to_string(reason)})
+      error ->
+        send_messenger_error(conn, "ack", error)
     end
   end
 
@@ -244,6 +290,7 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
 
   defp verify_subject_signature(subject_did, payload, signature) do
     cond do
+      byte_size(signature) > 4_096 -> {:error, :signature_too_large}
       not IdentityCache.verified?(subject_did) -> {:error, :unverified_did}
       IdentityCache.verify_signature(subject_did, canonical_json(payload), signature) -> :ok
       true -> {:error, :invalid_signature}
@@ -300,7 +347,45 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
 
   defp canonical_json(value), do: Jason.encode!(value)
 
-  defp send_messenger_error(conn, reason) do
+  defp check_did_rate_limit(operation, did) do
+    case AbuseDetector.check_did("messenger:#{operation}:#{did}") do
+      :ok ->
+        :ok
+
+      {:error, :rate_limited, _detail} = error ->
+        Metrics.inc("messenger_rate_limit_rejections_total", %{operation: operation})
+        error
+    end
+  end
+
+  defp check_peer_rate_limit(operation, peer) do
+    case AbuseDetector.check_peer("messenger:#{operation}:#{peer}") do
+      :ok ->
+        :ok
+
+      {:error, :rate_limited, _detail} = error ->
+        Metrics.inc("messenger_rate_limit_rejections_total", %{operation: operation})
+        error
+    end
+  end
+
+  defp peer_key(%Plug.Conn{remote_ip: remote_ip}) do
+    remote_ip
+    |> :inet.ntoa()
+    |> to_string()
+  end
+
+  defp record_success(operation) do
+    Metrics.inc("messenger_requests_total", %{operation: operation, result: "success"})
+  end
+
+  defp send_messenger_error(conn, operation, {:error, :rate_limited, detail}) do
+    Metrics.inc("messenger_requests_total", %{operation: operation, result: "rate_limited"})
+    send_json(conn, 429, %{error: "rate_limited", detail: detail})
+  end
+
+  defp send_messenger_error(conn, operation, {:error, reason}) do
+    Metrics.inc("messenger_requests_total", %{operation: operation, result: "error"})
     send_json(conn, messenger_error_status(reason), %{error: to_string(reason)})
   end
 
@@ -309,6 +394,8 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
   defp messenger_error_status(:device_not_active), do: 403
   defp messenger_error_status(:message_id_conflict), do: 409
   defp messenger_error_status(:invalid_cursor), do: 400
+  defp messenger_error_status(:device_not_found), do: 404
+  defp messenger_error_status(:not_found), do: 404
   defp messenger_error_status(_reason), do: 422
 
   defp send_json(conn, status, body) do

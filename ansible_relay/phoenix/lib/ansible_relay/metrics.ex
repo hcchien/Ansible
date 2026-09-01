@@ -33,6 +33,12 @@ defmodule AnsibleRelay.Metrics do
     * `identity_recovery_pending_total` — recovery anchors entering the grace window
     * `identity_veto_total` — pending recovery anchors vetoed (account frozen)
     * `identity_alert_sends_total{reason}` — identity-alert wake pushes sent
+    * `messenger_requests_total{operation,result}` — Messenger API outcomes
+    * `messenger_messages_accepted_total` — opaque envelopes accepted
+    * `messenger_mailbox_messages_returned_total` — envelopes returned to devices
+    * `messenger_acks_total` — mailbox acknowledgements accepted
+    * `messenger_cleanup_runs_total{result}` — ciphertext retention cleanup runs
+    * `messenger_cleanup_deleted_total` — expired ciphertext rows deleted
   """
 
   use GenServer
@@ -69,12 +75,31 @@ defmodule AnsibleRelay.Metrics do
     "identity_veto_total" => {:counter, "Pending recovery anchors vetoed (account frozen)."},
     "identity_alert_sends_total" =>
       {:counter, "Identity-alert wake pushes sent to enrolled devices, by reason."},
+    "messenger_requests_total" =>
+      {:counter, "Messenger API request outcomes by bounded operation and result labels."},
+    "messenger_messages_accepted_total" =>
+      {:counter, "Opaque Messenger ciphertext envelopes accepted."},
+    "messenger_mailbox_messages_returned_total" =>
+      {:counter, "Opaque Messenger ciphertext envelopes returned to recipient devices."},
+    "messenger_acks_total" => {:counter, "Messenger mailbox acknowledgements accepted."},
+    "messenger_rate_limit_rejections_total" =>
+      {:counter, "Messenger requests rejected by rate limiting, by operation."},
+    "messenger_cleanup_runs_total" =>
+      {:counter, "Messenger ciphertext retention cleanup runs by result."},
+    "messenger_cleanup_deleted_total" => {:counter, "Expired Messenger ciphertext rows deleted."},
+    "messenger_mailbox_duration_seconds" =>
+      {:histogram, "Messenger mailbox query latency in seconds."},
+    "messenger_ciphertext_rows" =>
+      {:gauge, "Current count of retained opaque Messenger ciphertext rows."},
+    "messenger_available_pre_keys" =>
+      {:gauge, "Current count of unreserved Messenger one-time pre-keys."},
+    "messenger_oldest_ciphertext_age_seconds" =>
+      {:gauge, "Age in seconds of the oldest retained Messenger ciphertext."},
     # Constitutional product measurement (ProductPulse) — aggregate-only.
     "elix_registered_dids" => {:gauge, "Registered DID accounts on this relay."},
     "elix_active_authors" =>
       {:gauge, "Distinct authors with ≥1 op in the window (aggregate only)."},
-    "elix_active_boards" =>
-      {:gauge, "Distinct boards with thread/post activity in the window."},
+    "elix_active_boards" => {:gauge, "Distinct boards with thread/post activity in the window."},
     "elix_new_authors" =>
       {:gauge, "Authors whose first op landed inside the window (activation)."},
     "elix_returning_authors" =>
@@ -211,6 +236,17 @@ defmodule AnsibleRelay.Metrics do
   @doc "Sample gauge series. Safe to call directly in tests."
   def poll_gauges do
     set("relay_op_table_rows", %{}, op_table_rows())
+
+    snapshot = AnsibleRelay.MessengerStore.metrics_snapshot()
+    set("messenger_ciphertext_rows", %{}, snapshot.message_count)
+    set("messenger_available_pre_keys", %{}, snapshot.available_pre_keys)
+
+    set(
+      "messenger_oldest_ciphertext_age_seconds",
+      %{},
+      snapshot.oldest_ciphertext_age_seconds
+    )
+
     :ok
   rescue
     error ->
