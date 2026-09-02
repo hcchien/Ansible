@@ -52,6 +52,7 @@ class CrdtOpBuilder {
     required String threadId,
     required String content,
     String? parentPostId,
+    List<String> mentionDids = const [],
   }) {
     final opId = _uuid.v4();
     final createdAt = DateTime.now();
@@ -60,6 +61,8 @@ class CrdtOpBuilder {
       'threadId': threadId,
       'content': content,
       'parentPostId': parentPostId,
+      if (mentionDids.isNotEmpty)
+        'mentionDids': _normalizedMentionDids(authorDid, mentionDids),
       'createdAt': createdAt.toUtc().toIso8601String(),
     });
     return OpsQueueEntry(
@@ -118,6 +121,7 @@ class CrdtOpBuilder {
     required String entityId,
     required String targetId,
     required String content,
+    List<String> mentionDids = const [],
   }) {
     final opId = _uuid.v4();
     final createdAt = DateTime.now();
@@ -125,6 +129,8 @@ class CrdtOpBuilder {
       'targetId': targetId,
       'threadId': targetId,
       'content': content,
+      if (mentionDids.isNotEmpty)
+        'mentionDids': _normalizedMentionDids(authorDid, mentionDids),
       'createdAt': createdAt.toUtc().toIso8601String(),
     });
     return OpsQueueEntry(
@@ -138,6 +144,24 @@ class CrdtOpBuilder {
       schemaVersion: opSchemaVersion,
       createdAt: createdAt,
     );
+  }
+
+  static List<String> _normalizedMentionDids(
+    String authorDid,
+    Iterable<String> values,
+  ) {
+    final seen = <String>{};
+    return values
+        .map((did) => did.trim())
+        .where(
+          (did) =>
+              did.isNotEmpty &&
+              did != authorDid.trim() &&
+              did.startsWith('did:') &&
+              seen.add(did),
+        )
+        .take(10)
+        .toList(growable: false);
   }
 
   /// Build an Op for editing a comment (CRDT content delta on a `comment`).

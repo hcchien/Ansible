@@ -71,7 +71,7 @@ defmodule AnsibleRelay.Web.PushControllerTest do
         "device_id" => "dev_1",
         "push_token" => "tok_abc",
         "platform" => "fcm",
-        "categories" => ["reply", "follow", "messenger"],
+        "categories" => ["reply", "mention", "follow", "messenger"],
         "registered_at" => DateTime.utc_now() |> DateTime.to_iso8601()
       },
       overrides
@@ -117,7 +117,7 @@ defmodule AnsibleRelay.Web.PushControllerTest do
     row = Repo.get_by(DevicePushToken, subject_did: did, device_id: "dev_1")
     assert row.push_token == "tok_abc"
     assert row.platform == "fcm"
-    assert row.categories == ["reply", "follow", "messenger"]
+    assert row.categories == ["reply", "mention", "follow", "messenger"]
   end
 
   test "re-registering the same (did, device) upserts and returns 200" do

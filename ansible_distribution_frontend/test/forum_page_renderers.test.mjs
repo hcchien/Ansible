@@ -636,6 +636,7 @@ assert.match(threadDetailHtml, /class="thread-reply-item"/);
 assert.match(threadDetailHtml, /class="thread-reply-avatar/);
 assert.match(threadDetailHtml, /class="thread-mini-actions"/);
 assert.match(threadDetailHtml, /class="thread-reply-composer"/);
+assert.match(threadDetailHtml, /data-action="open-reply-draft"/);
 assert.match(threadDetailHtml, /class="right-rail thread-context-rail"/);
 assert.match(threadDetailHtml, /看板 · BOARD/);
 assert.match(threadDetailHtml, /#General/);
@@ -644,6 +645,28 @@ assert.match(threadDetailHtml, /data-target-kind="thread" data-target-ref="threa
 assert.match(threadDetailHtml, /data-target-kind="post" data-target-ref="post-201"/);
 assert.doesNotMatch(threadDetailHtml, /class="thread-posts"/);
 assert.doesNotMatch(threadDetailHtml, /路徑不可用/);
+
+const replyDraftHtml = renderPageBody(threadDetailVm, {
+  replyDraft: {
+    boardId: 'general',
+    threadId: 'thread-1',
+    body: 'Hello @alice.elix.cool',
+    mentionPickerOpen: true,
+    mentionQuery: 'ali',
+    mentionResults: [{
+      did: 'did:elix:alice',
+      handle: 'alice.elix.cool',
+      displayName: 'Alice',
+    }],
+  },
+});
+assert.match(replyDraftHtml, /data-reply-form/);
+assert.match(replyDraftHtml, /data-reply-body/);
+assert.match(replyDraftHtml, /Hello @alice\.elix\.cool/);
+assert.match(replyDraftHtml, /data-reply-mention-search/);
+assert.match(replyDraftHtml, /data-action="select-reply-mention"/);
+assert.match(replyDraftHtml, /data-did="did:elix:alice"/);
+assert.match(replyDraftHtml, /只有明確選取的公開人物會收到通知/);
 
 const handledThreadDetailVm = buildAppViewModel({
   route: { pageId: PAGE_IDS.thread, params: { boardId: 'general', threadId: 'thread-handled' } },
@@ -827,5 +850,27 @@ assert.match(notificationsHtml, /data-action="open-notification"/);
 assert.match(notificationsHtml, /data-action="mark-all-notifications-read"/);
 assert.match(notificationsHtml, /notification-unread-dot/);
 assert.match(notificationsHtml, /只保存在這個瀏覽器/);
+
+const mentionNotificationsHtml = renderPageBody(
+  buildAppViewModel({
+    route: { pageId: PAGE_IDS.notifications, params: {} },
+    session: moderatedSession,
+    forum: {
+      boards: [{ id: 'general', title: 'General' }],
+      notifications: {
+        unreadCount: 1,
+        items: [{
+          id: 'mention:post-3',
+          type: 'mention',
+          actorDid: 'did:elix:alice',
+          boardId: 'general',
+          threadId: 'thread-1',
+          isRead: false,
+        }],
+      },
+    },
+  }),
+);
+assert.match(mentionNotificationsHtml, /在回覆中提及了你/);
 
 console.log('ok - forum page renderers');

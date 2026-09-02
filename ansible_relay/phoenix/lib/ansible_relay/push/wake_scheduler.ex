@@ -8,6 +8,9 @@ defmodule AnsibleRelay.Push.WakeScheduler do
 
     * `post` insert — the parent thread's create-op author (from the op log),
       category `"reply"`, self-replies skipped;
+    * public `post` / `comment` insert — up to ten DIDs explicitly carried in
+      the signed `mentionDids` payload, category `"mention"`, self-mentions
+      skipped;
     * `follow` insert — the op's `entity_id` carries the target DID (see the
       app's `CrdtOpBuilder`), category `"follow"`, self-follows skipped;
     * messenger mailbox delivery — the recipient DID, category `"messenger"`,
@@ -56,6 +59,20 @@ defmodule AnsibleRelay.Push.WakeScheduler do
   end
 
   @doc false
+  def mention_recipients(payload, author_did) when is_map(payload) do
+    mentions =
+      case Map.get(payload, "mentionDids", []) do
+        values when is_list(values) -> values
+        _ -> []
+      end
+
+    mentions
+    |> Enum.filter(&(is_binary(&1) and String.starts_with?(&1, "did:") and &1 != author_did))
+    |> Enum.uniq()
+    |> Enum.take(10)
+  end
+
+  @doc false
   def reset do
     GenServer.call(__MODULE__, :reset)
   end
@@ -77,8 +94,12 @@ defmodule AnsibleRelay.Push.WakeScheduler do
       end
 
     cond do
-      children == [] -> :ok
-      System.monotonic_time(:millisecond) >= deadline -> :timeout
+      children == [] ->
+        :ok
+
+      System.monotonic_time(:millisecond) >= deadline ->
+        :timeout
+
       true ->
         Process.sleep(10)
         do_drain(deadline)
@@ -124,12 +145,19 @@ defmodule AnsibleRelay.Push.WakeScheduler do
   # --- Trigger resolution ---
 
   defp handle_op(%{entity_type: "post", op_type: "insert"} = op) do
-    with {:ok, %{} = payload} <- decode_payload(op.payload),
-         thread_id when is_binary(thread_id) <- payload["threadId"] || payload["thread_id"],
-         author when is_binary(author) <- OpStore.create_op_author("thread", thread_id),
-         true <- author != op.author_did do
-      schedule_wakes(author, "reply")
-    else
+    case decode_payload(op.payload) do
+      {:ok, %{} = payload} ->
+        schedule_mention_wakes(payload, op.author_did)
+        schedule_reply_wake(payload, op.author_did)
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp handle_op(%{entity_type: "comment", op_type: "insert"} = op) do
+    case decode_payload(op.payload) do
+      {:ok, %{} = payload} -> schedule_mention_wakes(payload, op.author_did)
       _ -> :ok
     end
   end
@@ -144,6 +172,22 @@ defmodule AnsibleRelay.Push.WakeScheduler do
   end
 
   defp handle_op(_op), do: :ok
+
+  defp schedule_reply_wake(payload, reply_author_did) do
+    with thread_id when is_binary(thread_id) <- payload["threadId"] || payload["thread_id"],
+         author when is_binary(author) <- OpStore.create_op_author("thread", thread_id),
+         true <- author != reply_author_did do
+      schedule_wakes(author, "reply")
+    else
+      _ -> :ok
+    end
+  end
+
+  defp schedule_mention_wakes(payload, author_did) do
+    payload
+    |> mention_recipients(author_did)
+    |> Enum.each(&schedule_wakes(&1, "mention"))
+  end
 
   defp schedule_wakes(subject_did, category) do
     subject_did
@@ -204,9 +248,7 @@ defmodule AnsibleRelay.Push.WakeScheduler do
           )
 
         nil ->
-          Logger.warning(
-            "Push.WakeScheduler: send_wake timed out platform=#{device.platform}"
-          )
+          Logger.warning("Push.WakeScheduler: send_wake timed out platform=#{device.platform}")
 
         {:exit, reason} ->
           Logger.warning(

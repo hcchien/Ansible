@@ -108,6 +108,22 @@ export async function fetchPublicProfile({
   );
 }
 
+// People-only public-profile search for mention pickers. The DID is the
+// routing identity; handle and display_name remain presentation fields.
+export async function searchActors({
+  appViewBaseUrl,
+  fetchImpl = globalThis.fetch,
+  query,
+  limit = 10,
+}) {
+  const normalized = String(query ?? '').trim().replace(/^@/, '');
+  if (!normalized) return { items: [] };
+  const params = new URLSearchParams({ q: normalized, limit: String(limit) });
+  return createRelayApiClient({ relayBaseUrl: appViewBaseUrl, fetchImpl }).getJson(
+    `/api/v1/search/actors?${params.toString()}`,
+  );
+}
+
 export async function fetchAuthorTimeline({
   appViewBaseUrl,
   fetchImpl = globalThis.fetch,

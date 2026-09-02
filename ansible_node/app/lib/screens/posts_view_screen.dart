@@ -434,20 +434,20 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   }
 
   Future<void> _createPost() async {
-    final content = await Navigator.of(context).push<String>(
+    final result = await Navigator.of(context).push<PostComposerResult>(
       MaterialPageRoute(
         builder: (_) => PostComposerScreen(authorDid: _authorDid),
       ),
     );
 
-    if (content != null) {
+    if (result != null) {
       final now = DateTime.now();
       final post = Post(
         id: const Uuid().v4(),
         threadId: widget.thread.id,
         boardId: widget.thread.boardId,
         authorId: _authorDid,
-        content: content,
+        content: result.content,
         createdAt: now,
         updatedAt: now,
         lastEditAt: now,
@@ -464,6 +464,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                 threadId: post.threadId,
                 content: post.content,
                 parentPostId: post.parentPostId,
+                mentionDids: result.mentionDids,
                 createdAt: now,
               )
             : CrdtOpBuilder.createPost(
@@ -473,6 +474,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                 threadId: post.threadId,
                 content: post.content,
                 parentPostId: post.parentPostId,
+                mentionDids: result.mentionDids,
               ),
       );
       _loadPosts();
@@ -480,7 +482,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   }
 
   Future<void> _editPost(Post post) async {
-    final content = await Navigator.of(context).push<String>(
+    final result = await Navigator.of(context).push<PostComposerResult>(
       MaterialPageRoute(
         builder: (_) => PostComposerScreen(
           initialContent: post.content,
@@ -489,14 +491,14 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       ),
     );
 
-    if (content != null) {
+    if (result != null) {
       final now = DateTime.now();
       final updatedPost = Post(
         id: post.id,
         threadId: post.threadId,
         boardId: post.boardId,
         authorId: post.authorId,
-        content: content,
+        content: result.content,
         createdAt: post.createdAt,
         updatedAt: now,
         lastEditAt: now,

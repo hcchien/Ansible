@@ -2,6 +2,43 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:test/test.dart';
 
 void main() {
+  group('CrdtOpBuilder mentions', () {
+    test('post and comment carry unique capped public DID recipients', () {
+      final mentionDids = [
+        'did:key:bob',
+        'did:key:bob',
+        'did:key:alice',
+        'not-a-did',
+        for (var i = 0; i < 12; i++) 'did:key:user-$i',
+      ];
+      final post = CrdtOpBuilder.createPost(
+        authorDid: 'did:key:alice',
+        entityId: 'post-mention',
+        boardId: 'board-1',
+        threadId: 'thread-1',
+        content: '@bob hello',
+        mentionDids: mentionDids,
+      );
+      final comment = CrdtOpBuilder.createComment(
+        authorDid: 'did:key:alice',
+        entityId: 'comment-mention',
+        targetId: 'note-1',
+        content: '@bob hello',
+        mentionDids: const ['did:key:bob'],
+      );
+
+      final postMentions =
+          CrdtOpBuilder.decodePayload(post.payload)['mentionDids'] as List;
+      expect(postMentions, hasLength(10));
+      expect(postMentions.first, 'did:key:bob');
+      expect(postMentions, isNot(contains('did:key:alice')));
+      expect(postMentions, isNot(contains('not-a-did')));
+      expect(CrdtOpBuilder.decodePayload(comment.payload)['mentionDids'], [
+        'did:key:bob',
+      ]);
+    });
+  });
+
   group('CrdtOpBuilder reaction', () {
     test('createReaction carries signed target and board routing metadata', () {
       final op = CrdtOpBuilder.createReaction(

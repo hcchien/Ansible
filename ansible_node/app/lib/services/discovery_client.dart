@@ -261,6 +261,24 @@ class DiscoveryClient {
     );
   }
 
+  /// Public-profile lookup used by reply mention pickers.
+  ///
+  /// A mention is resolved to the actor's public DID before publication; the
+  /// visible handle remains presentation text and is never used as the
+  /// notification recipient identifier.
+  Future<List<DiscoveredActor>> searchActors({
+    required String query,
+    int limit = 10,
+  }) async {
+    final q = query.trim().replaceFirst(RegExp(r'^@'), '');
+    if (!appViewEnabled || q.isEmpty) return const [];
+    final res = await _client.get(
+      _appView('/api/v1/search/actors', {'q': q, 'limit': '$limit'}),
+      headers: AnsibleProtocol.headers,
+    );
+    return _actorList(_decode(res, 'search/actors')['items']);
+  }
+
   Future<SearchResults> _searchPeopleAndPosts(String q, int limit) async {
     if (!appViewEnabled) return const SearchResults();
     final res = await _client.get(
@@ -308,6 +326,8 @@ class DiscoveryClient {
     }
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
+
+  void close() => _client.close();
 
   static String _trim(String url) => url.replaceAll(RegExp(r'/+$'), '');
 }

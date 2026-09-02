@@ -146,6 +146,7 @@ class _NotificationSettingsScreenState
   String _categoryLabel(BuildContext context, NotificationCategory category) {
     return switch (category) {
       NotificationCategory.reply => context.uiCopy(zh: '回覆', en: 'Replies'),
+      NotificationCategory.mention => context.uiCopy(zh: '提及', en: 'Mentions'),
       NotificationCategory.follow => context.uiCopy(
         zh: '新追蹤者',
         en: 'New followers',
@@ -165,6 +166,10 @@ class _NotificationSettingsScreenState
       NotificationCategory.reply => context.uiCopy(
         zh: '有人回覆你的討論串或留言',
         en: 'Someone replies to your thread or post',
+      ),
+      NotificationCategory.mention => context.uiCopy(
+        zh: '有人在回覆中提及你',
+        en: 'Someone mentions you in a reply',
       ),
       NotificationCategory.follow => context.uiCopy(
         zh: '有人開始追蹤你',

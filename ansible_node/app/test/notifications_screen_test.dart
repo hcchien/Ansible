@@ -24,7 +24,11 @@ void main() {
       type: type,
       actorDid: actorDid,
       targetRef: id,
-      threadId: type == NotificationType.replyToThread ? 'thread-1' : null,
+      threadId:
+          type == NotificationType.replyToThread ||
+              type == NotificationType.mention
+          ? 'thread-1'
+          : null,
       conversationId: type == NotificationType.messengerMessage
           ? actorDid
           : null,
@@ -71,12 +75,16 @@ void main() {
     await repo.upsertByDedupKey(
       notification(id: 'n3', type: NotificationType.messengerMessage),
     );
+    await repo.upsertByDedupKey(
+      notification(id: 'n4', type: NotificationType.mention),
+    );
 
     await pumpScreen(tester, db, repo);
 
     expect(find.text('回覆了你的討論串'), findsOneWidget);
     expect(find.text('開始追蹤你'), findsOneWidget);
     expect(find.text('傳來一則私訊'), findsOneWidget);
+    expect(find.text('在回覆中提及了你'), findsOneWidget);
   });
 
   testWidgets(

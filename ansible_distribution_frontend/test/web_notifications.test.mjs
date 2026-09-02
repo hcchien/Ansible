@@ -53,6 +53,19 @@ const feed = {
     {
       entity_type: 'post',
       op_type: 'insert',
+      entity_id: 'mention-me',
+      board_id: 'general',
+      author_did: 'did:elix:carol',
+      created_at: '2026-08-22T01:05:00Z',
+      payload: {
+        threadId: 'thread-1',
+        content: 'hello @me',
+        mentionDids: ['did:elix:me'],
+      },
+    },
+    {
+      entity_type: 'post',
+      op_type: 'insert',
       entity_id: 'self-reply',
       board_id: 'general',
       author_did: 'did:elix:me',
@@ -70,11 +83,12 @@ const projected = projectWebReplyNotifications({
 assert.deepEqual(
   projected.map(({ id, type, isRead }) => ({ id, type, isRead })),
   [
+    { id: 'mention:mention-me', type: 'mention', isRead: false },
     { id: 'reply:reply-post', type: 'reply_to_post', isRead: false },
     { id: 'reply:reply-thread', type: 'reply_to_thread', isRead: true },
   ],
 );
-assert.equal(projected[1].actorDisplayName, 'Alice');
+assert.equal(projected.find((item) => item.id === 'reply:reply-thread').actorDisplayName, 'Alice');
 console.log('ok - projects Forum Host replies for canonical and legacy DIDs');
 
 const values = new Map();

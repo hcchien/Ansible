@@ -186,6 +186,11 @@ assert.match(
 );
 assert.match(
   css,
+  /\.reply-mention-picker\s*\{[^}]*display:\s*grid;/s,
+  'the shared Web reply composer must expose an accessible mention picker',
+);
+assert.match(
+  css,
   /\.login-grid\s*\{[^}]*grid-template-columns:\s*1\.15fr 1fr;/s,
   'login page must use the Elix challenge and QR split layout on desktop',
 );

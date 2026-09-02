@@ -17,6 +17,7 @@ import '../theme/elix_screen_style.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/author_label.dart';
 import '../widgets/community_notes_panel.dart';
+import '../widgets/mention_picker.dart';
 import '../widgets/reaction_picker.dart';
 import '../widgets/report_dialog.dart';
 
@@ -42,6 +43,7 @@ class ContentDetailScreen extends StatefulWidget {
     this.timeAgo,
     this.appViewBaseUrl,
     this.threadFetcher,
+    this.mentionSearch,
     this.screenStyle = ElixScreenStyle.paper,
     this.safetyActions,
   });
@@ -59,6 +61,7 @@ class ContentDetailScreen extends StatefulWidget {
   /// Defaults to the build's configured AppView; injectable for tests.
   final String? appViewBaseUrl;
   final ContentThreadFetcher? threadFetcher;
+  final MentionActorSearch? mentionSearch;
 
   /// Follows the originating board/feed's Paper/Ink choice.
   final ElixScreenStyle screenStyle;
@@ -71,6 +74,7 @@ class ContentDetailScreen extends StatefulWidget {
 class _ContentDetailScreenState extends State<ContentDetailScreen> {
   final _composer = TextEditingController();
   final _composerFocus = FocusNode();
+  final MentionDraft _mentions = MentionDraft();
   late final DriftPostRepository _postRepo;
   late final DriftReactionRepository _reactionRepo;
   List<_Comment> _comments = const [];
@@ -352,6 +356,10 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           entityId: commentId,
           targetId: widget.contentId,
           content: text,
+          mentionDids: _mentions.activeDids(
+            text,
+            excludingDid: widget.localDid,
+          ),
         ),
       );
       unawaited(widget.onFlushPendingOps());
@@ -367,11 +375,24 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           ),
         ]);
         _composer.clear();
+        _mentions.clear();
         _posting = false;
       });
     } catch (_) {
       if (mounted) setState(() => _posting = false);
     }
+  }
+
+  Future<void> _pickMention() async {
+    final actor = await showMentionPicker(
+      context: context,
+      search: widget.mentionSearch,
+      excludingDid: widget.localDid,
+    );
+    if (!mounted || actor == null) return;
+    _mentions.record(actor);
+    insertMention(_composer, actor);
+    _composerFocus.requestFocus();
   }
 
   Future<void> _editComment(_Comment c) async {
@@ -882,6 +903,12 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
+            IconButton(
+              key: const Key('comment_mention_button'),
+              onPressed: _posting ? null : _pickMention,
+              tooltip: context.uiCopy(zh: '提及其他人', en: 'Mention someone'),
+              icon: Icon(Icons.alternate_email, size: 20, color: _fg),
+            ),
             Expanded(
               child: TextField(
                 controller: _composer,

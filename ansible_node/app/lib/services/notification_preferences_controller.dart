@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// projector; Phase B will reuse the same categories for push opt-ins.
 enum NotificationCategory {
   reply('reply'),
+  mention('mention'),
   follow('follow'),
   messenger('messenger');
 

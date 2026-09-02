@@ -13,6 +13,7 @@ import {
   fetchHostedBoards,
   fetchWebModerationReports,
   listWebSessions,
+  mentionToken,
   normalizeFrontendError,
   PAGE_IDS,
   parseRoute,
@@ -34,6 +35,7 @@ assert.equal(typeof createForumDataAdapter, 'function');
 assert.equal(typeof normalizeFrontendError, 'function');
 assert.equal(typeof createPageController, 'function');
 assert.equal(typeof parseRoute, 'function');
+assert.equal(typeof mentionToken, 'function');
 assert.equal(typeof submitWebReport, 'function');
 assert.equal(typeof fetchWebModerationReports, 'function');
 assert.equal(typeof fetchBoardModerationState, 'function');

@@ -5,6 +5,7 @@ import { moderationActionLabel, reasonCodeLabel } from './forum_ui_text.mjs';
 import { buildAppViewModel } from './state_model.mjs';
 import { t } from './web_i18n.mjs';
 import { WEB_SESSION_TOKEN_KEY } from './web_session_client.mjs';
+import { activeMentionDids, insertMentionAtSelection } from './web_mentions.mjs';
 
 const UI_STORAGE_KEYS = Object.freeze({
   activeScene: 'elix.focus.active_scene',
@@ -35,6 +36,8 @@ export function createForumUiApp({
   let uiError = null;
   let uiNotice = null;
   let threadDraft = null;
+  let replyDraft = null;
+  let mentionSearchRequest = 0;
   let deliberationResponses = {};
   let uiPreferences = readUiPreferences(storage);
   let pollTimer = null;
@@ -80,6 +83,16 @@ export function createForumUiApp({
         reviewThreadDraft(actionElement);
       } else if (action === 'confirm-thread-draft') {
         await submitThreadDraft(actionElement);
+      } else if (action === 'open-reply-draft') {
+        openReplyDraft(actionElement);
+      } else if (action === 'cancel-reply-draft') {
+        cancelReplyDraft();
+      } else if (action === 'toggle-reply-mention-picker') {
+        toggleReplyMentionPicker();
+      } else if (action === 'select-reply-mention') {
+        selectReplyMention(actionElement);
+      } else if (action === 'submit-reply-draft') {
+        await submitReplyDraft(actionElement);
       } else if (action === 'cast-poll-vote') {
         await castPollVote(actionElement);
       } else if (action === 'new-deliberation') {
@@ -107,6 +120,16 @@ export function createForumUiApp({
       }
     } catch (error) {
       renderUiError(error);
+    }
+  };
+
+  const handleInput = (event) => {
+    const element = event.target;
+    if (!root?.contains?.(element) || !replyDraft) return;
+    if (element?.dataset?.replyBody !== undefined) {
+      replyDraft = { ...replyDraft, body: String(element.value ?? '') };
+    } else if (element?.dataset?.replyMentionSearch !== undefined) {
+      void searchReplyMentions(String(element.value ?? ''));
     }
   };
 
@@ -193,6 +216,13 @@ export function createForumUiApp({
   async function loadCurrentRoute() {
     try {
       state = await pageController.loadCurrentRoute();
+      if (
+        replyDraft &&
+        String(state?.route?.params?.threadId ?? '') !== String(replyDraft.threadId)
+      ) {
+        replyDraft = null;
+        mentionSearchRequest += 1;
+      }
       uiError = null;
       render();
       return state;
@@ -314,6 +344,149 @@ export function createForumUiApp({
       state = await pageController.loadCurrentRoute();
       render();
     } catch (error) {
+      renderUiError(error);
+    }
+  }
+
+  function openReplyDraft(actionElement) {
+    replyDraft = {
+      boardId: actionElement.dataset.boardId || currentBoardId(actionElement),
+      threadId: actionElement.dataset.threadId || state?.viewModel?.thread?.id || '',
+      body: '',
+      selections: [],
+      mentionPickerOpen: false,
+      mentionQuery: '',
+      mentionResults: [],
+      mentionLoading: false,
+      mentionError: false,
+      submitting: false,
+    };
+    uiError = null;
+    render();
+  }
+
+  function cancelReplyDraft() {
+    replyDraft = null;
+    mentionSearchRequest += 1;
+    render();
+  }
+
+  function toggleReplyMentionPicker() {
+    if (!replyDraft) return;
+    replyDraft = {
+      ...replyDraft,
+      mentionPickerOpen: !replyDraft.mentionPickerOpen,
+      mentionError: false,
+    };
+    render();
+  }
+
+  async function searchReplyMentions(query) {
+    if (!replyDraft) return;
+    const requestId = ++mentionSearchRequest;
+    const normalized = String(query ?? '').trim();
+    replyDraft = {
+      ...replyDraft,
+      mentionQuery: query,
+      mentionLoading: Boolean(normalized),
+      mentionError: false,
+      ...(normalized ? {} : { mentionResults: [] }),
+    };
+    if (!normalized) {
+      render();
+      return;
+    }
+    try {
+      const results = await forumDataAdapter?.searchMentionActors?.({
+        query: normalized,
+        sessionViewModel: currentSessionViewModel(),
+      });
+      if (!replyDraft || requestId !== mentionSearchRequest) return;
+      replyDraft = {
+        ...replyDraft,
+        mentionResults: results ?? [],
+        mentionLoading: false,
+        mentionError: false,
+      };
+    } catch {
+      if (!replyDraft || requestId !== mentionSearchRequest) return;
+      replyDraft = {
+        ...replyDraft,
+        mentionResults: [],
+        mentionLoading: false,
+        mentionError: true,
+      };
+    }
+    render();
+  }
+
+  function selectReplyMention(actionElement) {
+    if (!replyDraft) return;
+    const actor = {
+      did: String(actionElement.dataset.did ?? '').trim(),
+      handle: String(actionElement.dataset.handle ?? '').trim() || null,
+      displayName: String(actionElement.dataset.displayName ?? '').trim() || null,
+    };
+    if (!actor.did.startsWith('did:')) return;
+    const form = actionElement.closest?.('[data-reply-form]');
+    const textarea = form?.querySelector?.('[data-reply-body]');
+    const body = String(textarea?.value ?? replyDraft.body ?? '');
+    const inserted = insertMentionAtSelection(
+      body,
+      textarea?.selectionStart,
+      textarea?.selectionEnd,
+      actor,
+    );
+    const selections = [
+      ...(replyDraft.selections ?? []).filter(
+        (selection) => selection.did !== actor.did && selection.token !== inserted.token,
+      ),
+      { ...actor, token: inserted.token },
+    ];
+    replyDraft = {
+      ...replyDraft,
+      body: inserted.text,
+      selections,
+      mentionPickerOpen: false,
+      mentionQuery: '',
+      mentionResults: [],
+    };
+    render();
+    const nextTextarea = root?.querySelector?.('[data-reply-body]');
+    nextTextarea?.focus?.();
+    nextTextarea?.setSelectionRange?.(inserted.cursor, inserted.cursor);
+  }
+
+  async function submitReplyDraft(actionElement) {
+    if (!replyDraft || !forumDataAdapter?.submitReplyDraft) return;
+    const form = actionElement.closest?.('[data-reply-form]');
+    const body = String(form?.querySelector?.('[data-reply-body]')?.value ?? replyDraft.body ?? '').trim();
+    if (!body) return;
+    replyDraft = { ...replyDraft, body, submitting: true };
+    render();
+    try {
+      await forumDataAdapter.submitReplyDraft({
+        body,
+        boardId: replyDraft.boardId,
+        threadId: replyDraft.threadId,
+        mentionDids: activeMentionDids({
+          body,
+          selections: replyDraft.selections,
+          excludingDid: currentSessionViewModel()?.subjectDid,
+        }),
+        sessionViewModel: currentSessionViewModel(),
+      });
+      replyDraft = null;
+      uiError = null;
+      uiNotice = {
+        tone: 'success',
+        title: t('thread.replySubmittedTitle'),
+        message: t('thread.replySubmittedMessage'),
+      };
+      state = await pageController.loadCurrentRoute();
+      render();
+    } catch (error) {
+      if (replyDraft) replyDraft = { ...replyDraft, submitting: false };
       renderUiError(error);
     }
   }
@@ -627,6 +800,7 @@ export function createForumUiApp({
       preferences: uiPreferences,
       notice: uiNotice,
       threadDraft,
+      replyDraft,
       deliberationResponses,
     });
     root.innerHTML = renderAppShell({ viewModel, bodyHtml, uiPreferences });
@@ -641,6 +815,7 @@ export function createForumUiApp({
 
     if (bound) {
       root?.removeEventListener?.('click', handleClick);
+      root?.removeEventListener?.('input', handleInput);
       root?.removeEventListener?.('pointerdown', handlePointerDown);
       root?.removeEventListener?.('pointerup', handlePointerUp);
       windowLike?.removeEventListener?.('hashchange', handleHashChange);
@@ -652,6 +827,7 @@ export function createForumUiApp({
     if (bound) return;
 
     root?.addEventListener?.('click', handleClick);
+    root?.addEventListener?.('input', handleInput);
     root?.addEventListener?.('pointerdown', handlePointerDown);
     root?.addEventListener?.('pointerup', handlePointerUp);
     windowLike?.addEventListener?.('hashchange', handleHashChange);

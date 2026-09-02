@@ -39,12 +39,18 @@ const reply = await buildWebPublicationOperation({
   action: 'forum.reply',
   entityType: 'post',
   parentId: 'thread-1',
-  payload: { body: 'Signed reply' },
+  payload: { content: 'Signed reply', mentionDids: ['did:elix:bob'] },
   now: fixedNow,
 });
 assert.equal(reply.action, 'forum.reply');
 assert.equal(reply.parent_id, 'thread-1');
-assert.equal(reply.payload_hash, await sha256Hex('{"body":"Signed reply"}', webcrypto));
+assert.equal(
+  reply.payload_hash,
+  await sha256Hex(
+    '{"content":"Signed reply","mentionDids":["did:elix:bob"]}',
+    webcrypto,
+  ),
+);
 assert.notEqual(
   await sha256Hex(canonicalJson(reply), webcrypto),
   await sha256Hex(canonicalJson({ ...reply, federate: false }), webcrypto),

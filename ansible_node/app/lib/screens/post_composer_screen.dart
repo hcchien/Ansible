@@ -3,18 +3,35 @@ import 'package:flutter/material.dart';
 import '../l10n/app_l10n.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/author_label.dart';
+import '../widgets/mention_picker.dart';
+
+class PostComposerResult {
+  const PostComposerResult({
+    required this.content,
+    this.mentionDids = const [],
+  });
+
+  final String content;
+  final List<String> mentionDids;
+}
 
 /// Full-screen composer for a forum reply (new or edit), styled to the app's
-/// design system to match [ThreadComposerScreen]. Pops the trimmed content
-/// string on submit, or null on cancel — the same contract the old
-/// PostFormDialog used.
+/// design system to match [ThreadComposerScreen]. Pops a [PostComposerResult]
+/// containing trimmed content and explicitly resolved mention DIDs, or null on
+/// cancel.
 class PostComposerScreen extends StatefulWidget {
-  const PostComposerScreen({super.key, this.initialContent, this.authorDid});
+  const PostComposerScreen({
+    super.key,
+    this.initialContent,
+    this.authorDid,
+    this.mentionSearch,
+  });
 
   final String? initialContent;
 
   /// Shown in the footer for parity with the other composers. Optional.
   final String? authorDid;
+  final MentionActorSearch? mentionSearch;
 
   @override
   State<PostComposerScreen> createState() => _PostComposerScreenState();
@@ -22,6 +39,7 @@ class PostComposerScreen extends StatefulWidget {
 
 class _PostComposerScreenState extends State<PostComposerScreen> {
   late final TextEditingController _controller;
+  final MentionDraft _mentions = MentionDraft();
   String? _error;
 
   bool get _isEdit => widget.initialContent != null;
@@ -47,7 +65,26 @@ class _PostComposerScreenState extends State<PostComposerScreen> {
       );
       return;
     }
-    Navigator.of(context).pop<String>(content);
+    Navigator.of(context).pop(
+      PostComposerResult(
+        content: content,
+        mentionDids: _mentions.activeDids(
+          content,
+          excludingDid: widget.authorDid,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickMention() async {
+    final actor = await showMentionPicker(
+      context: context,
+      search: widget.mentionSearch,
+      excludingDid: widget.authorDid,
+    );
+    if (!mounted || actor == null) return;
+    _mentions.record(actor);
+    insertMention(_controller, actor);
   }
 
   @override
@@ -105,6 +142,7 @@ class _PostComposerScreenState extends State<PostComposerScreen> {
             _Footer(
               did: widget.authorDid,
               characterCount: _controller.text.characters.length,
+              onMention: _isEdit ? null : _pickMention,
             ),
           ],
         ),
@@ -192,10 +230,15 @@ class _TopBar extends StatelessWidget {
 }
 
 class _Footer extends StatelessWidget {
-  const _Footer({required this.did, required this.characterCount});
+  const _Footer({
+    required this.did,
+    required this.characterCount,
+    this.onMention,
+  });
 
   final String? did;
   final int characterCount;
+  final VoidCallback? onMention;
 
   @override
   Widget build(BuildContext context) {
@@ -209,6 +252,19 @@ class _Footer extends StatelessWidget {
       ),
       child: Row(
         children: [
+          if (onMention != null) ...[
+            TextButton.icon(
+              key: const Key('post_composer_mention_button'),
+              onPressed: onMention,
+              icon: const Icon(Icons.alternate_email, size: 17),
+              label: Text(context.uiCopy(zh: '提及', en: 'Mention')),
+              style: TextButton.styleFrom(
+                foregroundColor: AnsibleDesign.accent,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
           if (did != null && did!.isNotEmpty) ...[
             const Icon(
               Icons.fingerprint_rounded,

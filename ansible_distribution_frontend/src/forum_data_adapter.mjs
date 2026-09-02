@@ -23,9 +23,11 @@ import {
   fetchBoardExternalContent,
   fetchBoardFeed,
   fetchPublicProfile,
+  searchActors,
   fetchThreadFeed,
   fetchCommunityNotes,
 } from './appview_client.mjs';
+import { normalizeMentionDids } from './web_mentions.mjs';
 import {
   createWebNotificationReadStore,
   projectWebReplyNotifications,
@@ -98,6 +100,7 @@ export function createForumDataAdapter({
     fetchBoardExternalContent,
     fetchBoardFeed,
     fetchPublicProfile,
+    searchActors,
     fetchThreadFeed,
     fetchCommunityNotes,
   },
@@ -581,6 +584,71 @@ export function createForumDataAdapter({
     return normalizeThreadSubmission(response);
   }
 
+  async function searchMentionActors({ query, sessionViewModel } = {}) {
+    const normalized = String(query ?? '').trim().replace(/^@/, '');
+    if (!normalized || typeof appViewClient.searchActors !== 'function') return [];
+    const response = await appViewClient.searchActors({
+      appViewBaseUrl,
+      fetchImpl,
+      query: normalized,
+      limit: 10,
+    });
+    const excludingDid = String(sessionViewModel?.subjectDid ?? '').trim();
+    return (response?.items ?? [])
+      .map((actor) => ({
+        did: String(actor?.did ?? '').trim(),
+        handle: String(actor?.handle ?? '').trim() || null,
+        displayName: String(actor?.display_name ?? actor?.displayName ?? '').trim() || null,
+        avatarUrl: String(actor?.avatar_url ?? actor?.avatarUrl ?? '').trim() || null,
+      }))
+      .filter((actor) => actor.did.startsWith('did:') && actor.did !== excludingDid)
+      .slice(0, 10);
+  }
+
+  async function submitReplyDraft({
+    body,
+    boardId,
+    threadId,
+    mentionDids = [],
+    sessionViewModel,
+  }) {
+    if (!sessionViewModel?.capabilities?.canReply) throw scopeError('forum:reply');
+    const content = String(body ?? '').trim();
+    if (!content) throw notFoundError('reply_body_required');
+
+    const [host, boardsResponse] = await Promise.all([
+      forumHostClient.fetchForumHostInfo({ relayBaseUrl, fetchImpl }),
+      forumHostClient.fetchHostedBoards({ relayBaseUrl, fetchImpl }),
+    ]);
+    const board = (boardsResponse.boards ?? []).find(
+      (candidate) =>
+        String(candidate.board_id ?? candidate.hosted_board_id ?? '') === String(boardId),
+    );
+    if (!board) throw notFoundError('board_not_found', { boardId });
+
+    const publisher =
+      forumHostClient.createPasskeySignedOperation ??
+      webPublicationClient.createPasskeySignedOperation;
+    return publisher({
+      relayBaseUrl,
+      storage,
+      fetchImpl,
+      authorDid: sessionViewModel.subjectDid,
+      targetForumHost: host.canonical_base_url ?? host.base_url ?? relayBaseUrl,
+      boardId: String(board.board_id ?? board.hosted_board_id),
+      boardPolicyVersion: board.access_policy_version ?? 1,
+      action: 'forum.reply',
+      entityType: 'post',
+      parentId: String(threadId),
+      payload: {
+        content,
+        mentionDids: normalizeMentionDids(mentionDids, {
+          excludingDid: sessionViewModel.subjectDid,
+        }),
+      },
+    });
+  }
+
   async function submitPollVote({ boardId, pollId, optionId, sessionViewModel }) {
     if (!sessionViewModel?.capabilities?.canPost) throw scopeError('forum:post');
     if (typeof forumHostClient.submitBoardPollVote !== 'function') {
@@ -856,6 +924,8 @@ export function createForumDataAdapter({
     markNotificationRead,
     markAllNotificationsRead,
     submitThreadDraft,
+    searchMentionActors,
+    submitReplyDraft,
     submitPollVote,
     submitDeliberationDraft,
     submitDeliberationStatement,

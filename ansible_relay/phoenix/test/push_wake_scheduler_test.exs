@@ -185,6 +185,26 @@ defmodule AnsibleRelay.Push.WakeSchedulerTest do
     assert TestSender.calls() == []
   end
 
+  test "a public reply wakes each explicitly mentioned DID without content" do
+    mentioned = "did:plc:wake_mentioned_#{System.unique_integer([:positive])}"
+    replier = "did:plc:wake_mentioner_#{System.unique_integer([:positive])}"
+    replier_key = seed_did(replier)
+
+    register_device(mentioned, ["mention"])
+
+    ingest_op(replier, replier_key, "comment", "comment-mention-1", %{
+      "threadId" => "content-1",
+      "content" => "hello @alice",
+      "mentionDids" => [mentioned, mentioned, replier]
+    })
+
+    await_flush()
+
+    assert [%{token: token, payload: payload}] = TestSender.calls()
+    assert token == "tok_#{mentioned}"
+    assert payload == %{"hint" => "sync"}
+  end
+
   test "a follow op wakes the target DID (carried as entity_id)" do
     target = "did:plc:wake_followed_#{System.unique_integer([:positive])}"
     follower = "did:plc:wake_follower_#{System.unique_integer([:positive])}"

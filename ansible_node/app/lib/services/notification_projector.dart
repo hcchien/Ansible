@@ -46,10 +46,11 @@ class NotificationProjector {
 
   /// Folds one trusted (signature-verified) activity from an op sync pass.
   ///
-  /// Emits `reply_to_post` / `reply_to_thread` when the parent post/thread
-  /// author is the local DID, and `new_follower` for follow ops targeting the
-  /// local DID. Self-actions never notify. Best-effort: failures must never
-  /// break the sync pass.
+  /// Emits `mention` when the signed public/decrypted-private payload names
+  /// the local DID, `reply_to_post` / `reply_to_thread` when the parent
+  /// post/thread author is local, and `new_follower` for follow ops targeting
+  /// the local DID. Self-actions never notify. Best-effort: failures must
+  /// never break the sync pass.
   Future<void> onSyncedActivity(Activity activity) async {
     try {
       if (_localDids.isEmpty) return;
@@ -59,6 +60,7 @@ class NotificationProjector {
 
       switch (activity.entityType.toLowerCase()) {
         case 'post':
+        case 'comment':
           await _onPostCreated(activity);
           break;
         case 'follow':
@@ -139,6 +141,16 @@ class NotificationProjector {
   }
 
   Future<void> _onPostCreated(Activity activity) async {
+    if (_mentionsLocalUser(activity.payload['mentionDids'])) {
+      if (!await _enabled(NotificationCategory.mention)) return;
+      await _emitMention(activity);
+      return;
+    }
+
+    // Standalone comments have no locally stored parent/thread author lookup;
+    // mention is their only targeted notification path.
+    if (activity.entityType.toLowerCase() == 'comment') return;
+
     final parentPostId = activity.payload['parentPostId'] as String?;
 
     // Reply to one of my posts?
@@ -158,6 +170,32 @@ class NotificationProjector {
     if (thread == null || !_localDids.contains(thread.authorId)) return;
     if (!await _enabled(NotificationCategory.reply)) return;
     await _emitReply(activity, NotificationType.replyToThread);
+  }
+
+  bool _mentionsLocalUser(Object? raw) {
+    if (raw is! List) return false;
+    return raw
+        .whereType<String>()
+        .map((did) => did.trim())
+        .take(10)
+        .any(_localDids.contains);
+  }
+
+  Future<void> _emitMention(Activity activity) async {
+    final dedupKey = 'mention:${activity.entityId}';
+    await _notifications.upsertByDedupKey(
+      AppNotification(
+        id: dedupKey,
+        type: NotificationType.mention,
+        actorDid: activity.authorId,
+        targetRef: activity.entityId,
+        boardId: activity.boardId,
+        threadId: activity.threadId ?? activity.payload['targetId']?.toString(),
+        postId: activity.entityId,
+        createdAt: activity.createdAt,
+        dedupKey: dedupKey,
+      ),
+    );
   }
 
   Future<void> _emitReply(Activity activity, NotificationType type) async {

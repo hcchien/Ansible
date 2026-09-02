@@ -776,6 +776,71 @@ test('submits thread drafts only when the session can post', async () => {
   );
 });
 
+test('searches public actors and submits signed replies with bounded mention DIDs', async () => {
+  const publications = [];
+  const adapter = createForumDataAdapter({
+    relayBaseUrl: 'https://relay.example',
+    appViewBaseUrl: 'https://appview.example',
+    storage: { getItem: () => 'wst_test' },
+    forumHostClient: {
+      async fetchForumHostInfo() {
+        return { canonical_base_url: 'https://relay.example' };
+      },
+      async fetchHostedBoards() {
+        return { boards: [{ board_id: 'general', access_policy_version: 3 }] };
+      },
+    },
+    appViewClient: {
+      async searchActors(params) {
+        assert.equal(params.appViewBaseUrl, 'https://appview.example');
+        assert.equal(params.query, 'ali');
+        return {
+          items: [
+            { did: 'did:elix:alice', handle: 'alice.elix.cool', display_name: 'Alice' },
+            { did: 'did:elix:me', handle: 'me.elix.cool' },
+          ],
+        };
+      },
+    },
+    webPublicationClient: {
+      async createPasskeySignedOperation(params) {
+        publications.push(params);
+        return { accepted: true };
+      },
+    },
+  });
+  const sessionViewModel = {
+    authenticated: true,
+    subjectDid: 'did:elix:me',
+    capabilities: { canReply: true },
+  };
+
+  assert.deepEqual(await adapter.searchMentionActors({ query: '@ali', sessionViewModel }), [
+    {
+      did: 'did:elix:alice',
+      handle: 'alice.elix.cool',
+      displayName: 'Alice',
+      avatarUrl: null,
+    },
+  ]);
+  await adapter.submitReplyDraft({
+    body: 'Hello @alice.elix.cool',
+    boardId: 'general',
+    threadId: 'thread-1',
+    mentionDids: ['did:elix:alice', 'did:elix:me', 'did:elix:alice', 'invalid'],
+    sessionViewModel,
+  });
+
+  assert.equal(publications[0].action, 'forum.reply');
+  assert.equal(publications[0].entityType, 'post');
+  assert.equal(publications[0].parentId, 'thread-1');
+  assert.equal(publications[0].boardPolicyVersion, 3);
+  assert.deepEqual(publications[0].payload, {
+    content: 'Hello @alice.elix.cool',
+    mentionDids: ['did:elix:alice'],
+  });
+});
+
 test('submits a report and reports created vs duplicate-collapsed outcomes', async () => {
   const created = await fixtureAdapter().submitReport({
     targetKind: 'post',

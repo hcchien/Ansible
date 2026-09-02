@@ -18,7 +18,7 @@ defmodule AnsibleRelay.Web.Controllers.PushController do
   alias AnsibleRelay.Push.TokenRegistry
 
   @valid_platforms ~w(fcm apns)
-  @valid_categories ~w(reply follow messenger)
+  @valid_categories ~w(reply mention follow messenger)
   @register_required ~w(subject_did device_id push_token platform categories registered_at request_signature)
   @unregister_required ~w(subject_did device_id unregistered_at request_signature)
   @default_timestamp_window_seconds 300

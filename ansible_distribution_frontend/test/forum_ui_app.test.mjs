@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createForumUiApp } from '../src/forum_ui_app.mjs';
 import { createFrontendFlowHarness } from '../src/integration_flow_harness.mjs';
 import { createPageController } from '../src/page_routes.mjs';
+import { PAGE_IDS, buildAppViewModel } from '../src/state_model.mjs';
 
 const root = createFakeRoot();
 const windowLike = createFakeWindow('#/', { dispatchesHashchange: false });
@@ -120,6 +121,114 @@ assert.equal(submittedDraft.boardId, 'general');
 assert.equal(submittedDraft.sessionViewModel.authenticated, true);
 assert.match(postRoot.innerHTML, /已送出討論串/);
 postApp.stop();
+
+const replyRoot = createFakeRoot();
+const replyWindow = createFakeWindow('#/boards/general/threads/thread-1', {
+  dispatchesHashchange: false,
+});
+const replySession = {
+  authenticated: true,
+  subjectDid: 'did:elix:me',
+  trustTier: 'self_custody_did',
+  capabilities: { canPost: true, canReply: true },
+};
+const replyRoute = {
+  pageId: PAGE_IDS.thread,
+  params: { boardId: 'general', threadId: 'thread-1' },
+};
+const replyViewModel = buildAppViewModel({
+  route: replyRoute,
+  session: replySession,
+  forum: {
+    boards: [{ id: 'general', title: 'General' }],
+    board: { id: 'general', title: 'General' },
+    thread: {
+      id: 'thread-1',
+      title: 'Mention thread',
+      authorDid: 'did:elix:author',
+      posts: [],
+    },
+    capabilities: { canCreateThread: true, canReply: true },
+  },
+});
+let submittedReply = null;
+const replyAdapter = {
+  async searchMentionActors({ query }) {
+    assert.equal(query, 'ali');
+    return [{ did: 'did:elix:alice', handle: 'alice.elix.cool', displayName: 'Alice' }];
+  },
+  async submitReplyDraft(params) {
+    submittedReply = params;
+    return { accepted: true };
+  },
+};
+const replyPageController = {
+  async loadCurrentRoute() {
+    return { route: replyRoute, session: replySession, viewModel: replyViewModel };
+  },
+};
+const replyApp = createForumUiApp({
+  root: replyRoot,
+  pageController: replyPageController,
+  sessionLifecycle: {},
+  forumDataAdapter: replyAdapter,
+  storage: postHarness.storage,
+  windowLike: replyWindow,
+});
+await replyApp.start();
+await replyRoot.listeners.get('click')({
+  target: createContainedActionElement(replyRoot, 'open-reply-draft', {
+    boardId: 'general',
+    threadId: 'thread-1',
+  }),
+  preventDefault() {},
+});
+assert.match(replyRoot.innerHTML, /data-reply-body/);
+await replyRoot.listeners.get('click')({
+  target: createContainedActionElement(replyRoot, 'toggle-reply-mention-picker'),
+  preventDefault() {},
+});
+assert.match(replyRoot.innerHTML, /data-reply-mention-search/);
+replyRoot.listeners.get('input')({
+  target: { dataset: { replyMentionSearch: '' }, value: 'ali', parentElement: replyRoot },
+});
+await Promise.resolve();
+await Promise.resolve();
+assert.match(replyRoot.innerHTML, /Alice/);
+
+const textarea = {
+  value: 'Hello ',
+  selectionStart: 6,
+  selectionEnd: 6,
+};
+const replyForm = {
+  querySelector(selector) {
+    return selector === '[data-reply-body]' ? textarea : null;
+  },
+};
+const selectMention = createContainedActionElement(replyRoot, 'select-reply-mention', {
+  did: 'did:elix:alice',
+  handle: 'alice.elix.cool',
+  displayName: 'Alice',
+});
+selectMention.closest = (selector) => selector === '[data-action]' ? selectMention : replyForm;
+await replyRoot.listeners.get('click')({ target: selectMention, preventDefault() {} });
+assert.match(replyRoot.innerHTML, /Hello @alice\.elix\.cool/);
+
+const submitReply = createContainedActionElement(replyRoot, 'submit-reply-draft');
+submitReply.closest = (selector) => selector === '[data-action]'
+  ? submitReply
+  : {
+      querySelector() {
+        return { value: 'Hello @alice.elix.cool ' };
+      },
+    };
+await replyRoot.listeners.get('click')({ target: submitReply, preventDefault() {} });
+assert.equal(submittedReply.body, 'Hello @alice.elix.cool');
+assert.deepEqual(submittedReply.mentionDids, ['did:elix:alice']);
+assert.equal(submittedReply.threadId, 'thread-1');
+assert.match(replyRoot.innerHTML, /已送出回覆/);
+replyApp.stop();
 
 await app.navigate('#/login');
 assert.match(root.innerHTML, /產生登入 QR code/);

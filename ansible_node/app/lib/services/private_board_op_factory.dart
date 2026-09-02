@@ -62,9 +62,21 @@ class PrivateBoardOpFactory {
     required String threadId,
     required String content,
     String? parentPostId,
+    List<String> mentionDids = const [],
     required DateTime createdAt,
   }) async {
     _requireReady(board);
+    final seenMentionDids = <String>{};
+    final normalizedMentionDids = mentionDids
+        .map((did) => did.trim())
+        .where(
+          (did) =>
+              did.startsWith('did:') &&
+              did != authorDid.trim() &&
+              seenMentionDids.add(did),
+        )
+        .take(10)
+        .toList(growable: false);
     final envelope = await _crypto.encryptContent(
       boardId: board.hostedBoardId,
       epoch: board.encryptionEpoch,
@@ -73,7 +85,11 @@ class PrivateBoardOpFactory {
       recordType: 'post',
       authorPairwiseId: await _pairwiseSubject(board.hostedBoardId),
       createdAt: createdAt,
-      plaintext: {'content': content},
+      plaintext: {
+        'content': content,
+        if (normalizedMentionDids.isNotEmpty)
+          'mentionDids': normalizedMentionDids,
+      },
     );
     return CrdtOpBuilder.createPrivatePost(
       authorDid: authorDid,

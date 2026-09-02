@@ -125,6 +125,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     switch (notification.type) {
       case NotificationType.replyToThread:
       case NotificationType.replyToPost:
+      case NotificationType.mention:
         await _openThread(notification);
         break;
       case NotificationType.newFollower:
@@ -218,6 +219,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         zh: '回覆了你的留言',
         en: 'replied to your post',
       ),
+      NotificationType.mention => context.uiCopy(
+        zh: '在回覆中提及了你',
+        en: 'mentioned you in a reply',
+      ),
       NotificationType.newFollower => context.uiCopy(
         zh: '要求追蹤你',
         en: 'requested to follow you',
@@ -254,6 +259,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return switch (type) {
       NotificationType.replyToThread ||
       NotificationType.replyToPost => Icons.mode_comment_outlined,
+      NotificationType.mention => Icons.alternate_email,
       NotificationType.newFollower => Icons.adjust,
       NotificationType.messengerMessage => Icons.mail_outline,
       NotificationType.moderationOutcome => Icons.outlined_flag,

@@ -34,14 +34,19 @@ export function projectWebReplyNotifications({ feeds = [], subjectDids = [], rea
         payload.parentPostId ?? payload.parent_post_id ?? item.parent_post_id ?? null;
       const parent = parentPostId ? posts.get(parentPostId) : null;
       const thread = threadId ? threads.get(threadId) : null;
-      const type = parent && localDids.has(parent.author_did)
-        ? 'reply_to_post'
-        : thread && localDids.has(thread.author_did)
-          ? 'reply_to_thread'
-          : null;
+      const mentionDids = payload.mentionDids ?? payload.mention_dids ?? [];
+      const mentioned = Array.isArray(mentionDids) &&
+        mentionDids.slice(0, 10).some((did) => localDids.has(String(did ?? '').trim()));
+      const type = mentioned
+        ? 'mention'
+        : parent && localDids.has(parent.author_did)
+          ? 'reply_to_post'
+          : thread && localDids.has(thread.author_did)
+            ? 'reply_to_thread'
+            : null;
       if (!type || !threadId) continue;
 
-      const id = `reply:${item.entity_id}`;
+      const id = `${type === 'mention' ? 'mention' : 'reply'}:${item.entity_id}`;
       notifications.push({
         id,
         type,

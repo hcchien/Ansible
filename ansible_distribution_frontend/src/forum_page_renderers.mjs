@@ -207,9 +207,11 @@ function renderNotificationRow(notification) {
     String(notification.actorDisplayName ?? '').trim() ||
     notification.actorHandle ||
     shortIdentity(notification.actorDid);
-  const label = notification.type === 'reply_to_post'
-    ? t('notifications.replyToPost')
-    : t('notifications.replyToThread');
+  const label = notification.type === 'mention'
+    ? t('notifications.mention')
+    : notification.type === 'reply_to_post'
+      ? t('notifications.replyToPost')
+      : t('notifications.replyToThread');
   const href = `#/boards/${encodeURIComponent(notification.boardId)}/threads/${encodeURIComponent(notification.threadId)}`;
   return `
     <a class="notification-row${notification.isRead ? '' : ' is-unread'}" href="${escapeAttribute(href)}" data-action="open-notification" data-notification-id="${escapeAttribute(notification.id)}">
@@ -583,7 +585,7 @@ function renderThreadDetail(viewModel, uiState = {}) {
           <section class="thread-conversation" aria-labelledby="thread-replies-title">
             ${renderThreadOriginalPost(thread, context)}
             ${renderCommunityNotes(viewModel.communityNotes ?? [], context)}
-            ${renderThreadReplyComposer({ locked, context })}
+            ${renderThreadReplyComposer({ locked, context, draft: uiState.replyDraft })}
             ${renderThreadReplies(posts, context)}
           </section>
         </article>
@@ -813,21 +815,58 @@ function renderThreadIconButton(kind, label) {
   return `<button class="thread-action" type="button" aria-label="${escapeAttribute(t(`thread.action.${kind}`))}">${renderThreadActionIcon(kind)}${content}</button>`;
 }
 
-function renderThreadReplyComposer({ locked, context = {} } = {}) {
+function renderThreadReplyComposer({ locked, context = {}, draft = null } = {}) {
   const sessionIdentity = context.session?.subjectDid || context.session?.did || null;
   const canReply = Boolean(context.canReply) && !locked;
   const label = canReply ? t('common.reply') : locked ? t('moderation.lockedNoReply') : t('thread.loginToReply');
+  const activeDraft = draft && draft.threadId === context.threadId ? draft : null;
+  if (canReply && activeDraft) {
+    const results = activeDraft.mentionResults ?? [];
+    const picker = activeDraft.mentionPickerOpen ? `
+      <section class="reply-mention-picker" aria-label="${escapeAttribute(t('thread.mentionTitle'))}">
+        <label class="reply-mention-search">
+          <span>${escapeHtml(t('thread.mentionTitle'))}</span>
+          <input type="search" data-reply-mention-search value="${escapeAttribute(activeDraft.mentionQuery ?? '')}" placeholder="${escapeAttribute(t('thread.mentionSearch'))}" autocomplete="off" />
+        </label>
+        ${activeDraft.mentionLoading ? `<p class="reply-mention-status">${escapeHtml(t('thread.mentionLoading'))}</p>` : ''}
+        ${activeDraft.mentionError ? `<p class="reply-mention-status is-error">${escapeHtml(t('thread.mentionUnavailable'))}</p>` : ''}
+        <div class="reply-mention-results">${results.map(renderMentionActor).join('')}</div>
+      </section>` : '';
+    return `
+      <form class="thread-reply-composer is-expanded" data-reply-form data-board-id="${escapeAttribute(context.boardId)}" data-thread-id="${escapeAttribute(context.threadId)}">
+        <div class="thread-reply-avatar">${escapeHtml(threadInitial(shortIdentity(sessionIdentity), sessionIdentity))}</div>
+        <div class="thread-reply-editor">
+          <textarea class="thread-reply-textarea" data-reply-body maxlength="5000" placeholder="${escapeAttribute(t('thread.composerPlaceholder'))}">${escapeHtml(activeDraft.body ?? '')}</textarea>
+          <div class="thread-reply-toolbar">
+            <button class="reply-mention-toggle" type="button" data-action="toggle-reply-mention-picker">@ ${escapeHtml(t('thread.mentionAction'))}</button>
+            <span>${escapeHtml(t('thread.mentionPrivacy'))}</span>
+            <button class="secondary-action" type="button" data-action="cancel-reply-draft">${escapeHtml(t('common.cancel'))}</button>
+            <button class="thread-composer-send" type="button" data-action="submit-reply-draft" ${activeDraft.submitting ? 'disabled' : ''}>${escapeHtml(activeDraft.submitting ? t('thread.replySigning') : t('common.reply'))}</button>
+          </div>
+          ${picker}
+        </div>
+      </form>`;
+  }
   const field = canReply
-    ? `<button class="thread-composer-field" type="button">${escapeHtml(t('thread.composerPlaceholder'))}</button>`
+    ? `<button class="thread-composer-field" type="button" data-action="open-reply-draft" data-board-id="${escapeAttribute(context.boardId)}" data-thread-id="${escapeAttribute(context.threadId)}">${escapeHtml(t('thread.composerPlaceholder'))}</button>`
     : `<a class="thread-composer-field" href="#/login">${escapeHtml(t('thread.composerPlaceholder'))}</a>`;
 
   return `
     <div class="thread-reply-composer">
       <div class="thread-reply-avatar${sessionIdentity ? '' : ' is-anonymous'}">${escapeHtml(sessionIdentity ? threadInitial(shortIdentity(sessionIdentity), sessionIdentity) : '·')}</div>
       ${field}
-      <button class="thread-composer-send" type="button" ${canReply ? '' : 'disabled'}>${escapeHtml(label)}</button>
+      <button class="thread-composer-send" type="button" ${canReply ? `data-action="open-reply-draft" data-board-id="${escapeAttribute(context.boardId)}" data-thread-id="${escapeAttribute(context.threadId)}"` : 'disabled'}>${escapeHtml(label)}</button>
     </div>
   `;
+}
+
+function renderMentionActor(actor) {
+  const label = actor.displayName || actor.handle || shortIdentity(actor.did);
+  const handle = actor.handle ? `@${String(actor.handle).replace(/^@/, '')}` : shortIdentity(actor.did);
+  return `<button class="reply-mention-result" type="button" data-action="select-reply-mention" data-did="${escapeAttribute(actor.did)}" data-handle="${escapeAttribute(actor.handle ?? '')}" data-display-name="${escapeAttribute(actor.displayName ?? '')}">
+    <span class="reply-mention-avatar">${escapeHtml(threadInitial(label, actor.did))}</span>
+    <span><strong>${escapeHtml(label)}</strong><small>${escapeHtml(handle)}</small></span>
+  </button>`;
 }
 
 function renderThreadReplies(posts, context = {}) {

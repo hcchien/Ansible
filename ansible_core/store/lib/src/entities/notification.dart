@@ -2,6 +2,7 @@
 enum NotificationType {
   replyToThread('reply_to_thread'),
   replyToPost('reply_to_post'),
+  mention('mention'),
   newFollower('new_follower'),
   messengerMessage('messenger_message'),
   moderationOutcome('moderation_outcome');

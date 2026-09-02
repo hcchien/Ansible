@@ -157,6 +157,11 @@ void main() {
           entityId: 'post-secret',
           threadId: 'thread-secret',
           content: 'highly confidential text',
+          mentionDids: const [
+            'did:elix:mentioned',
+            'did:elix:mentioned',
+            'did:elix:author',
+          ],
           createdAt: now,
         );
 
@@ -164,6 +169,16 @@ void main() {
     expect(payload, contains('private_envelope'));
     expect(payload, contains('private-board'));
     expect(payload, isNot(contains('highly confidential text')));
+    expect(payload, isNot(contains('did:elix:mentioned')));
+
+    final payloadMap = jsonDecode(payload) as Map<String, dynamic>;
+    final envelope = PrivateBoardContentEnvelope.fromJson(
+      Map<String, Object?>.from(payloadMap['private_envelope'] as Map),
+    );
+    expect(await crypto.decryptContent(envelope), {
+      'content': 'highly confidential text',
+      'mentionDids': ['did:elix:mentioned'],
+    });
   });
 }
 

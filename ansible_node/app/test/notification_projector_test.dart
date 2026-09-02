@@ -145,6 +145,57 @@ void main() {
     expect(all.single.type, NotificationType.replyToPost);
   });
 
+  test('mention in another user thread emits a targeted mention', () async {
+    await seedThread(authorId: otherDid);
+
+    await projector.onSyncedActivity(
+      activity(
+        entityId: 'post-mention',
+        boardId: 'board-1',
+        threadId: 'thread-1',
+        payload: {
+          'content': 'hello @local',
+          'mentionDids': [localDid],
+        },
+      ),
+    );
+
+    final notification = (await notifications.list()).single;
+    expect(notification.type, NotificationType.mention);
+    expect(notification.actorDid, otherDid);
+    expect(notification.threadId, 'thread-1');
+    expect(notification.dedupKey, 'mention:post-mention');
+  });
+
+  test(
+    'standalone comment mention notifies but malformed lists do not',
+    () async {
+      await projector.onSyncedActivity(
+        activity(
+          entityType: 'comment',
+          entityId: 'comment-mention',
+          threadId: 'content-1',
+          payload: {
+            'content': '@local take a look',
+            'mentionDids': ['did:plc:other', localDid],
+          },
+        ),
+      );
+      await projector.onSyncedActivity(
+        activity(
+          entityType: 'comment',
+          entityId: 'comment-malformed',
+          threadId: 'content-1',
+          payload: {'mentionDids': localDid},
+        ),
+      );
+
+      final all = await notifications.list();
+      expect(all, hasLength(1));
+      expect(all.single.type, NotificationType.mention);
+    },
+  );
+
   test('follow op targeting me emits new_follower', () async {
     await projector.onSyncedActivity(
       activity(entityType: 'follow', entityId: localDid),
