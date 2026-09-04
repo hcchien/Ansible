@@ -13,6 +13,7 @@ defmodule AnsibleRelay.Push.ApnsSender do
   @cache_key {__MODULE__, :provider_token}
   @provider_token_ttl_seconds 50 * 60
   @request_timeout_ms 10_000
+  @pool_retry_delays_ms [100, 250, 500, 1_000, 2_000]
   @impl true
   def send_wake(device_token, "apns", %{"hint" => "sync"} = payload)
       when is_binary(device_token) and map_size(payload) == 1 do
@@ -29,7 +30,13 @@ defmodule AnsibleRelay.Push.ApnsSender do
         {"content-type", "application/json"}
       ]
 
-      requester().(endpoint(config.environment, device_token), headers, body)
+      send_with_pool_retry(
+        requester(),
+        endpoint(config.environment, device_token),
+        headers,
+        body,
+        @pool_retry_delays_ms
+      )
     end
   end
 
@@ -79,6 +86,25 @@ defmodule AnsibleRelay.Push.ApnsSender do
 
   defp requester do
     Application.get_env(:ansible_relay, :apns_requester, &request/3)
+  end
+
+  # Finch starts an unconfigured origin pool lazily. For HTTP/2 that first
+  # request can arrive before the connection has registered, so retry only
+  # those pool-initialisation failures within the scheduler's bounded task.
+  defp send_with_pool_retry(requester, url, headers, body, [delay_ms | remaining]) do
+    case requester.(url, headers, body) do
+      {:error, {:apns_transport, %Finch.Error{reason: reason}}}
+      when reason in [:pool_not_available, :connection_not_ready] ->
+        Process.sleep(delay_ms)
+        send_with_pool_retry(requester, url, headers, body, remaining)
+
+      result ->
+        result
+    end
+  end
+
+  defp send_with_pool_retry(requester, url, headers, body, []) do
+    requester.(url, headers, body)
   end
 
   defp request(url, headers, body) do

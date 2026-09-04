@@ -75,6 +75,27 @@ defmodule AnsibleRelay.Push.ApnsSenderTest do
     assert_receive {:url, "https://api.sandbox.push.apple.com/3/device/" <> @device_token}
   end
 
+  test "retries transient HTTP/2 pool startup failures" do
+    test_pid = self()
+
+    Application.put_env(:ansible_relay, :apns_requester, fn _url, _headers, _body ->
+      attempt = Process.get(:apns_request_attempt, 0) + 1
+      Process.put(:apns_request_attempt, attempt)
+      send(test_pid, {:attempt, attempt})
+
+      if attempt < 3 do
+        {:error, {:apns_transport, Finch.Error.exception(:pool_not_available)}}
+      else
+        :ok
+      end
+    end)
+
+    assert :ok = ApnsSender.send_wake(@device_token, "apns", %{"hint" => "sync"})
+    assert_receive {:attempt, 1}
+    assert_receive {:attempt, 2}
+    assert_receive {:attempt, 3}
+  end
+
   test "rejects invalid tokens, unsupported platforms, and payload expansion" do
     assert {:error, :invalid_device_token} =
              ApnsSender.send_wake("not-a-token", "apns", %{"hint" => "sync"})
