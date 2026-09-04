@@ -7,23 +7,27 @@ import {
   normalizeMentionDids,
 } from '../src/web_mentions.mjs';
 
-const alice = { did: 'did:elix:alice', handle: 'alice.elix.cool' };
-assert.equal(mentionToken(alice), '@alice.elix.cool');
+const alice = { did: 'did:elix:alice', handle: 'alice.elix.cool', displayName: 'Alice' };
+assert.equal(mentionToken(alice), '@Alice');
+assert.equal(mentionToken(
+  { did: 'did:elix:alice-two', handle: 'alice.two', displayName: 'Alice' },
+  { selections: [{ ...alice, token: '@Alice' }] },
+), '@Alice (@alice.two)');
 
 const inserted = insertMentionAtSelection('Hello world', 6, 11, alice);
 assert.deepEqual(inserted, {
-  text: 'Hello @alice.elix.cool ',
-  cursor: 23,
-  token: '@alice.elix.cool',
+  text: 'Hello @Alice ',
+  cursor: 13,
+  token: '@Alice',
 });
 
 assert.deepEqual(
   activeMentionDids({
-    body: 'Hello @alice.elix.cool and @bob.elix.cool.',
+    body: 'Hello @Alice and @Bob.',
     excludingDid: 'did:elix:me',
     selections: [
-      { ...alice, token: '@alice.elix.cool' },
-      { did: 'did:elix:bob', handle: 'bob.elix.cool', token: '@bob.elix.cool' },
+      { ...alice, token: '@Alice' },
+      { did: 'did:elix:bob', handle: 'bob.elix.cool', displayName: 'Bob', token: '@Bob' },
       { did: 'did:elix:typed-only', token: '@not-present.elix.cool' },
     ],
   }),

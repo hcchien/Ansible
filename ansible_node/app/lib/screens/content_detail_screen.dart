@@ -407,10 +407,11 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       excludingDid: widget.localDid,
     );
     if (!mounted || actor == null) return;
-    _mentions.record(actor);
+    final token = _mentions.record(actor);
     insertMention(
       _composer,
       actor,
+      token: token,
       replaceStart: replaceStart,
       replaceEnd: replaceEnd,
     );

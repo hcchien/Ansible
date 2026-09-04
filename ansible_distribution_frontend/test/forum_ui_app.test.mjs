@@ -218,18 +218,18 @@ const selectMention = createContainedActionElement(replyRoot, 'select-reply-ment
 });
 selectMention.closest = (selector) => selector === '[data-action]' ? selectMention : replyForm;
 await replyRoot.listeners.get('click')({ target: selectMention, preventDefault() {} });
-assert.match(replyRoot.innerHTML, /Hello @alice\.elix\.cool/);
+assert.match(replyRoot.innerHTML, /Hello @Alice/);
 
 const submitReply = createContainedActionElement(replyRoot, 'submit-reply-draft');
 submitReply.closest = (selector) => selector === '[data-action]'
   ? submitReply
   : {
       querySelector() {
-        return { value: 'Hello @alice.elix.cool ' };
+        return { value: 'Hello @Alice ' };
       },
     };
 await replyRoot.listeners.get('click')({ target: submitReply, preventDefault() {} });
-assert.equal(submittedReply.body, 'Hello @alice.elix.cool');
+assert.equal(submittedReply.body, 'Hello @Alice');
 assert.deepEqual(submittedReply.mentionDids, ['did:elix:alice']);
 assert.equal(submittedReply.threadId, 'thread-1');
 assert.match(replyRoot.innerHTML, /已送出回覆/);

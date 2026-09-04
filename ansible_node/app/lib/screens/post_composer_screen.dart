@@ -100,10 +100,11 @@ class _PostComposerScreenState extends State<PostComposerScreen> {
       excludingDid: widget.authorDid,
     );
     if (!mounted || actor == null) return;
-    _mentions.record(actor);
+    final token = _mentions.record(actor);
     insertMention(
       _controller,
       actor,
+      token: token,
       replaceStart: replaceStart,
       replaceEnd: replaceEnd,
     );

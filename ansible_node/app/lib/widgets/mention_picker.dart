@@ -16,9 +16,24 @@ typedef MentionActorSearch =
 class MentionDraft {
   final Map<String, String> _tokenByDid = {};
 
-  void record(DiscoveredActor actor) {
-    if (actor.did.trim().isEmpty) return;
-    _tokenByDid[actor.did.trim()] = mentionToken(actor);
+  String record(DiscoveredActor actor) {
+    final did = actor.did.trim();
+    if (did.isEmpty) return '';
+
+    final existing = _tokenByDid[did];
+    if (existing != null) return existing;
+
+    final preferred = mentionToken(actor);
+    final hasCollision = _tokenByDid.entries.any(
+      (entry) =>
+          entry.key != did &&
+          entry.value.toLowerCase() == preferred.toLowerCase(),
+    );
+    final token = hasCollision
+        ? _disambiguatedMentionToken(actor, preferred)
+        : preferred;
+    _tokenByDid[did] = token;
+    return token;
   }
 
   List<String> activeDids(String content, {String? excludingDid}) {
@@ -45,17 +60,47 @@ class MentionDraft {
 }
 
 String mentionToken(DiscoveredActor actor) {
-  final handle = actor.handle?.trim().replaceFirst(RegExp(r'^@'), '');
-  return '@${handle == null || handle.isEmpty ? actor.did.trim() : handle}';
+  final displayName = _singleLine(actor.displayName);
+  if (displayName != null) return '@$displayName';
+
+  final handle = _normalizedHandle(actor.handle);
+  if (handle != null) return '@$handle';
+
+  return '@${_shortDid(actor.did)}';
+}
+
+String _disambiguatedMentionToken(DiscoveredActor actor, String preferred) {
+  final handle = _normalizedHandle(actor.handle);
+  if (handle != null) return '$preferred (@$handle)';
+  return '$preferred (${_shortDid(actor.did)})';
+}
+
+String? _singleLine(String? value) {
+  final normalized = value?.trim().replaceAll(RegExp(r'\s+'), ' ');
+  return normalized == null || normalized.isEmpty ? null : normalized;
+}
+
+String? _normalizedHandle(String? value) {
+  final normalized = value?.trim().replaceFirst(RegExp(r'^@'), '');
+  return normalized == null || normalized.isEmpty ? null : normalized;
+}
+
+String _shortDid(String value) {
+  final did = value.trim();
+  if (did.length <= 18) return did;
+  return '${did.substring(0, 8)}…${did.substring(did.length - 6)}';
 }
 
 void insertMention(
   TextEditingController controller,
   DiscoveredActor actor, {
+  String? token,
   int? replaceStart,
   int? replaceEnd,
 }) {
-  final token = mentionToken(actor);
+  final resolvedToken = token?.trim().isNotEmpty == true
+      ? token!.trim()
+      : mentionToken(actor);
   final value = controller.value;
   final hasValidReplacement =
       replaceStart != null &&
@@ -80,7 +125,7 @@ void insertMention(
       end < value.text.length && RegExp(r'\s').hasMatch(value.text[end])
       ? ''
       : ' ';
-  final replacement = '$prefix$token$suffix';
+  final replacement = '$prefix$resolvedToken$suffix';
   final text = value.text.replaceRange(start, end, replacement);
   final cursor = start + replacement.length;
   controller.value = TextEditingValue(
@@ -206,13 +251,45 @@ class _MentionPickerSheetState extends State<_MentionPickerSheet> {
                 controller: _controller,
                 autofocus: true,
                 onChanged: _schedule,
+                cursorColor: AnsibleDesign.accent,
+                style: const TextStyle(
+                  fontFamily: AnsibleDesign.sans,
+                  color: AnsibleDesign.ink,
+                ),
                 decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.alternate_email, size: 18),
+                  filled: true,
+                  fillColor: AnsibleDesign.paperElev,
+                  prefixIcon: const Icon(
+                    Icons.alternate_email,
+                    size: 18,
+                    color: AnsibleDesign.inkMuted,
+                  ),
                   hintText: context.uiCopy(
                     zh: '搜尋名稱或 @handle',
                     en: 'Search name or @handle',
                   ),
-                  border: const OutlineInputBorder(),
+                  hintStyle: const TextStyle(color: AnsibleDesign.inkFaint),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(
+                      AnsibleDesign.compactRadius,
+                    ),
+                    borderSide: const BorderSide(color: AnsibleDesign.rule),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(
+                      AnsibleDesign.compactRadius,
+                    ),
+                    borderSide: const BorderSide(color: AnsibleDesign.rule),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(
+                      AnsibleDesign.compactRadius,
+                    ),
+                    borderSide: const BorderSide(
+                      color: AnsibleDesign.accent,
+                      width: 1.2,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -236,13 +313,22 @@ class _MentionPickerSheetState extends State<_MentionPickerSheet> {
                         key: Key('mention_actor_${actor.did}'),
                         contentPadding: EdgeInsets.zero,
                         leading: const CircleAvatar(
+                          backgroundColor: AnsibleDesign.accentSoft,
+                          foregroundColor: AnsibleDesign.accent,
                           child: Icon(Icons.person_outline),
                         ),
-                        title: Text(actor.label),
+                        title: Text(
+                          actor.label,
+                          style: const TextStyle(
+                            color: AnsibleDesign.ink,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         subtitle: Text(
                           actor.handle?.trim().isNotEmpty == true
                               ? '@${actor.handle!.replaceFirst(RegExp(r'^@'), '')}'
-                              : actor.did,
+                              : _shortDid(actor.did),
+                          style: const TextStyle(color: AnsibleDesign.inkMuted),
                         ),
                         onTap: () => Navigator.of(context).pop(actor),
                       ),

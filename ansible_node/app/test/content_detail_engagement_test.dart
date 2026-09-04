@@ -158,6 +158,6 @@ void main() {
     final field = tester.widget<TextField>(
       find.byKey(const Key('comment_composer_field')),
     );
-    expect(field.controller!.text, 'Hello @alice.elix.cool ');
+    expect(field.controller!.text, 'Hello @Alice ');
   });
 }

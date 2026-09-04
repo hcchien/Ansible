@@ -1,16 +1,24 @@
 const MAX_MENTIONS = 10;
 
-export function mentionToken(actor = {}) {
+export function mentionToken(actor = {}, { selections = [] } = {}) {
   const did = String(actor.did ?? '').trim();
   const handle = String(actor.handle ?? '').trim().replace(/^@/, '');
-  return `@${handle || did}`;
+  const displayName = String(actor.displayName ?? '').trim().replace(/\s+/g, ' ');
+  const preferred = `@${displayName || handle || shortDid(did)}`;
+  const collision = selections.some((selection) => {
+    const selectedDid = String(selection?.did ?? '').trim();
+    const selectedToken = String(selection?.token ?? mentionToken(selection)).trim();
+    return selectedDid !== did && selectedToken.toLowerCase() === preferred.toLowerCase();
+  });
+  if (!collision) return preferred;
+  return handle ? `${preferred} (@${handle})` : `${preferred} (${shortDid(did)})`;
 }
 
 export function insertMentionAtSelection(text, selectionStart, selectionEnd, actor) {
   const source = String(text ?? '');
   const start = clampSelection(selectionStart, source.length);
   const end = Math.max(start, clampSelection(selectionEnd, source.length));
-  const token = mentionToken(actor);
+  const token = String(actor?.token ?? mentionToken(actor)).trim();
   const prefix = start > 0 && !/\s/.test(source[start - 1]) ? ' ' : '';
   const suffix = end < source.length && /\s/.test(source[end]) ? '' : ' ';
   const replacement = `${prefix}${token}${suffix}`;
@@ -68,4 +76,10 @@ function clampSelection(value, length) {
   const number = Number(value);
   if (!Number.isFinite(number)) return length;
   return Math.min(length, Math.max(0, Math.trunc(number)));
+}
+
+function shortDid(value) {
+  const did = String(value ?? '').trim();
+  if (did.length <= 18) return did;
+  return `${did.slice(0, 8)}…${did.slice(-6)}`;
 }

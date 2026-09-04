@@ -264,7 +264,7 @@ class DiscoveryClient {
   /// Public-profile lookup used by reply mention pickers.
   ///
   /// A mention is resolved to the actor's public DID before publication; the
-  /// visible handle remains presentation text and is never used as the
+  /// visible display name remains presentation text and is never used as the
   /// notification recipient identifier.
   Future<List<DiscoveredActor>> searchActors({
     required String query,

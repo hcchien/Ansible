@@ -5,7 +5,7 @@ import { moderationActionLabel, reasonCodeLabel } from './forum_ui_text.mjs';
 import { buildAppViewModel } from './state_model.mjs';
 import { t } from './web_i18n.mjs';
 import { WEB_SESSION_TOKEN_KEY } from './web_session_client.mjs';
-import { activeMentionDids, insertMentionAtSelection } from './web_mentions.mjs';
+import { activeMentionDids, insertMentionAtSelection, mentionToken } from './web_mentions.mjs';
 
 const UI_STORAGE_KEYS = Object.freeze({
   activeScene: 'elix.focus.active_scene',
@@ -448,15 +448,18 @@ export function createForumUiApp({
     const form = actionElement.closest?.('[data-reply-form]');
     const textarea = form?.querySelector?.('[data-reply-body]');
     const body = String(textarea?.value ?? replyDraft.body ?? '');
+    const token = mentionToken(actor, {
+      selections: replyDraft.selections ?? [],
+    });
     const inserted = insertMentionAtSelection(
       body,
       replyDraft.mentionTrigger?.start ?? textarea?.selectionStart,
       replyDraft.mentionTrigger?.end ?? textarea?.selectionEnd,
-      actor,
+      { ...actor, token },
     );
     const selections = [
       ...(replyDraft.selections ?? []).filter(
-        (selection) => selection.did !== actor.did && selection.token !== inserted.token,
+        (selection) => selection.did !== actor.did,
       ),
       { ...actor, token: inserted.token },
     ];

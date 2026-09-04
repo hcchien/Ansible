@@ -650,7 +650,7 @@ const replyDraftHtml = renderPageBody(threadDetailVm, {
   replyDraft: {
     boardId: 'general',
     threadId: 'thread-1',
-    body: 'Hello @alice.elix.cool',
+    body: 'Hello @Alice',
     mentionPickerOpen: true,
     mentionQuery: 'ali',
     mentionResults: [{
@@ -662,7 +662,7 @@ const replyDraftHtml = renderPageBody(threadDetailVm, {
 });
 assert.match(replyDraftHtml, /data-reply-form/);
 assert.match(replyDraftHtml, /data-reply-body/);
-assert.match(replyDraftHtml, /Hello @alice\.elix\.cool/);
+assert.match(replyDraftHtml, /Hello @Alice/);
 assert.match(replyDraftHtml, /data-reply-mention-search/);
 assert.match(replyDraftHtml, /data-action="select-reply-mention"/);
 assert.match(replyDraftHtml, /data-did="did:elix:alice"/);

@@ -8,9 +8,11 @@
 ## User Experience
 
 - A user composing a forum reply or standalone-content comment can open a
-  people picker, search the public AppView profile projection, and insert an
-  `@handle` into the reply.
-- Selecting a result binds the visible handle to that profile's public DID.
+  people picker, search the public AppView profile projection, and insert the
+  profile's `@display_name` into the reply. The picker keeps `@handle` visible
+  as secondary disambiguation, and duplicate display names gain an inline
+  handle suffix when both are selected.
+- Selecting a result binds the visible display name to that profile's public DID.
   Typing arbitrary `@text` does not create a recipient because handles are
   presentation data and are not authorization or routing identifiers.
 - A signed public reply carries at most ten unique `mentionDids`. The mentioned
@@ -41,7 +43,7 @@
 ## Constitution Review
 
 1. The identity involved is the selected profile's existing public DID; the
-   handle is display text only.
+   display name and handle are presentation text only.
 2. For public replies, the user already chose the public publication/sync path,
    and the selected public DIDs leave the device as part of that signed op. For
    private boards, mention DIDs remain encrypted with the reply. Web publication
