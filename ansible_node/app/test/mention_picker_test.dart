@@ -44,6 +44,53 @@ void main() {
     expect(find.text('did:plc:alice'), findsOneWidget);
     expect(find.text('@alice.elix.cool'), findsOneWidget);
   });
+
+  testWidgets('typing @ opens the reply picker and replaces the trigger', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: _ComposerHarness(
+          search: (query) async {
+            expect(query, 'ali');
+            return const [
+              DiscoveredActor(
+                did: 'did:plc:alice',
+                handle: 'alice.elix.cool',
+                displayName: 'Alice',
+              ),
+            ];
+          },
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('open_composer')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('post_composer_body_field')),
+      'Hello @',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('mention_search_field')), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('mention_search_field')),
+      'ali',
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('mention_actor_did:plc:alice')));
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(
+      find.byKey(const Key('post_composer_body_field')),
+    );
+    expect(field.controller!.text, 'Hello @alice.elix.cool ');
+    await tester.tap(find.byKey(const Key('post_composer_done_button')));
+    await tester.pumpAndSettle();
+    expect(find.text('did:plc:alice'), findsOneWidget);
+  });
 }
 
 class _ComposerHarness extends StatefulWidget {

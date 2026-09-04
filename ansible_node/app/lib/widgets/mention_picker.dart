@@ -49,13 +49,30 @@ String mentionToken(DiscoveredActor actor) {
   return '@${handle == null || handle.isEmpty ? actor.did.trim() : handle}';
 }
 
-void insertMention(TextEditingController controller, DiscoveredActor actor) {
+void insertMention(
+  TextEditingController controller,
+  DiscoveredActor actor, {
+  int? replaceStart,
+  int? replaceEnd,
+}) {
   final token = mentionToken(actor);
   final value = controller.value;
-  final start = value.selection.isValid
+  final hasValidReplacement =
+      replaceStart != null &&
+      replaceEnd != null &&
+      replaceStart >= 0 &&
+      replaceEnd >= replaceStart &&
+      replaceEnd <= value.text.length;
+  final start = hasValidReplacement
+      ? replaceStart
+      : value.selection.isValid
       ? value.selection.start
       : value.text.length;
-  final end = value.selection.isValid ? value.selection.end : value.text.length;
+  final end = hasValidReplacement
+      ? replaceEnd
+      : value.selection.isValid
+      ? value.selection.end
+      : value.text.length;
   final prefix = start > 0 && !RegExp(r'\s').hasMatch(value.text[start - 1])
       ? ' '
       : '';

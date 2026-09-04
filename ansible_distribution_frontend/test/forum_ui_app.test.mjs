@@ -184,9 +184,14 @@ await replyRoot.listeners.get('click')({
   preventDefault() {},
 });
 assert.match(replyRoot.innerHTML, /data-reply-body/);
-await replyRoot.listeners.get('click')({
-  target: createContainedActionElement(replyRoot, 'toggle-reply-mention-picker'),
-  preventDefault() {},
+replyRoot.listeners.get('input')({
+  target: {
+    dataset: { replyBody: '' },
+    value: 'Hello @',
+    selectionStart: 7,
+    selectionEnd: 7,
+    parentElement: replyRoot,
+  },
 });
 assert.match(replyRoot.innerHTML, /data-reply-mention-search/);
 replyRoot.listeners.get('input')({
@@ -197,9 +202,9 @@ await Promise.resolve();
 assert.match(replyRoot.innerHTML, /Alice/);
 
 const textarea = {
-  value: 'Hello ',
-  selectionStart: 6,
-  selectionEnd: 6,
+  value: 'Hello @',
+  selectionStart: 7,
+  selectionEnd: 7,
 };
 const replyForm = {
   querySelector(selector) {

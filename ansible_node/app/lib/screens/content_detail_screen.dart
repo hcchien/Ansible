@@ -80,6 +80,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   List<_Comment> _comments = const [];
   bool _loading = true;
   bool _posting = false;
+  bool _mentionPickerOpen = false;
   bool _reacted = false;
   ReactionType? _selectedReaction;
   bool _isReacting = false;
@@ -383,7 +384,23 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     }
   }
 
-  Future<void> _pickMention() async {
+  void _onComposerChanged(String _) {
+    if (_posting || _mentionPickerOpen) return;
+    final value = _composer.value;
+    final cursor = value.selection.baseOffset;
+    if (!value.selection.isCollapsed || cursor <= 0) return;
+    if (value.text[cursor - 1] != '@') return;
+    if (cursor > 1 && !RegExp(r'\s').hasMatch(value.text[cursor - 2])) return;
+
+    _mentionPickerOpen = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await _pickMention(replaceStart: cursor - 1, replaceEnd: cursor);
+      _mentionPickerOpen = false;
+    });
+  }
+
+  Future<void> _pickMention({int? replaceStart, int? replaceEnd}) async {
     final actor = await showMentionPicker(
       context: context,
       search: widget.mentionSearch,
@@ -391,7 +408,12 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     );
     if (!mounted || actor == null) return;
     _mentions.record(actor);
-    insertMention(_composer, actor);
+    insertMention(
+      _composer,
+      actor,
+      replaceStart: replaceStart,
+      replaceEnd: replaceEnd,
+    );
     _composerFocus.requestFocus();
   }
 
@@ -905,14 +927,16 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           children: [
             IconButton(
               key: const Key('comment_mention_button'),
-              onPressed: _posting ? null : _pickMention,
+              onPressed: _posting ? null : () => _pickMention(),
               tooltip: context.uiCopy(zh: '提及其他人', en: 'Mention someone'),
               icon: Icon(Icons.alternate_email, size: 20, color: _fg),
             ),
             Expanded(
               child: TextField(
+                key: const Key('comment_composer_field'),
                 controller: _composer,
                 focusNode: _composerFocus,
+                onChanged: _onComposerChanged,
                 minLines: 1,
                 maxLines: 4,
                 style: TextStyle(fontSize: 14, color: _fg),

@@ -127,7 +127,23 @@ export function createForumUiApp({
     const element = event.target;
     if (!root?.contains?.(element) || !replyDraft) return;
     if (element?.dataset?.replyBody !== undefined) {
-      replyDraft = { ...replyDraft, body: String(element.value ?? '') };
+      const body = String(element.value ?? '');
+      const cursor = Number(element.selectionStart);
+      const typedMentionTrigger = Number.isInteger(cursor) && cursor > 0 &&
+        body[cursor - 1] === '@' && (cursor === 1 || /\s/.test(body[cursor - 2]));
+      replyDraft = {
+        ...replyDraft,
+        body,
+        ...(typedMentionTrigger ? {
+          mentionPickerOpen: true,
+          mentionTrigger: { start: cursor - 1, end: cursor },
+          mentionError: false,
+        } : {}),
+      };
+      if (typedMentionTrigger) {
+        render();
+        root?.querySelector?.('[data-reply-mention-search]')?.focus?.();
+      }
     } else if (element?.dataset?.replyMentionSearch !== undefined) {
       void searchReplyMentions(String(element.value ?? ''));
     }
@@ -376,6 +392,7 @@ export function createForumUiApp({
     replyDraft = {
       ...replyDraft,
       mentionPickerOpen: !replyDraft.mentionPickerOpen,
+      mentionTrigger: null,
       mentionError: false,
     };
     render();
@@ -433,8 +450,8 @@ export function createForumUiApp({
     const body = String(textarea?.value ?? replyDraft.body ?? '');
     const inserted = insertMentionAtSelection(
       body,
-      textarea?.selectionStart,
-      textarea?.selectionEnd,
+      replyDraft.mentionTrigger?.start ?? textarea?.selectionStart,
+      replyDraft.mentionTrigger?.end ?? textarea?.selectionEnd,
       actor,
     );
     const selections = [
@@ -448,6 +465,7 @@ export function createForumUiApp({
       body: inserted.text,
       selections,
       mentionPickerOpen: false,
+      mentionTrigger: null,
       mentionQuery: '',
       mentionResults: [],
     };

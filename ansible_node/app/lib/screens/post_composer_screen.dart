@@ -41,6 +41,7 @@ class _PostComposerScreenState extends State<PostComposerScreen> {
   late final TextEditingController _controller;
   final MentionDraft _mentions = MentionDraft();
   String? _error;
+  bool _mentionPickerOpen = false;
 
   bool get _isEdit => widget.initialContent != null;
 
@@ -76,7 +77,23 @@ class _PostComposerScreenState extends State<PostComposerScreen> {
     );
   }
 
-  Future<void> _pickMention() async {
+  void _onComposerChanged(String _) {
+    if (_isEdit || _mentionPickerOpen) return;
+    final value = _controller.value;
+    final cursor = value.selection.baseOffset;
+    if (!value.selection.isCollapsed || cursor <= 0) return;
+    if (value.text[cursor - 1] != '@') return;
+    if (cursor > 1 && !RegExp(r'\s').hasMatch(value.text[cursor - 2])) return;
+
+    _mentionPickerOpen = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await _pickMention(replaceStart: cursor - 1, replaceEnd: cursor);
+      _mentionPickerOpen = false;
+    });
+  }
+
+  Future<void> _pickMention({int? replaceStart, int? replaceEnd}) async {
     final actor = await showMentionPicker(
       context: context,
       search: widget.mentionSearch,
@@ -84,7 +101,12 @@ class _PostComposerScreenState extends State<PostComposerScreen> {
     );
     if (!mounted || actor == null) return;
     _mentions.record(actor);
-    insertMention(_controller, actor);
+    insertMention(
+      _controller,
+      actor,
+      replaceStart: replaceStart,
+      replaceEnd: replaceEnd,
+    );
   }
 
   @override
@@ -107,6 +129,7 @@ class _PostComposerScreenState extends State<PostComposerScreen> {
                 child: TextField(
                   key: const Key('post_composer_body_field'),
                   controller: _controller,
+                  onChanged: _onComposerChanged,
                   autofocus: true,
                   minLines: 8,
                   maxLines: null,
@@ -142,7 +165,7 @@ class _PostComposerScreenState extends State<PostComposerScreen> {
             _Footer(
               did: widget.authorDid,
               characterCount: _controller.text.characters.length,
-              onMention: _isEdit ? null : _pickMention,
+              onMention: _isEdit ? null : () => _pickMention(),
             ),
           ],
         ),

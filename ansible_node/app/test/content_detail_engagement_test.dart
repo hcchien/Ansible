@@ -1,5 +1,6 @@
 import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_node/screens/content_detail_screen.dart';
+import 'package:ansible_node/services/discovery_client.dart';
 import 'package:ansible_node/services/ops_dispatch_service.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
@@ -102,4 +103,61 @@ void main() {
       expect(find.text('Second'), findsOneWidget);
     },
   );
+
+  testWidgets('typing @ opens the comment picker and replaces the trigger', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ContentDetailScreen(
+          db: db,
+          localDid: 'did:elix:local',
+          contentId: 'content-mention',
+          authorDid: 'did:elix:author',
+          body: 'Body',
+          opsDispatchService: OpsDispatchService(
+            repository: DriftOpsQueueRepository(db),
+          ),
+          onFlushPendingOps: () async {},
+          appViewBaseUrl: '',
+          mentionSearch: (query) async {
+            expect(query, 'ali');
+            return const [
+              DiscoveredActor(
+                did: 'did:plc:alice',
+                handle: 'alice.elix.cool',
+                displayName: 'Alice',
+              ),
+            ];
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('comment_composer_field')),
+      'Hello @',
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('mention_search_field')), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('mention_search_field')),
+      'ali',
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('mention_actor_did:plc:alice')));
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(
+      find.byKey(const Key('comment_composer_field')),
+    );
+    expect(field.controller!.text, 'Hello @alice.elix.cool ');
+  });
 }
