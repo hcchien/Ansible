@@ -12,12 +12,13 @@ defmodule AnsibleRelay.Push.PushSender do
 
       config :ansible_relay, :push_sender, AnsibleRelay.Push.LogSender
 
-  `AnsibleRelay.Push.LogSender` is the default (no transport, logs at info).
-  Real transports are config-time work; the adapters need:
+  `AnsibleRelay.Push.LogSender` is the safe default (no transport, logs at
+  info). Production enables [AnsibleRelay.Push.ApnsSender] with runtime
+  secrets. Transport adapters need:
 
     * **APNS** — token-based auth with `APNS_KEY_ID`, `APNS_TEAM_ID`,
       `APNS_KEY_P8` (the .p8 signing key), `APNS_TOPIC` (the app bundle id)
-      and an environment flag (`APNS_ENVIRONMENT=development|production`).
+      and an environment flag (`APNS_ENVIRONMENT=sandbox|production`).
       Wakes are background pushes: `apns-push-type: background`,
       `content-available: 1`, no alert/body.
     * **FCM** — HTTP v1 API with `FCM_PROJECT_ID` and

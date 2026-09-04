@@ -21,6 +21,9 @@ defmodule AnsibleRelay.Application do
           AnsibleRelay.ForumHost.ReportRateLimiter,
           AnsibleRelay.CommunityNotes.RateLimiter,
           AnsibleRelay.OpStore,
+          # APNs only accepts HTTP/2. This client is dedicated to outbound
+          # push transport, so make the protocol requirement explicit.
+          {Finch, name: AnsibleRelay.Finch, pools: %{default: [protocols: [:http2]]}},
           # Supervises the wake-push send tasks so a slow push endpoint can't
           # back up the WakeScheduler mailbox.
           {Task.Supervisor, name: AnsibleRelay.Push.WakeTaskSupervisor},

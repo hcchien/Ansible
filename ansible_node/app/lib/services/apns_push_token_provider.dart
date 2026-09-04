@@ -60,4 +60,10 @@ class ApnsPushTokenProvider implements PushTokenProvider {
       return null;
     });
   }
+
+  /// Stops forwarding native wakes. Call this when the screen that owns the
+  /// sync lifecycle is disposed so a stale database/widget is never touched.
+  void dispose() {
+    _channel.setMethodCallHandler(null);
+  }
 }

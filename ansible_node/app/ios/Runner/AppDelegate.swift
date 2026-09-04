@@ -628,8 +628,25 @@ import UIKit
     // Content-free wake: nudge the Dart side to run a bounded sync pass when
     // the engine is alive (foreground/backgrounded). Cold-start background
     // execution is deliberately out of scope here — opening the app syncs.
-    pushTokenChannel?.invokeMethod("wakeReceived", arguments: nil)
-    completionHandler(.newData)
+    guard let channel = pushTokenChannel else {
+      completionHandler(.noData)
+      return
+    }
+
+    var completed = false
+    let finish: (UIBackgroundFetchResult) -> Void = { result in
+      guard !completed else { return }
+      completed = true
+      completionHandler(result)
+    }
+    // APNs gives background pushes a limited execution window. Keep a native
+    // safety deadline even if a transport call on the Dart side gets stuck.
+    DispatchQueue.main.asyncAfter(deadline: .now() + 25) {
+      finish(.failed)
+    }
+    channel.invokeMethod("wakeReceived", arguments: nil) { result in
+      finish(result is FlutterError ? .failed : .newData)
+    }
   }
 
   private func registerEmbeddingChannel() {

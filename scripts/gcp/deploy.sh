@@ -11,7 +11,9 @@
 #   relay:    RELAY_HOST WEB_HOST ISSUER_HOST ISSUER_PUBLIC_KEY_HEX
 #             WEBAUTHN_RP_ID WEBAUTHN_ORIGIN
 #             [UNIVERSAL_LINK_IOS_APP_IDS APP_LINK_ANDROID_PACKAGE
-#              APP_LINK_ANDROID_SHA256_CERTS ANSIBLE_RELAY_ZKP_VERIFICATION_KEYS]
+#              APP_LINK_ANDROID_SHA256_CERTS ANSIBLE_RELAY_ZKP_VERIFICATION_KEYS
+#              APNS_ENABLED APNS_KEY_ID APNS_TEAM_ID APNS_TOPIC
+#              APNS_ENVIRONMENT APNS_KEY_P8_SECRET]
 #   appview:  RELAY_HOST
 #   issuer:   ISSUER_HOST TW_PROVIDER_AUTH_URL [TW_PROVIDER_AUDIENCE
 #              PASSPORT_VERIFIER_URL PASSPORT_DID_RESOLVER_URL]
@@ -144,6 +146,16 @@ case "$SERVICE" in
     ENV_VARS+=";WEBAUTHN_SYNC_CAPABILITY_REQUIRED=${WEBAUTHN_SYNC_CAPABILITY_REQUIRED:-false}"
     ENV_VARS+=";ACTIVITY_PUB_DELIVERY_ENABLED=${ACTIVITY_PUB_DELIVERY_ENABLED:-true}"
     ENV_VARS+=";ACTIVITY_PUB_BLOCKED_DOMAINS=${ACTIVITY_PUB_BLOCKED_DOMAINS:-}"
+    ENV_VARS+=";APNS_ENABLED=${APNS_ENABLED:-false}"
+    RELAY_SECRETS="DATABASE_URL=relay-database-url:latest,ANSIBLE_RELAY_SNAPSHOT_SIGNING_KEY_HEX=relay-snapshot-signing-key:latest,SYNC_CAPABILITY_SECRET=relay-sync-capability-secret:latest,ACTIVITY_PUB_PUBLIC_KEY_PEM=relay-activitypub-public-key:latest,ACTIVITY_PUB_PRIVATE_KEY_PEM=relay-activitypub-private-key:latest"
+    if [ "${APNS_ENABLED:-false}" = "true" ]; then
+      require_env APNS_KEY_ID APNS_TEAM_ID APNS_TOPIC
+      ENV_VARS+=";APNS_KEY_ID=${APNS_KEY_ID}"
+      ENV_VARS+=";APNS_TEAM_ID=${APNS_TEAM_ID}"
+      ENV_VARS+=";APNS_TOPIC=${APNS_TOPIC}"
+      ENV_VARS+=";APNS_ENVIRONMENT=${APNS_ENVIRONMENT:-production}"
+      RELAY_SECRETS+=",APNS_KEY_P8=${APNS_KEY_P8_SECRET:-relay-apns-key-p8}:latest"
+    fi
     # Optional pass-throughs (universal links fail closed when unset; the ZKP
     # verification path stays disabled when unset — placeholders never boot).
     for OPT in UNIVERSAL_LINK_IOS_APP_IDS APP_LINK_ANDROID_PACKAGE \
@@ -162,7 +174,7 @@ case "$SERVICE" in
       --vpc-egress=private-ranges-only \
       --min-instances=1 \
       --set-env-vars="^;^${ENV_VARS}" \
-      --set-secrets="DATABASE_URL=relay-database-url:latest,ANSIBLE_RELAY_SNAPSHOT_SIGNING_KEY_HEX=relay-snapshot-signing-key:latest,SYNC_CAPABILITY_SECRET=relay-sync-capability-secret:latest,ACTIVITY_PUB_PUBLIC_KEY_PEM=relay-activitypub-public-key:latest,ACTIVITY_PUB_PRIVATE_KEY_PEM=relay-activitypub-private-key:latest" \
+      --set-secrets="${RELAY_SECRETS}" \
       --allow-unauthenticated
     ;;
 

@@ -69,6 +69,36 @@ if config_env() == :prod do
 
   config :ansible_relay, :relay_origin, relay_origin
 
+  apns_enabled = env_bool.("APNS_ENABLED", false)
+
+  if apns_enabled do
+    apns_required = fn name ->
+      System.get_env(name) ||
+        raise "environment variable #{name} is required when APNS_ENABLED=true"
+    end
+
+    apns_environment = System.get_env("APNS_ENVIRONMENT") || "production"
+
+    unless apns_environment in ["production", "sandbox"] do
+      raise "APNS_ENVIRONMENT must be production or sandbox"
+    end
+
+    apns_topic = apns_required.("APNS_TOPIC")
+
+    if apns_environment == "production" and apns_topic != "com.reviz.elix" do
+      raise "production APNS_TOPIC must be com.reviz.elix"
+    end
+
+    config :ansible_relay, :apns,
+      key_id: apns_required.("APNS_KEY_ID"),
+      team_id: apns_required.("APNS_TEAM_ID"),
+      key_p8: apns_required.("APNS_KEY_P8"),
+      topic: apns_topic,
+      environment: apns_environment
+
+    config :ansible_relay, :push_sender, AnsibleRelay.Push.ApnsSender
+  end
+
   activity_pub_delivery_enabled =
     env_bool.("ACTIVITY_PUB_DELIVERY_ENABLED", false)
 

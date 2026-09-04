@@ -42,26 +42,26 @@ void main() {
   });
 
   test('returns null on platform errors instead of throwing', () async {
-    await mockNative(
-      (_) => throw PlatformException(code: 'apns_failed'),
-    );
+    await mockNative((_) => throw PlatformException(code: 'apns_failed'));
     final provider = ApnsPushTokenProvider(channel: channel, isIos: () => true);
     expect(await provider.currentToken(), isNull);
   });
 
-  test('returns null on timeout instead of hanging the settings toggle',
-      () async {
-    await mockNative(
-      (_) async =>
-          Future<String>.delayed(const Duration(seconds: 2), () => 'late'),
-    );
-    final provider = ApnsPushTokenProvider(
-      channel: channel,
-      isIos: () => true,
-      timeout: const Duration(milliseconds: 50),
-    );
-    expect(await provider.currentToken(), isNull);
-  });
+  test(
+    'returns null on timeout instead of hanging the settings toggle',
+    () async {
+      await mockNative(
+        (_) async =>
+            Future<String>.delayed(const Duration(seconds: 2), () => 'late'),
+      );
+      final provider = ApnsPushTokenProvider(
+        channel: channel,
+        isIos: () => true,
+        timeout: const Duration(milliseconds: 50),
+      );
+      expect(await provider.currentToken(), isNull);
+    },
+  );
 
   test('wake callback fires on wakeReceived', () async {
     final provider = ApnsPushTokenProvider(channel: channel, isIos: () => true);
@@ -70,13 +70,31 @@ void main() {
 
     await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .handlePlatformMessage(
-      channel.name,
-      const StandardMethodCodec().encodeMethodCall(
-        const MethodCall('wakeReceived'),
-      ),
-      (_) {},
-    );
+          channel.name,
+          const StandardMethodCodec().encodeMethodCall(
+            const MethodCall('wakeReceived'),
+          ),
+          (_) {},
+        );
 
     expect(woke, 1);
+  });
+
+  test('dispose stops forwarding wakeReceived', () async {
+    final provider = ApnsPushTokenProvider(channel: channel, isIos: () => true);
+    var woke = 0;
+    provider.onWake(() async => woke += 1);
+    provider.dispose();
+
+    await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .handlePlatformMessage(
+          channel.name,
+          const StandardMethodCodec().encodeMethodCall(
+            const MethodCall('wakeReceived'),
+          ),
+          (_) {},
+        );
+
+    expect(woke, 0);
   });
 }

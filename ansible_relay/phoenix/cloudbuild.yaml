@@ -9,6 +9,12 @@ substitutions:
   _SERVICE_NAME: ansible-relay-dev
   _ELIXIR_IMAGE: hexpm/elixir:1.19.0-erlang-27.2-debian-bookworm-20260202-slim
   _ACTIVITY_PUB_DELIVERY_ENABLED: "true"
+  _APNS_ENABLED: "false"
+  _APNS_KEY_ID: ""
+  _APNS_TEAM_ID: ""
+  _APNS_TOPIC: com.reviz.elix
+  _APNS_ENVIRONMENT: production
+  _APNS_KEY_P8_SECRET: __AUTO__
   _VPC_CONNECTOR: ansible-conn
   # Derive these from _SERVICE_NAME unless a trigger deliberately overrides
   # them.  This keeps prod builds from ever reusing the dev migration job or
@@ -169,17 +175,32 @@ steps:
       - |
         set -eu
         case "${_SERVICE_NAME}" in
-          *-prod) rater_secret="relay-prod-community-notes-rater-hmac:latest" ;;
-          *-dev) rater_secret="relay-dev-community-notes-rater-hmac:latest" ;;
+          *-prod)
+            rater_secret="relay-prod-community-notes-rater-hmac:latest"
+            apns_secret="relay-prod-apns-key-p8:latest"
+            ;;
+          *-dev)
+            rater_secret="relay-dev-community-notes-rater-hmac:latest"
+            apns_secret="relay-dev-apns-key-p8:latest"
+            ;;
           *) echo "refusing to infer Community Notes secret for service ${_SERVICE_NAME}" >&2; exit 1 ;;
         esac
+        if [ "${_APNS_KEY_P8_SECRET}" != "__AUTO__" ]; then
+          apns_secret="${_APNS_KEY_P8_SECRET}"
+        fi
+        relay_secrets="ACTIVITY_PUB_PUBLIC_KEY_PEM=relay-activitypub-public-key-dev:latest,ACTIVITY_PUB_PRIVATE_KEY_PEM=relay-activitypub-private-key-dev:latest,COMMUNITY_NOTES_RATER_HMAC_SECRET=$$rater_secret"
+        if [ "${_APNS_ENABLED}" = "true" ]; then
+          [ -n "${_APNS_KEY_ID}" ] || { echo "_APNS_KEY_ID is required" >&2; exit 1; }
+          [ -n "${_APNS_TEAM_ID}" ] || { echo "_APNS_TEAM_ID is required" >&2; exit 1; }
+          relay_secrets="$$relay_secrets,APNS_KEY_P8=$$apns_secret"
+        fi
         gcloud run deploy "${_SERVICE_NAME}" \
           --image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA" \
           --region="${_REGION}" \
           --platform=managed \
           --labels="managed-by=gcp-cloud-build-deploy-cloud-run,commit-sha=$COMMIT_SHA,gcb-build-id=$BUILD_ID" \
-          --update-env-vars="ACTIVITY_PUB_DELIVERY_ENABLED=${_ACTIVITY_PUB_DELIVERY_ENABLED}" \
-          --update-secrets="ACTIVITY_PUB_PUBLIC_KEY_PEM=relay-activitypub-public-key-dev:latest,ACTIVITY_PUB_PRIVATE_KEY_PEM=relay-activitypub-private-key-dev:latest,COMMUNITY_NOTES_RATER_HMAC_SECRET=$$rater_secret" \
+          --update-env-vars="ACTIVITY_PUB_DELIVERY_ENABLED=${_ACTIVITY_PUB_DELIVERY_ENABLED},APNS_ENABLED=${_APNS_ENABLED},APNS_KEY_ID=${_APNS_KEY_ID},APNS_TEAM_ID=${_APNS_TEAM_ID},APNS_TOPIC=${_APNS_TOPIC},APNS_ENVIRONMENT=${_APNS_ENVIRONMENT}" \
+          --update-secrets="$$relay_secrets" \
           --quiet
     waitFor: ["migrate-dev"]
 

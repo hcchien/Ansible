@@ -1,5 +1,6 @@
 import 'package:ansible_node/screens/home_shell.dart';
 import 'package:ansible_node/services/app_sync_service.dart';
+import 'package:ansible_node/services/apns_push_token_provider.dart';
 import 'package:ansible_node/services/network_status_service.dart';
 import 'package:ansible_node/services/relay_discovery_client.dart';
 import 'package:ansible_node/services/user_presence_verifier.dart';
@@ -8,11 +9,63 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('content-free APNS wake pulls the configured relay', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    await _seedActiveRelay(db);
+    const channel = MethodChannel('elix/push_token/home_shell_test');
+    final provider = ApnsPushTokenProvider(channel: channel, isIos: () => true);
+    var pullCalls = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeShell(
+          db: db,
+          did: 'did:plc:alice',
+          networkStatusMonitor: _FakeNetworkStatusMonitor(NetworkStatus.online),
+          autoSeedDefaultRelay: false,
+          apnsPushTokenProvider: provider,
+          pullRefreshRunner: () async {
+            pullCalls += 1;
+            return const RelayPullSummary(pulledActivities: 0);
+          },
+        ),
+      ),
+    );
+    for (var i = 0; i < 8; i += 1) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    final beforeWake = pullCalls;
+
+    await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .handlePlatformMessage(
+          channel.name,
+          const StandardMethodCodec().encodeMethodCall(
+            const MethodCall('wakeReceived'),
+          ),
+          (_) {},
+        );
+    await tester.pump();
+
+    expect(pullCalls, beforeWake + 1);
+    await _disposeWidgetTree(tester);
+  });
+
   testWidgets('first run shows injected relay discovery starter board', (
     tester,
   ) async {

@@ -29,6 +29,7 @@ import '../services/ai/vector_search_service.dart';
 import '../services/app_locale_controller.dart';
 import '../services/app_view_timeline_client.dart';
 import '../services/app_sync_service.dart';
+import '../services/apns_push_token_provider.dart';
 import '../services/board_access_presentation_service.dart';
 import '../services/blocked_author_store.dart';
 import '../services/contact_resolver.dart';
@@ -112,6 +113,7 @@ class HomeShell extends StatefulWidget {
     this.syncAuthorizationController,
     this.localeController,
     this.readingPreferencesController,
+    this.apnsPushTokenProvider,
     this.autoSeedDefaultRelay = true,
     this.initialBoard = HomeBoard.timeline,
     this.globalSyncController,
@@ -142,6 +144,7 @@ class HomeShell extends StatefulWidget {
   final SyncAuthorizationController? syncAuthorizationController;
   final AppLocaleController? localeController;
   final ReadingPreferencesController? readingPreferencesController;
+  final ApnsPushTokenProvider? apnsPushTokenProvider;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -188,6 +191,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   late final bool _ownsNetworkStatusService;
   final Map<String, SyncCapabilityService> _syncCapabilityServices = {};
   late final SyncAuthorizationController _syncAuthorizationController;
+  late final ApnsPushTokenProvider _apnsPushTokenProvider;
 
   List<Board> _boards = [];
   List<PostCardData> _posts = [];
@@ -312,6 +316,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             ? SyncAuthorizationController.shared
             : SyncAuthorizationController());
     _ownsNetworkStatusService = widget.networkStatusMonitor == null;
+    _apnsPushTokenProvider =
+        widget.apnsPushTokenProvider ?? ApnsPushTokenProvider();
+    _apnsPushTokenProvider.onWake(_handlePushWake);
     _lastNetworkStatus = _networkStatusService.status;
     _networkStatusService.addListener(_handleNetworkStatusChanged);
     WidgetsBinding.instance.addObserver(this);
@@ -400,6 +407,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _apnsPushTokenProvider.dispose();
     widget.globalSyncController?.detach(_runGlobalSync);
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_syncAuthorizationController.invalidate());
@@ -410,6 +418,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _pageController.dispose();
     _messengerRelayClient.close();
     super.dispose();
+  }
+
+  Future<void> _handlePushWake() async {
+    await _runForegroundPullIfConfigured();
   }
 
   @override

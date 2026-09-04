@@ -30,6 +30,10 @@ defmodule AnsibleRelay.MixProject do
       # Persistence
       {:ecto_sql, "~> 3.11"},
       {:postgrex, "~> 0.17"},
+      # HTTP/2 transport for content-free APNs wake pushes.
+      {:finch, "~> 0.20"},
+      # ES256 provider tokens for APNs token-based authentication.
+      {:jose, "~> 1.11"},
       # Rustler NIF for Ed25519
       {:rustler, "~> 0.31"},
       # Erlang clustering for multi-node deployments (off until a topology is set)
