@@ -2,6 +2,7 @@ import 'package:ansible_node/screens/thread_composer_screen.dart';
 import 'package:ansible_node/screens/threads_list_screen.dart';
 import 'package:ansible_node/services/forum_publication_service.dart';
 import 'package:ansible_node/theme/ansible_design.dart';
+import 'package:ansible_node/theme/elix_screen_style.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -468,6 +469,43 @@ void main() {
         find.byKey(const Key('board_create_deliberation_action')),
         findsOneWidget,
       );
+    });
+
+    testWidgets('paper board create sheet keeps readable ink in dark mode', (
+      tester,
+    ) async {
+      final primary = await seedBoard('board-1', 'General');
+      await seedProjection('board-1');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AnsibleDesign.darkTheme(),
+          home: ThreadsListScreen(
+            db: db,
+            board: primary,
+            localDid: localDid,
+            screenStyle: ElixScreenStyle.paper,
+            deliberationsLoader: (_) async => const [],
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+
+      final title = tester.widget<Text>(find.text('新增討論'));
+      final subtitle = tester.widget<Text>(find.text('發表一般討論串'));
+      final action = find.byKey(const Key('board_create_discussion_action'));
+      final icon = tester.widget<Icon>(
+        find.descendant(
+          of: action,
+          matching: find.byIcon(Icons.forum_outlined),
+        ),
+      );
+      expect(title.style?.color, AnsibleDesign.ink);
+      expect(subtitle.style?.color, AnsibleDesign.inkMuted);
+      expect(icon.color, AnsibleDesign.inkMuted);
     });
 
     testWidgets('selected cross-post ids flow to the publication service', (

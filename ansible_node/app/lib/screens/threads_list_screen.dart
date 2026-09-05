@@ -508,36 +508,48 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
           children: [
             ListTile(
               key: const Key('board_create_discussion_action'),
-              leading: const Icon(Icons.forum_outlined),
-              title: Text(context.uiCopy(zh: '新增討論', en: 'New discussion')),
+              leading: Icon(Icons.forum_outlined, color: _muted),
+              title: Text(
+                context.uiCopy(zh: '新增討論', en: 'New discussion'),
+                style: TextStyle(color: _fg),
+              ),
               subtitle: Text(
                 context.uiCopy(zh: '發表一般討論串', en: 'Start a discussion thread'),
+                style: TextStyle(color: _muted),
               ),
               onTap: () =>
                   Navigator.of(sheetContext).pop(_BoardCreateAction.discussion),
             ),
             ListTile(
               key: const Key('board_create_poll_action'),
-              leading: const Icon(Icons.poll_outlined),
-              title: Text(context.uiCopy(zh: '新增投票', en: 'New poll')),
+              leading: Icon(Icons.poll_outlined, color: _muted),
+              title: Text(
+                context.uiCopy(zh: '新增投票', en: 'New poll'),
+                style: TextStyle(color: _fg),
+              ),
               subtitle: Text(
                 context.uiCopy(
                   zh: '設定投票題目與選項',
                   en: 'Set a question and voting options',
                 ),
+                style: TextStyle(color: _muted),
               ),
               onTap: () =>
                   Navigator.of(sheetContext).pop(_BoardCreateAction.poll),
             ),
             ListTile(
               key: const Key('board_create_deliberation_action'),
-              leading: const Icon(Icons.hub_outlined),
-              title: Text(context.uiCopy(zh: '新增共識討論', en: 'New deliberation')),
+              leading: Icon(Icons.hub_outlined, color: _muted),
+              title: Text(
+                context.uiCopy(zh: '新增共識討論', en: 'New deliberation'),
+                style: TextStyle(color: _fg),
+              ),
               subtitle: Text(
                 context.uiCopy(
                   zh: '用多則陳述整理共識與歧異',
                   en: 'Compare multiple statements and find shared ground',
                 ),
+                style: TextStyle(color: _muted),
               ),
               onTap: () => Navigator.of(
                 sheetContext,

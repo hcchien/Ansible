@@ -573,6 +573,53 @@ class _PostCardState extends State<PostCard> {
     );
   }
 
+  Widget _boardLink(PostCardData data, ElixScreenStyleData style) {
+    final boardName = data.board.trim();
+    return Semantics(
+      button: true,
+      label: context.uiCopy(zh: '前往看板 $boardName', en: 'Open board $boardName'),
+      child: InkWell(
+        key: Key('post_card_board_${data.thread.id}'),
+        borderRadius: BorderRadius.circular(999),
+        onTap: () => widget.onOpenBoard?.call(data.thread.boardId),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: style.accent.withValues(alpha: 0.10),
+            border: Border.all(
+              color: style.accent.withValues(alpha: 0.38),
+              width: 0.5,
+            ),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.forum_outlined, size: 13, color: style.accent),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  context.uiCopy(
+                    zh: '看板 · $boardName',
+                    en: 'Board · $boardName',
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: AnsibleDesign.sans,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: style.accent,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_hidden) return const SizedBox.shrink();
@@ -704,6 +751,12 @@ class _PostCardState extends State<PostCard> {
                 ],
               ),
             ),
+            if (data.openableThread &&
+                widget.onOpenBoard != null &&
+                data.board.trim().isNotEmpty) ...[
+              const SizedBox(height: 10),
+              _boardLink(data, style),
+            ],
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: _openDetail,
