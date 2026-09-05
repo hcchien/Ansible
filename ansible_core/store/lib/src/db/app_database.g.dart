@@ -4327,6 +4327,18 @@ class $PostsTable extends Posts with TableInfo<$PostsTable, Post> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _mentionsJsonMeta = const VerificationMeta(
+    'mentionsJson',
+  );
+  @override
+  late final GeneratedColumn<String> mentionsJson = GeneratedColumn<String>(
+    'mentions_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     postId,
@@ -4340,6 +4352,7 @@ class $PostsTable extends Posts with TableInfo<$PostsTable, Post> {
     lastEditAt,
     isDeleted,
     signatureVerified,
+    mentionsJson,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4444,6 +4457,15 @@ class $PostsTable extends Posts with TableInfo<$PostsTable, Post> {
         ),
       );
     }
+    if (data.containsKey('mentions_json')) {
+      context.handle(
+        _mentionsJsonMeta,
+        mentionsJson.isAcceptableOrUnknown(
+          data['mentions_json']!,
+          _mentionsJsonMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -4497,6 +4519,10 @@ class $PostsTable extends Posts with TableInfo<$PostsTable, Post> {
         DriftSqlType.bool,
         data['${effectivePrefix}signature_verified'],
       )!,
+      mentionsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mentions_json'],
+      )!,
     );
   }
 
@@ -4522,6 +4548,11 @@ class Post extends DataClass implements Insertable<Post> {
   /// signed locally on create, or verified on sync (the relay only admits
   /// signature-verified ops). Surfaces a "signed" badge in the UI.
   final bool signatureVerified;
+
+  /// Signed public mention references (`[{did, token}]`) used only to render
+  /// profile links. Private-board values reach this column only after local
+  /// decryption; they never leave the encrypted envelope in cleartext.
+  final String mentionsJson;
   const Post({
     required this.postId,
     required this.threadId,
@@ -4534,6 +4565,7 @@ class Post extends DataClass implements Insertable<Post> {
     required this.lastEditAt,
     required this.isDeleted,
     required this.signatureVerified,
+    required this.mentionsJson,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4551,6 +4583,7 @@ class Post extends DataClass implements Insertable<Post> {
     map['last_edit_at'] = Variable<DateTime>(lastEditAt);
     map['is_deleted'] = Variable<bool>(isDeleted);
     map['signature_verified'] = Variable<bool>(signatureVerified);
+    map['mentions_json'] = Variable<String>(mentionsJson);
     return map;
   }
 
@@ -4569,6 +4602,7 @@ class Post extends DataClass implements Insertable<Post> {
       lastEditAt: Value(lastEditAt),
       isDeleted: Value(isDeleted),
       signatureVerified: Value(signatureVerified),
+      mentionsJson: Value(mentionsJson),
     );
   }
 
@@ -4589,6 +4623,7 @@ class Post extends DataClass implements Insertable<Post> {
       lastEditAt: serializer.fromJson<DateTime>(json['lastEditAt']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       signatureVerified: serializer.fromJson<bool>(json['signatureVerified']),
+      mentionsJson: serializer.fromJson<String>(json['mentionsJson']),
     );
   }
   @override
@@ -4606,6 +4641,7 @@ class Post extends DataClass implements Insertable<Post> {
       'lastEditAt': serializer.toJson<DateTime>(lastEditAt),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'signatureVerified': serializer.toJson<bool>(signatureVerified),
+      'mentionsJson': serializer.toJson<String>(mentionsJson),
     };
   }
 
@@ -4621,6 +4657,7 @@ class Post extends DataClass implements Insertable<Post> {
     DateTime? lastEditAt,
     bool? isDeleted,
     bool? signatureVerified,
+    String? mentionsJson,
   }) => Post(
     postId: postId ?? this.postId,
     threadId: threadId ?? this.threadId,
@@ -4633,6 +4670,7 @@ class Post extends DataClass implements Insertable<Post> {
     lastEditAt: lastEditAt ?? this.lastEditAt,
     isDeleted: isDeleted ?? this.isDeleted,
     signatureVerified: signatureVerified ?? this.signatureVerified,
+    mentionsJson: mentionsJson ?? this.mentionsJson,
   );
   Post copyWithCompanion(PostsCompanion data) {
     return Post(
@@ -4653,6 +4691,9 @@ class Post extends DataClass implements Insertable<Post> {
       signatureVerified: data.signatureVerified.present
           ? data.signatureVerified.value
           : this.signatureVerified,
+      mentionsJson: data.mentionsJson.present
+          ? data.mentionsJson.value
+          : this.mentionsJson,
     );
   }
 
@@ -4669,7 +4710,8 @@ class Post extends DataClass implements Insertable<Post> {
           ..write('updatedAt: $updatedAt, ')
           ..write('lastEditAt: $lastEditAt, ')
           ..write('isDeleted: $isDeleted, ')
-          ..write('signatureVerified: $signatureVerified')
+          ..write('signatureVerified: $signatureVerified, ')
+          ..write('mentionsJson: $mentionsJson')
           ..write(')'))
         .toString();
   }
@@ -4687,6 +4729,7 @@ class Post extends DataClass implements Insertable<Post> {
     lastEditAt,
     isDeleted,
     signatureVerified,
+    mentionsJson,
   );
   @override
   bool operator ==(Object other) =>
@@ -4702,7 +4745,8 @@ class Post extends DataClass implements Insertable<Post> {
           other.updatedAt == this.updatedAt &&
           other.lastEditAt == this.lastEditAt &&
           other.isDeleted == this.isDeleted &&
-          other.signatureVerified == this.signatureVerified);
+          other.signatureVerified == this.signatureVerified &&
+          other.mentionsJson == this.mentionsJson);
 }
 
 class PostsCompanion extends UpdateCompanion<Post> {
@@ -4717,6 +4761,7 @@ class PostsCompanion extends UpdateCompanion<Post> {
   final Value<DateTime> lastEditAt;
   final Value<bool> isDeleted;
   final Value<bool> signatureVerified;
+  final Value<String> mentionsJson;
   final Value<int> rowid;
   const PostsCompanion({
     this.postId = const Value.absent(),
@@ -4730,6 +4775,7 @@ class PostsCompanion extends UpdateCompanion<Post> {
     this.lastEditAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.signatureVerified = const Value.absent(),
+    this.mentionsJson = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PostsCompanion.insert({
@@ -4744,6 +4790,7 @@ class PostsCompanion extends UpdateCompanion<Post> {
     required DateTime lastEditAt,
     this.isDeleted = const Value.absent(),
     this.signatureVerified = const Value.absent(),
+    this.mentionsJson = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : postId = Value(postId),
        threadId = Value(threadId),
@@ -4765,6 +4812,7 @@ class PostsCompanion extends UpdateCompanion<Post> {
     Expression<DateTime>? lastEditAt,
     Expression<bool>? isDeleted,
     Expression<bool>? signatureVerified,
+    Expression<String>? mentionsJson,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -4779,6 +4827,7 @@ class PostsCompanion extends UpdateCompanion<Post> {
       if (lastEditAt != null) 'last_edit_at': lastEditAt,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (signatureVerified != null) 'signature_verified': signatureVerified,
+      if (mentionsJson != null) 'mentions_json': mentionsJson,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -4795,6 +4844,7 @@ class PostsCompanion extends UpdateCompanion<Post> {
     Value<DateTime>? lastEditAt,
     Value<bool>? isDeleted,
     Value<bool>? signatureVerified,
+    Value<String>? mentionsJson,
     Value<int>? rowid,
   }) {
     return PostsCompanion(
@@ -4809,6 +4859,7 @@ class PostsCompanion extends UpdateCompanion<Post> {
       lastEditAt: lastEditAt ?? this.lastEditAt,
       isDeleted: isDeleted ?? this.isDeleted,
       signatureVerified: signatureVerified ?? this.signatureVerified,
+      mentionsJson: mentionsJson ?? this.mentionsJson,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -4849,6 +4900,9 @@ class PostsCompanion extends UpdateCompanion<Post> {
     if (signatureVerified.present) {
       map['signature_verified'] = Variable<bool>(signatureVerified.value);
     }
+    if (mentionsJson.present) {
+      map['mentions_json'] = Variable<String>(mentionsJson.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -4869,6 +4923,7 @@ class PostsCompanion extends UpdateCompanion<Post> {
           ..write('lastEditAt: $lastEditAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('signatureVerified: $signatureVerified, ')
+          ..write('mentionsJson: $mentionsJson, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -33811,6 +33866,7 @@ typedef $$PostsTableCreateCompanionBuilder =
       required DateTime lastEditAt,
       Value<bool> isDeleted,
       Value<bool> signatureVerified,
+      Value<String> mentionsJson,
       Value<int> rowid,
     });
 typedef $$PostsTableUpdateCompanionBuilder =
@@ -33826,6 +33882,7 @@ typedef $$PostsTableUpdateCompanionBuilder =
       Value<DateTime> lastEditAt,
       Value<bool> isDeleted,
       Value<bool> signatureVerified,
+      Value<String> mentionsJson,
       Value<int> rowid,
     });
 
@@ -33957,6 +34014,11 @@ class $$PostsTableFilterComposer extends Composer<_$AppDatabase, $PostsTable> {
 
   ColumnFilters<bool> get signatureVerified => $composableBuilder(
     column: $table.signatureVerified,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mentionsJson => $composableBuilder(
+    column: $table.mentionsJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -34104,6 +34166,11 @@ class $$PostsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get mentionsJson => $composableBuilder(
+    column: $table.mentionsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$ThreadsTableOrderingComposer get threadId {
     final $$ThreadsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -34208,6 +34275,11 @@ class $$PostsTableAnnotationComposer
 
   GeneratedColumn<bool> get signatureVerified => $composableBuilder(
     column: $table.signatureVerified,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get mentionsJson => $composableBuilder(
+    column: $table.mentionsJson,
     builder: (column) => column,
   );
 
@@ -34350,6 +34422,7 @@ class $$PostsTableTableManager
                 Value<DateTime> lastEditAt = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
                 Value<bool> signatureVerified = const Value.absent(),
+                Value<String> mentionsJson = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PostsCompanion(
                 postId: postId,
@@ -34363,6 +34436,7 @@ class $$PostsTableTableManager
                 lastEditAt: lastEditAt,
                 isDeleted: isDeleted,
                 signatureVerified: signatureVerified,
+                mentionsJson: mentionsJson,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -34378,6 +34452,7 @@ class $$PostsTableTableManager
                 required DateTime lastEditAt,
                 Value<bool> isDeleted = const Value.absent(),
                 Value<bool> signatureVerified = const Value.absent(),
+                Value<String> mentionsJson = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PostsCompanion.insert(
                 postId: postId,
@@ -34391,6 +34466,7 @@ class $$PostsTableTableManager
                 lastEditAt: lastEditAt,
                 isDeleted: isDeleted,
                 signatureVerified: signatureVerified,
+                mentionsJson: mentionsJson,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

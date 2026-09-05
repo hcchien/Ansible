@@ -21,6 +21,12 @@
   content-free `{ "hint": "sync" }` signal.
 - Mention notifications have their own preference and open the referenced
   thread/content discussion.
+- After publication, an explicitly selected mention is rendered in the accent
+  color with a distinct weight/underline and opens that DID's public profile.
+  The signed payload stores the exact visible token next to its DID so duplicate
+  names and later profile renames cannot redirect the link. Older replies that
+  only carry `mentionDids` resolve the current public display name/handle as a
+  compatibility fallback.
 - On Web, opening the reply composer, selecting a public profile, and sending
   the reply are real interactions rather than a static composer. The browser
   signs the exact `forum.reply` operation with WebAuthn; the payload uses the
@@ -32,6 +38,11 @@
 
 - `mentionDids` contains public DIDs only. The client removes the author DID,
   malformed values, duplicates, and values beyond the ten-recipient limit.
+- The optional `mentions` presentation list contains `{did, token}` pairs only
+  for those same bounded `mentionDids`. Renderers require the token to occur at
+  a mention boundary in the signed body; they never infer a target DID from
+  arbitrary display text. Native clients persist these references locally so
+  offline/local-first rendering retains the same link target.
 - Relay independently applies the same type, self-mention, uniqueness, and
   ten-recipient bounds before scheduling wakes. A signed payload cannot turn a
   single reply into an unbounded push fan-out.
@@ -43,14 +54,15 @@
 ## Constitution Review
 
 1. The identity involved is the selected profile's existing public DID; the
-   display name and handle are presentation text only.
+   display name, handle, and signed visible token are presentation text only.
 2. For public replies, the user already chose the public publication/sync path,
    and the selected public DIDs leave the device as part of that signed op. For
    private boards, mention DIDs remain encrypted with the reply. Web publication
    remains limited to the existing public/unlisted rail and does not add a
    private-board path.
-3. The minimum routing claim is a public DID. No credential or trust-tier claim
-   is needed.
+3. The minimum routing/navigation claim is a public DID. The visible token is
+   retained only to render the user's explicit selection. No credential or
+   trust-tier claim is needed.
 4. Raw legal identity, provider assertions, private keys, biometrics, and
    private notification/read state are excluded from op payloads, pushes, and
    logs.

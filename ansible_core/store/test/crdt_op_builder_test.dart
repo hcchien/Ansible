@@ -25,6 +25,7 @@ void main() {
         targetId: 'note-1',
         content: '@bob hello',
         mentionDids: const ['did:key:bob'],
+        mentions: const [PostMention(did: 'did:key:bob', token: '@bob')],
       );
 
       final postMentions =
@@ -35,6 +36,9 @@ void main() {
       expect(postMentions, isNot(contains('not-a-did')));
       expect(CrdtOpBuilder.decodePayload(comment.payload)['mentionDids'], [
         'did:key:bob',
+      ]);
+      expect(CrdtOpBuilder.decodePayload(comment.payload)['mentions'], [
+        {'did': 'did:key:bob', 'token': '@bob'},
       ]);
     });
   });

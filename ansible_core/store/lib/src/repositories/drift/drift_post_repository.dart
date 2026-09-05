@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import '../../db/app_database.dart';
 import '../../entities/post.dart' as entity;
@@ -25,6 +27,11 @@ class DriftPostRepository implements PostRepository {
             parentPostId: Value(post.parentPostId),
             isDeleted: Value(post.isDeleted),
             signatureVerified: Value(post.signatureVerified),
+            mentionsJson: Value(
+              jsonEncode(
+                post.mentions.map((mention) => mention.toJson()).toList(),
+              ),
+            ),
           ),
           mode: InsertMode.insertOrReplace,
         );
@@ -63,6 +70,9 @@ class DriftPostRepository implements PostRepository {
         parentPostId: Value(post.parentPostId),
         isDeleted: Value(post.isDeleted),
         signatureVerified: Value(post.signatureVerified),
+        mentionsJson: Value(
+          jsonEncode(post.mentions.map((mention) => mention.toJson()).toList()),
+        ),
       ),
     );
   }
@@ -110,6 +120,26 @@ class DriftPostRepository implements PostRepository {
       parentPostId: row.parentPostId,
       isDeleted: row.isDeleted,
       signatureVerified: row.signatureVerified,
+      mentions: _decodeMentions(row.mentionsJson),
     );
+  }
+
+  List<entity.PostMention> _decodeMentions(String value) {
+    try {
+      return (jsonDecode(value) as List)
+          .whereType<Map>()
+          .map(
+            (raw) =>
+                entity.PostMention.fromJson(Map<String, dynamic>.from(raw)),
+          )
+          .where(
+            (mention) =>
+                mention.did.startsWith('did:') && mention.token.isNotEmpty,
+          )
+          .take(10)
+          .toList(growable: false);
+    } catch (_) {
+      return const [];
+    }
   }
 }

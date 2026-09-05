@@ -758,7 +758,7 @@ function renderThreadOriginalPost(thread, context = {}) {
           ${renderThreadTime(thread.createdAt ?? thread.updatedAt, 'thread-post-time')}
           ${ownerActions}
         </div>
-        <div class="thread-body-copy">${renderThreadParagraphs(body)}</div>
+        <div class="thread-body-copy">${renderThreadParagraphs(body, { mentions: thread.mentions })}</div>
         ${renderPollDetail(thread.poll, { ...context, pollId: threadId })}
         ${renderThreadActionRow({
           hearts: thread.likeCount ?? thread.likes ?? 0,
@@ -771,14 +771,53 @@ function renderThreadOriginalPost(thread, context = {}) {
   `;
 }
 
-function renderThreadParagraphs(value) {
+function renderThreadParagraphs(value, { mentions = [] } = {}) {
   const text = String(value ?? '').trim();
   if (!text) return `<p>${escapeHtml(t('common.threadFallback'))}</p>`;
 
   return text
     .split(/\n{2,}/)
-    .map((paragraph) => `<p>${escapeHtml(paragraph).replaceAll('\n', '<br>')}</p>`)
+    .map((paragraph) => `<p>${renderMentionLinks(paragraph, mentions).replaceAll('\n', '<br>')}</p>`)
     .join('');
+}
+
+function renderMentionLinks(value, mentions) {
+  const text = String(value ?? '');
+  const references = (Array.isArray(mentions) ? mentions : [])
+    .map((mention) => ({
+      did: String(mention?.did ?? '').trim(),
+      token: String(mention?.token ?? '').trim(),
+    }))
+    .filter((mention) => mention.did.startsWith('did:') && mention.token.startsWith('@'))
+    .slice(0, 10)
+    .sort((left, right) => right.token.length - left.token.length);
+  if (!references.length) return escapeHtml(text);
+
+  let cursor = 0;
+  let html = '';
+  while (cursor < text.length) {
+    let next = null;
+    for (const mention of references) {
+      const escaped = mention.token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const expression = new RegExp(
+        `(^|\\s)(${escaped})(?=\\s|[.,!?，。！？、:;；：)]|$)`,
+        'i',
+      );
+      const match = expression.exec(text.slice(cursor));
+      if (!match) continue;
+      const start = cursor + match.index + match[1].length;
+      const candidate = { start, end: start + match[2].length, mention };
+      if (!next || candidate.start < next.start) next = candidate;
+    }
+    if (!next) {
+      html += escapeHtml(text.slice(cursor));
+      break;
+    }
+    html += escapeHtml(text.slice(cursor, next.start));
+    html += `<a class="mention-profile-link" href="#/profiles/${encodeURIComponent(next.mention.did)}">${escapeHtml(text.slice(next.start, next.end))}</a>`;
+    cursor = next.end;
+  }
+  return html;
 }
 
 function renderThreadActionRow({ hearts = 0, comments = 0, reposts = 0, report = '' } = {}) {
@@ -934,7 +973,7 @@ function renderThreadReplyItem(post, context = {}) {
           ${renderThreadTime(post.createdAt ?? post.updatedAt, 'thread-reply-time')}
           ${ownerActions}
         </div>
-        <div class="thread-reply-body">${renderThreadParagraphs(post.body ?? post.content ?? '')}</div>
+        <div class="thread-reply-body">${renderThreadParagraphs(post.body ?? post.content ?? '', { mentions: post.mentions })}</div>
         <div class="thread-mini-actions">
           ${renderThreadMiniAction('heart', post.likeCount ?? post.likes ?? 0)}
           ${renderThreadMiniAction('comment', post.replyCount ?? 0)}

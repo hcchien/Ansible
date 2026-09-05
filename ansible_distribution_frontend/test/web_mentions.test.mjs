@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 
 import {
   activeMentionDids,
+  activeMentionReferences,
   insertMentionAtSelection,
   mentionToken,
   normalizeMentionDids,
@@ -32,6 +33,20 @@ assert.deepEqual(
     ],
   }),
   ['did:elix:alice', 'did:elix:bob'],
+);
+
+assert.deepEqual(
+  activeMentionReferences({
+    body: 'Hello @Alice and @Bob.',
+    selections: [
+      { ...alice, token: '@Alice' },
+      { did: 'did:elix:bob', token: '@Bob' },
+    ],
+  }),
+  [
+    { did: 'did:elix:alice', token: '@Alice' },
+    { did: 'did:elix:bob', token: '@Bob' },
+  ],
 );
 
 assert.deepEqual(

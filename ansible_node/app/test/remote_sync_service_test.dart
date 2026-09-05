@@ -24,7 +24,14 @@ void main() {
             'threadId': 'content-1',
             'authorId': 'did:key:local',
             'createdAt': '2026-08-23T04:00:00Z',
-            'payload': {'threadId': 'content-1', 'content': 'legacy reply'},
+            'payload': {
+              'threadId': 'content-1',
+              'content': 'legacy reply @Alice',
+              'mentionDids': ['did:elix:alice'],
+              'mentions': [
+                {'did': 'did:elix:alice', 'token': '@Alice'},
+              ],
+            },
           },
         },
       ],
@@ -59,6 +66,8 @@ void main() {
     expect(comment, isNotNull);
     expect(comment!.threadId, 'content-1');
     expect(comment.boardId, isEmpty);
+    expect(comment.mentions.single.did, 'did:elix:alice');
+    expect(comment.mentions.single.token, '@Alice');
   });
 
   test(

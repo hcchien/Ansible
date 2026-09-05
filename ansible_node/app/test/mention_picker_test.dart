@@ -27,6 +27,15 @@ void main() {
         'did:plc:alice-one',
         'did:plc:alice-two',
       ]);
+      expect(
+        draft
+            .activeMentions('@Alice and @Alice (@alice.two)')
+            .map((mention) => mention.toJson()),
+        [
+          {'did': 'did:plc:alice-one', 'token': '@Alice'},
+          {'did': 'did:plc:alice-two', 'token': '@Alice (@alice.two)'},
+        ],
+      );
     },
   );
 
@@ -84,7 +93,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('did:plc:alice'), findsOneWidget);
-      expect(find.text('@Alice'), findsOneWidget);
+      expect(find.text('@Alice'), findsNWidgets(2));
     },
   );
 
@@ -173,6 +182,7 @@ class _ComposerHarnessState extends State<_ComposerHarness> {
           if (_result != null) ...[
             Text(_result!.content),
             Text(_result!.mentionDids.join(',')),
+            Text(_result!.mentions.map((mention) => mention.token).join(',')),
           ],
         ],
       ),

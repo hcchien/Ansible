@@ -18,8 +18,10 @@ import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/author_label.dart';
 import '../widgets/community_notes_panel.dart';
 import '../widgets/mention_picker.dart';
+import '../widgets/mention_text.dart';
 import '../widgets/reaction_picker.dart';
 import '../widgets/report_dialog.dart';
+import 'user_profile_screen.dart';
 
 typedef ContentThreadFetcher =
     Future<AppViewTimelinePage> Function({required String threadId});
@@ -44,6 +46,7 @@ class ContentDetailScreen extends StatefulWidget {
     this.appViewBaseUrl,
     this.threadFetcher,
     this.mentionSearch,
+    this.mentionProfileResolver,
     this.screenStyle = ElixScreenStyle.paper,
     this.safetyActions,
   });
@@ -62,6 +65,7 @@ class ContentDetailScreen extends StatefulWidget {
   final String? appViewBaseUrl;
   final ContentThreadFetcher? threadFetcher;
   final MentionActorSearch? mentionSearch;
+  final PublicProfileResolver? mentionProfileResolver;
 
   /// Follows the originating board/feed's Paper/Ink choice.
   final ElixScreenStyle screenStyle;
@@ -262,6 +266,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
         id: p.id,
         authorDid: p.authorId,
         body: p.content,
+        mentions: p.mentions,
         createdAt: p.createdAt,
       );
     }
@@ -297,15 +302,25 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
         }
         if (i.entityType != 'comment') continue;
         if (blockedAuthors.contains(i.authorDid)) continue;
-        byId.putIfAbsent(
-          i.entityId,
-          () => _Comment(
-            id: i.entityId,
-            authorDid: i.authorDid,
-            body: (i.payload['content'] ?? i.payload['body'] ?? '').toString(),
-            createdAt: i.createdAt,
+        final remoteMentionDids = _parseMentionDids(i.payload['mentionDids']);
+        final remote = _Comment(
+          id: i.entityId,
+          authorDid: i.authorDid,
+          body: (i.payload['content'] ?? i.payload['body'] ?? '').toString(),
+          mentionDids: remoteMentionDids,
+          mentions: _parseMentions(
+            i.payload['mentions'],
+            allowedDids: remoteMentionDids,
           ),
+          createdAt: i.createdAt,
         );
+        final local = byId[i.entityId];
+        byId[i.entityId] = local == null
+            ? remote
+            : local.withMentionMetadata(
+                mentionDids: remote.mentionDids,
+                mentions: remote.mentions,
+              );
       }
       if (mounted) {
         setState(() {
@@ -336,6 +351,13 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     try {
       final commentId = const Uuid().v4();
       final now = DateTime.now();
+      final mentions = _mentions.activeMentions(
+        text,
+        excludingDid: widget.localDid,
+      );
+      final mentionDids = mentions
+          .map((mention) => mention.did)
+          .toList(growable: false);
       // Persist locally first (so it survives offline / a down relay), then
       // enqueue the signed comment op for sync.
       await _postRepo.create(
@@ -349,6 +371,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           updatedAt: now,
           lastEditAt: now,
           signatureVerified: true,
+          mentions: mentions,
         ),
       );
       await widget.opsDispatchService.signAndEnqueue(
@@ -357,10 +380,8 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           entityId: commentId,
           targetId: widget.contentId,
           content: text,
-          mentionDids: _mentions.activeDids(
-            text,
-            excludingDid: widget.localDid,
-          ),
+          mentionDids: mentionDids,
+          mentions: mentions,
         ),
       );
       unawaited(widget.onFlushPendingOps());
@@ -372,6 +393,8 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
             id: commentId,
             authorDid: widget.localDid,
             body: text,
+            mentionDids: mentionDids,
+            mentions: mentions,
             createdAt: now,
           ),
         ]);
@@ -457,6 +480,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           updatedAt: now,
           lastEditAt: now,
           signatureVerified: true,
+          mentions: existing.mentions,
         ),
       );
     }
@@ -900,8 +924,13 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
             ],
           ),
           const SizedBox(height: 3),
-          Text(
-            c.body,
+          MentionText(
+            text: c.body,
+            mentionDids: c.mentionDids,
+            mentions: c.mentions,
+            profileResolver: widget.mentionProfileResolver,
+            linkColor: _accent,
+            onOpenProfile: _openMentionProfile,
             style: TextStyle(
               fontFamily: AnsibleDesign.serif,
               fontSize: 14.5,
@@ -910,6 +939,19 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _openMentionProfile(String did, String? displayName) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => UserProfileScreen(
+          db: widget.db,
+          followerDid: widget.localDid,
+          did: did,
+          displayName: displayName,
+        ),
       ),
     );
   }
@@ -973,11 +1015,48 @@ class _Comment {
     required this.id,
     required this.authorDid,
     required this.body,
+    this.mentionDids = const [],
+    this.mentions = const [],
     this.createdAt,
   });
 
   final String id;
   final String authorDid;
   final String body;
+  final List<String> mentionDids;
+  final List<PostMention> mentions;
   final DateTime? createdAt;
+
+  _Comment withMentionMetadata({
+    required List<String> mentionDids,
+    required List<PostMention> mentions,
+  }) => _Comment(
+    id: id,
+    authorDid: authorDid,
+    body: body,
+    mentionDids: mentions.isEmpty && mentionDids.isEmpty
+        ? this.mentionDids
+        : mentionDids,
+    mentions: mentions.isEmpty ? this.mentions : mentions,
+    createdAt: createdAt,
+  );
 }
+
+List<String> _parseMentionDids(Object? value) => (value as List? ?? const [])
+    .map((did) => did.toString().trim())
+    .where((did) => did.startsWith('did:'))
+    .take(10)
+    .toList(growable: false);
+
+List<PostMention> _parseMentions(
+  Object? value, {
+  required List<String> allowedDids,
+}) => (value as List? ?? const [])
+    .whereType<Map>()
+    .map((raw) => PostMention.fromJson(Map<String, dynamic>.from(raw)))
+    .where(
+      (mention) =>
+          allowedDids.contains(mention.did) && mention.token.startsWith('@'),
+    )
+    .take(10)
+    .toList(growable: false);

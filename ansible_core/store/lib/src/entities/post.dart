@@ -1,3 +1,17 @@
+class PostMention {
+  final String did;
+  final String token;
+
+  const PostMention({required this.did, required this.token});
+
+  Map<String, dynamic> toJson() => {'did': did, 'token': token};
+
+  factory PostMention.fromJson(Map<String, dynamic> json) => PostMention(
+    did: json['did'] as String? ?? '',
+    token: json['token'] as String? ?? '',
+  );
+}
+
 class Post {
   final String id;
   final String threadId;
@@ -13,6 +27,7 @@ class Post {
   /// True when this post's authoring op carried a valid Ed25519 signature
   /// (signed locally on create, or verified on sync).
   final bool signatureVerified;
+  final List<PostMention> mentions;
 
   Post({
     required this.id,
@@ -26,6 +41,7 @@ class Post {
     this.parentPostId,
     this.isDeleted = false,
     this.signatureVerified = false,
+    this.mentions = const [],
   });
 
   Map<String, dynamic> toJson() {
@@ -41,11 +57,13 @@ class Post {
       'parentPostId': parentPostId,
       'isDeleted': isDeleted,
       'signatureVerified': signatureVerified,
+      'mentions': mentions.map((mention) => mention.toJson()).toList(),
     };
   }
 
   factory Post.fromJson(Map<String, dynamic> json) {
-    final authorId = json['authorId'] as String? ?? json['authorDid'] as String?;
+    final authorId =
+        json['authorId'] as String? ?? json['authorDid'] as String?;
     if (authorId == null || authorId.isEmpty) {
       throw ArgumentError('Post authorId is required');
     }
@@ -63,10 +81,23 @@ class Post {
       content: json['content'] as String,
       createdAt: _parseDate(json['createdAt']),
       updatedAt: _parseDate(json['updatedAt'] ?? json['createdAt']),
-      lastEditAt: _parseDate(json['lastEditAt'] ?? json['updatedAt'] ?? json['createdAt']),
+      lastEditAt: _parseDate(
+        json['lastEditAt'] ?? json['updatedAt'] ?? json['createdAt'],
+      ),
       parentPostId: json['parentPostId'] as String?,
       isDeleted: json['isDeleted'] as bool? ?? false,
       signatureVerified: json['signatureVerified'] as bool? ?? false,
+      mentions: (json['mentions'] as List? ?? const [])
+          .whereType<Map>()
+          .map(
+            (value) => PostMention.fromJson(Map<String, dynamic>.from(value)),
+          )
+          .where(
+            (mention) =>
+                mention.did.startsWith('did:') && mention.token.isNotEmpty,
+          )
+          .take(10)
+          .toList(growable: false),
     );
   }
 

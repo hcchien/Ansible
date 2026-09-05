@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
 import '../config/app_environment.dart';
@@ -38,12 +39,20 @@ class MentionDraft {
 
   List<String> activeDids(String content, {String? excludingDid}) {
     final excluded = excludingDid?.trim();
+    return activeMentions(
+      content,
+      excludingDid: excluded,
+    ).map((mention) => mention.did).toList(growable: false);
+  }
+
+  List<PostMention> activeMentions(String content, {String? excludingDid}) {
+    final excluded = excludingDid?.trim();
     return _tokenByDid.entries
         .where(
           (entry) =>
               entry.key != excluded && _containsToken(content, entry.value),
         )
-        .map((entry) => entry.key)
+        .map((entry) => PostMention(did: entry.key, token: entry.value))
         .take(10)
         .toList(growable: false);
   }

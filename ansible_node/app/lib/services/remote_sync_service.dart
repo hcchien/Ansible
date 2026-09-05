@@ -1162,6 +1162,7 @@ class RemoteSyncService {
       updatedAt: now,
       lastEditAt: now,
       signatureVerified: true,
+      mentions: _postMentions(payload),
     );
     final existing = await _postRepo.getById(activity.entityId);
     if (existing == null) {
@@ -1574,6 +1575,7 @@ class RemoteSyncService {
         isDeleted: payload['isDeleted'] as bool? ?? false,
         // Only signature-verified (trusted) ops reach _applyActivity.
         signatureVerified: true,
+        mentions: _postMentions(payload),
       );
 
       final existing = await _postRepo.getById(activity.entityId);
@@ -1583,6 +1585,24 @@ class RemoteSyncService {
         await _postRepo.update(post);
       }
     }
+  }
+
+  List<PostMention> _postMentions(Map<String, dynamic> payload) {
+    final allowedDids = (payload['mentionDids'] as List? ?? const [])
+        .map((did) => did.toString().trim())
+        .where((did) => did.startsWith('did:'))
+        .take(10)
+        .toSet();
+    return (payload['mentions'] as List? ?? const [])
+        .whereType<Map>()
+        .map((raw) => PostMention.fromJson(Map<String, dynamic>.from(raw)))
+        .where(
+          (mention) =>
+              allowedDids.contains(mention.did) &&
+              mention.token.startsWith('@'),
+        )
+        .take(10)
+        .toList(growable: false);
   }
 
   Future<void> _recordRemoteDelete(

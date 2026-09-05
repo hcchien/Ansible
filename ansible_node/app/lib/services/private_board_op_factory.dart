@@ -63,6 +63,7 @@ class PrivateBoardOpFactory {
     required String content,
     String? parentPostId,
     List<String> mentionDids = const [],
+    List<PostMention> mentions = const [],
     required DateTime createdAt,
   }) async {
     _requireReady(board);
@@ -89,6 +90,21 @@ class PrivateBoardOpFactory {
         'content': content,
         if (normalizedMentionDids.isNotEmpty)
           'mentionDids': normalizedMentionDids,
+        if (normalizedMentionDids.isNotEmpty)
+          'mentions': mentions
+              .where(
+                (mention) =>
+                    normalizedMentionDids.contains(mention.did.trim()) &&
+                    mention.token.trim().startsWith('@'),
+              )
+              .take(10)
+              .map(
+                (mention) => {
+                  'did': mention.did.trim(),
+                  'token': mention.token.trim(),
+                },
+              )
+              .toList(growable: false),
       },
     );
     return CrdtOpBuilder.createPrivatePost(

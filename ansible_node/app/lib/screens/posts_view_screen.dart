@@ -23,6 +23,7 @@ import '../theme/elix_screen_style.dart';
 import '../services/handle_resolver.dart';
 import '../widgets/author_label.dart';
 import '../widgets/community_notes_panel.dart';
+import '../widgets/mention_text.dart';
 import '../widgets/reaction_picker.dart';
 import 'post_composer_screen.dart';
 import '../widgets/posting_gate_notice.dart';
@@ -452,6 +453,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         updatedAt: now,
         lastEditAt: now,
         signatureVerified: true, // signed locally via the ops dispatch below
+        mentions: result.mentions,
       );
       await _postRepo.create(post);
       final projection = _hostedProjection;
@@ -465,6 +467,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                 content: post.content,
                 parentPostId: post.parentPostId,
                 mentionDids: result.mentionDids,
+                mentions: result.mentions,
                 createdAt: now,
               )
             : CrdtOpBuilder.createPost(
@@ -475,6 +478,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                 content: post.content,
                 parentPostId: post.parentPostId,
                 mentionDids: result.mentionDids,
+                mentions: result.mentions,
               ),
       );
       _loadPosts();
@@ -505,6 +509,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         parentPostId: post.parentPostId,
         isDeleted: post.isDeleted,
         signatureVerified: true, // re-signed via the update op below
+        mentions: post.mentions,
       );
       await _postRepo.update(updatedPost);
       await _enqueueAndFlush(
@@ -994,8 +999,14 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
           ),
           if (post.content.trim().isNotEmpty) ...[
             const SizedBox(height: 10),
-            Text(
-              post.content,
+            MentionText(
+              text: post.content,
+              mentions: post.mentions,
+              mentionDids: post.mentions
+                  .map((mention) => mention.did)
+                  .toList(growable: false),
+              linkColor: _accent,
+              onOpenProfile: _openMentionProfile,
               style: TextStyle(
                 fontFamily: AnsibleDesign.serif,
                 fontSize: 16,
@@ -1596,8 +1607,14 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                           _ownPostRemovalNotice(context, removal),
                         ],
                         const SizedBox(height: 5),
-                        Text(
-                          post.content,
+                        MentionText(
+                          text: post.content,
+                          mentions: post.mentions,
+                          mentionDids: post.mentions
+                              .map((mention) => mention.did)
+                              .toList(growable: false),
+                          linkColor: _accent,
+                          onOpenProfile: _openMentionProfile,
                           style: TextStyle(
                             fontFamily: AnsibleDesign.serif,
                             fontSize: 14.5,
@@ -1639,6 +1656,19 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
           db: widget.db,
           followerDid: _authorDid,
           did: authorDid,
+        ),
+      ),
+    );
+  }
+
+  void _openMentionProfile(String did, String? displayName) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => UserProfileScreen(
+          db: widget.db,
+          followerDid: _authorDid,
+          did: did,
+          displayName: displayName,
         ),
       ),
     );

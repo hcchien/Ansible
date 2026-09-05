@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:uuid/uuid.dart';
+import '../entities/post.dart';
 import '../entities/ops_queue.dart';
 
 /// Builds signed CRDT Op entries for the local OpsQueue.
@@ -53,16 +54,26 @@ class CrdtOpBuilder {
     required String content,
     String? parentPostId,
     List<String> mentionDids = const [],
+    List<PostMention> mentions = const [],
   }) {
     final opId = _uuid.v4();
     final createdAt = DateTime.now();
+    final normalizedMentionDids = _normalizedMentionDids(
+      authorDid,
+      mentionDids,
+    );
+    final normalizedMentions = _normalizedMentions(
+      mentions,
+      normalizedMentionDids,
+    );
     final payload = _encodeJsonPayload({
       'boardId': boardId,
       'threadId': threadId,
       'content': content,
       'parentPostId': parentPostId,
-      if (mentionDids.isNotEmpty)
-        'mentionDids': _normalizedMentionDids(authorDid, mentionDids),
+      if (normalizedMentionDids.isNotEmpty)
+        'mentionDids': normalizedMentionDids,
+      if (normalizedMentions.isNotEmpty) 'mentions': normalizedMentions,
       'createdAt': createdAt.toUtc().toIso8601String(),
     });
     return OpsQueueEntry(
@@ -122,15 +133,25 @@ class CrdtOpBuilder {
     required String targetId,
     required String content,
     List<String> mentionDids = const [],
+    List<PostMention> mentions = const [],
   }) {
     final opId = _uuid.v4();
     final createdAt = DateTime.now();
+    final normalizedMentionDids = _normalizedMentionDids(
+      authorDid,
+      mentionDids,
+    );
+    final normalizedMentions = _normalizedMentions(
+      mentions,
+      normalizedMentionDids,
+    );
     final payload = _encodeJsonPayload({
       'targetId': targetId,
       'threadId': targetId,
       'content': content,
-      if (mentionDids.isNotEmpty)
-        'mentionDids': _normalizedMentionDids(authorDid, mentionDids),
+      if (normalizedMentionDids.isNotEmpty)
+        'mentionDids': normalizedMentionDids,
+      if (normalizedMentions.isNotEmpty) 'mentions': normalizedMentions,
       'createdAt': createdAt.toUtc().toIso8601String(),
     });
     return OpsQueueEntry(
@@ -161,6 +182,34 @@ class CrdtOpBuilder {
               seen.add(did),
         )
         .take(10)
+        .toList(growable: false);
+  }
+
+  static List<Map<String, String>> _normalizedMentions(
+    Iterable<PostMention> mentions,
+    List<String> mentionDids,
+  ) {
+    final allowed = mentionDids.toSet();
+    final seen = <String>{};
+    return mentions
+        .map(
+          (mention) =>
+              PostMention(did: mention.did.trim(), token: mention.token.trim()),
+        )
+        .where(
+          (mention) =>
+              allowed.contains(mention.did) &&
+              mention.token.startsWith('@') &&
+              mention.token.length <= 160 &&
+              seen.add(mention.did),
+        )
+        .take(10)
+        .map(
+          (mention) => <String, String>{
+            'did': mention.did,
+            'token': mention.token,
+          },
+        )
         .toList(growable: false);
   }
 

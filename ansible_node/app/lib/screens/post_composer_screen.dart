@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ansible_store/ansible_store.dart';
 
 import '../l10n/app_l10n.dart';
 import '../theme/ansible_design.dart';
@@ -9,10 +10,12 @@ class PostComposerResult {
   const PostComposerResult({
     required this.content,
     this.mentionDids = const [],
+    this.mentions = const [],
   });
 
   final String content;
   final List<String> mentionDids;
+  final List<PostMention> mentions;
 }
 
 /// Full-screen composer for a forum reply (new or edit), styled to the app's
@@ -66,13 +69,15 @@ class _PostComposerScreenState extends State<PostComposerScreen> {
       );
       return;
     }
+    final mentions = _mentions.activeMentions(
+      content,
+      excludingDid: widget.authorDid,
+    );
     Navigator.of(context).pop(
       PostComposerResult(
         content: content,
-        mentionDids: _mentions.activeDids(
-          content,
-          excludingDid: widget.authorDid,
-        ),
+        mentionDids: mentions.map((mention) => mention.did).toList(),
+        mentions: mentions,
       ),
     );
   }

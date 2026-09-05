@@ -20,6 +20,11 @@ class Posts extends Table {
   BoolColumn get signatureVerified =>
       boolean().withDefault(const Constant(false))();
 
+  /// Signed public mention references (`[{did, token}]`) used only to render
+  /// profile links. Private-board values reach this column only after local
+  /// decryption; they never leave the encrypted envelope in cleartext.
+  TextColumn get mentionsJson => text().withDefault(const Constant('[]'))();
+
   @override
   Set<Column> get primaryKey => {postId};
 }

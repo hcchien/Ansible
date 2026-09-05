@@ -52,6 +52,34 @@ export function activeMentionDids({
   return active;
 }
 
+export function activeMentionReferences({
+  body,
+  selections = [],
+  excludingDid = null,
+  limit = MAX_MENTIONS,
+} = {}) {
+  const text = String(body ?? '');
+  const excluded = String(excludingDid ?? '').trim();
+  const seen = new Set();
+  const active = [];
+  for (const selection of selections) {
+    const did = String(selection?.did ?? '').trim();
+    const token = String(selection?.token ?? mentionToken(selection)).trim();
+    if (
+      !did.startsWith('did:') ||
+      did === excluded ||
+      seen.has(did) ||
+      !token.startsWith('@') ||
+      token.length > 160 ||
+      !containsMentionToken(text, token)
+    ) continue;
+    seen.add(did);
+    active.push({ did, token });
+    if (active.length >= limit) break;
+  }
+  return active;
+}
+
 export function normalizeMentionDids(values, { excludingDid = null, limit = MAX_MENTIONS } = {}) {
   const excluded = String(excludingDid ?? '').trim();
   const seen = new Set();
@@ -66,7 +94,30 @@ export function normalizeMentionDids(values, { excludingDid = null, limit = MAX_
   return normalized;
 }
 
-function containsMentionToken(text, token) {
+export function normalizeMentionReferences(
+  values,
+  { allowedDids = [], limit = MAX_MENTIONS } = {},
+) {
+  const allowed = new Set(normalizeMentionDids(allowedDids, { limit }));
+  const seen = new Set();
+  const normalized = [];
+  for (const value of Array.isArray(values) ? values : []) {
+    const did = String(value?.did ?? '').trim();
+    const token = String(value?.token ?? '').trim();
+    if (
+      !allowed.has(did) ||
+      seen.has(did) ||
+      !token.startsWith('@') ||
+      token.length > 160
+    ) continue;
+    seen.add(did);
+    normalized.push({ did, token });
+    if (normalized.length >= limit) break;
+  }
+  return normalized;
+}
+
+export function containsMentionToken(text, token) {
   if (!token) return false;
   const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp(`(^|\\s)${escaped}(?=\\s|[.,!?，。！？、:;；：)]|$)`, 'i').test(text);

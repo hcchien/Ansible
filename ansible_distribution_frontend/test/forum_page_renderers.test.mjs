@@ -614,7 +614,11 @@ const threadDetailVm = buildAppViewModel({
     board: generalBoard,
     thread: {
       ...moderatedThreads[1],
-      posts: [{ id: 'post-201', content: 'reply content from AppView' }],
+      posts: [{
+        id: 'post-201',
+        content: 'reply content from AppView @Alice',
+        mentions: [{ did: 'did:elix:alice', token: '@Alice' }],
+      }],
     },
     threads: moderatedThreads,
     capabilities: { canCreateThread: true, canReply: true },
@@ -631,6 +635,10 @@ assert.match(threadDetailHtml, /class="pk-pill"/);
 assert.match(threadDetailHtml, /class="thread-op"/);
 assert.match(threadDetailHtml, /起頭 · <span class="thread-source-strong">signed · PK<\/span>/);
 assert.match(threadDetailHtml, /reply content from AppView/);
+assert.match(
+  threadDetailHtml,
+  /class="mention-profile-link" href="#\/profiles\/did%3Aelix%3Aalice">@Alice<\/a>/,
+);
 assert.match(threadDetailHtml, /class="thread-replies"/);
 assert.match(threadDetailHtml, /class="thread-reply-item"/);
 assert.match(threadDetailHtml, /class="thread-reply-avatar/);

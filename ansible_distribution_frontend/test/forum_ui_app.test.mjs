@@ -231,6 +231,9 @@ submitReply.closest = (selector) => selector === '[data-action]'
 await replyRoot.listeners.get('click')({ target: submitReply, preventDefault() {} });
 assert.equal(submittedReply.body, 'Hello @Alice');
 assert.deepEqual(submittedReply.mentionDids, ['did:elix:alice']);
+assert.deepEqual(submittedReply.mentions, [
+  { did: 'did:elix:alice', token: '@Alice' },
+]);
 assert.equal(submittedReply.threadId, 'thread-1');
 assert.match(replyRoot.innerHTML, /已送出回覆/);
 replyApp.stop();

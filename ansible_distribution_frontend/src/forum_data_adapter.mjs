@@ -27,7 +27,11 @@ import {
   fetchThreadFeed,
   fetchCommunityNotes,
 } from './appview_client.mjs';
-import { normalizeMentionDids } from './web_mentions.mjs';
+import {
+  containsMentionToken,
+  normalizeMentionDids,
+  normalizeMentionReferences,
+} from './web_mentions.mjs';
 import {
   createWebNotificationReadStore,
   projectWebReplyNotifications,
@@ -107,6 +111,7 @@ export function createForumDataAdapter({
 }) {
   const notificationReadStore = createWebNotificationReadStore({ storage });
   const publicHandleCache = new Map();
+  const mentionProfileCache = new Map();
 
   async function loadForumHome({ sessionViewModel, includePublicFeed = false } = {}) {
     const [host, boardsResponse] = await Promise.all([
@@ -332,6 +337,7 @@ export function createForumDataAdapter({
       moderationState,
     );
     await fillMissingAuthorHandles(threads);
+    await fillMissingMentionReferences(threads);
     const thread = threads.find((candidate) => candidate.id === threadId) ?? null;
 
     return {
@@ -430,6 +436,37 @@ export function createForumDataAdapter({
       publicHandleCache.set(identity, request);
     }
     return publicHandleCache.get(identity);
+  }
+
+  async function fillMissingMentionReferences(threads) {
+    if (typeof appViewClient.fetchPublicProfile !== 'function') return;
+    const posts = threads.flatMap((thread) => thread.posts ?? []);
+    await Promise.all(posts.map(async (post) => {
+      const body = String(post.content ?? post.body ?? '');
+      const existing = Array.isArray(post.mentions) ? post.mentions : [];
+      const seen = new Set(existing.map((mention) => mention.did));
+      for (const did of post.mentionDids ?? []) {
+        if (seen.has(did) || existing.length >= 10) continue;
+        if (!mentionProfileCache.has(did)) {
+          mentionProfileCache.set(
+            did,
+            appViewClient.fetchPublicProfile({ appViewBaseUrl, fetchImpl, did }).catch(() => null),
+          );
+        }
+        const profile = await mentionProfileCache.get(did);
+        const displayName = String(profile?.display_name ?? profile?.displayName ?? '').trim();
+        const handle = String(profile?.handle ?? '').trim().replace(/^@/, '');
+        const candidates = [
+          displayName ? `@${displayName}` : null,
+          handle ? `@${handle}` : null,
+        ].filter(Boolean);
+        const token = candidates.find((candidate) => containsMentionToken(body, candidate));
+        if (!token) continue;
+        existing.push({ did, token });
+        seen.add(did);
+      }
+      post.mentions = existing;
+    }));
   }
 
   async function loadNotifications({ sessionViewModel, boards = null } = {}) {
@@ -610,6 +647,7 @@ export function createForumDataAdapter({
     boardId,
     threadId,
     mentionDids = [],
+    mentions = [],
     sessionViewModel,
   }) {
     if (!sessionViewModel?.capabilities?.canReply) throw scopeError('forum:reply');
@@ -629,6 +667,12 @@ export function createForumDataAdapter({
     const publisher =
       forumHostClient.createPasskeySignedOperation ??
       webPublicationClient.createPasskeySignedOperation;
+    const normalizedMentionDids = normalizeMentionDids(mentionDids, {
+      excludingDid: sessionViewModel.subjectDid,
+    });
+    const normalizedMentions = normalizeMentionReferences(mentions, {
+      allowedDids: normalizedMentionDids,
+    });
     return publisher({
       relayBaseUrl,
       storage,
@@ -642,9 +686,8 @@ export function createForumDataAdapter({
       parentId: String(threadId),
       payload: {
         content,
-        mentionDids: normalizeMentionDids(mentionDids, {
-          excludingDid: sessionViewModel.subjectDid,
-        }),
+        mentionDids: normalizedMentionDids,
+        ...(normalizedMentions.length ? { mentions: normalizedMentions } : {}),
       },
     });
   }
@@ -1310,6 +1353,10 @@ export function buildThreadsFromFeed(items) {
           authorHandle: normalizeAuthorHandle(item, payload),
           createdAt: item.created_at,
           revision: item.op_id ?? String(item.log_id ?? ''),
+          mentionDids: normalizeMentionDids(payload.mentionDids ?? payload.mention_dids),
+          mentions: normalizeMentionReferences(payload.mentions, {
+            allowedDids: payload.mentionDids ?? payload.mention_dids,
+          }),
         });
       }
     } else if (

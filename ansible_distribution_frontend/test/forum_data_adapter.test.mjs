@@ -477,10 +477,18 @@ test('loads thread detail from the AppView thread feed', async () => {
               entity_id: 'post-1',
               author_did: 'did:plc:author',
               created_at: '2026-06-18T14:33:27.093554Z',
-              payload: { threadId: 'thread-9', content: '文章不見了？！' },
+              payload: {
+                threadId: 'thread-9',
+                content: '文章不見了？！ @Alice',
+                mentionDids: ['did:elix:alice'],
+              },
             },
           ],
         };
+      },
+      async fetchPublicProfile({ did }) {
+        calls.push(['profile', did]);
+        return { did, display_name: 'Alice', handle: 'alice.elix.cool' };
       },
     },
   });
@@ -495,12 +503,16 @@ test('loads thread detail from the AppView thread feed', async () => {
   assert.equal(page.board.slug, 'fifa2026');
   assert.equal(page.thread.id, 'thread-9');
   assert.equal(page.thread.title, '不見了');
-  assert.equal(page.thread.posts[0].content, '文章不見了？！');
+  assert.equal(page.thread.posts[0].content, '文章不見了？！ @Alice');
+  assert.deepEqual(page.thread.posts[0].mentions, [
+    { did: 'did:elix:alice', token: '@Alice' },
+  ]);
   assert.deepEqual(calls, [
     ['host'],
     ['boards'],
     ['moderation', '1'],
     ['thread-feed', 'http://localhost:5174', 'thread-9'],
+    ['profile', 'did:elix:alice'],
   ]);
 });
 
@@ -828,6 +840,10 @@ test('searches public actors and submits signed replies with bounded mention DID
     boardId: 'general',
     threadId: 'thread-1',
     mentionDids: ['did:elix:alice', 'did:elix:me', 'did:elix:alice', 'invalid'],
+    mentions: [
+      { did: 'did:elix:alice', token: '@alice.elix.cool' },
+      { did: 'did:elix:me', token: '@me' },
+    ],
     sessionViewModel,
   });
 
@@ -838,6 +854,7 @@ test('searches public actors and submits signed replies with bounded mention DID
   assert.deepEqual(publications[0].payload, {
     content: 'Hello @alice.elix.cool',
     mentionDids: ['did:elix:alice'],
+    mentions: [{ did: 'did:elix:alice', token: '@alice.elix.cool' }],
   });
 });
 

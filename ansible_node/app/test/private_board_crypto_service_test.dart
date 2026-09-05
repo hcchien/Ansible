@@ -162,6 +162,9 @@ void main() {
             'did:elix:mentioned',
             'did:elix:author',
           ],
+          mentions: const [
+            PostMention(did: 'did:elix:mentioned', token: '@Mentioned'),
+          ],
           createdAt: now,
         );
 
@@ -178,6 +181,9 @@ void main() {
     expect(await crypto.decryptContent(envelope), {
       'content': 'highly confidential text',
       'mentionDids': ['did:elix:mentioned'],
+      'mentions': [
+        {'did': 'did:elix:mentioned', 'token': '@Mentioned'},
+      ],
     });
   });
 }
