@@ -66,6 +66,8 @@ void main() {
     expect(comment, isNotNull);
     expect(comment!.threadId, 'content-1');
     expect(comment.boardId, isEmpty);
+    expect(comment.createdAt, DateTime.parse('2026-08-23T04:00:00Z'));
+    expect(comment.lastEditAt, DateTime.parse('2026-08-23T04:00:00Z'));
     expect(comment.mentions.single.did, 'did:elix:alice');
     expect(comment.mentions.single.token, '@Alice');
   });
@@ -825,6 +827,18 @@ void main() {
           postId: 'post-1',
           createdAt: '2026-05-04T00:02:00Z',
         ),
+        {
+          'logId': 4,
+          'activity': {
+            'activityId': 'activity-post-1-update',
+            'type': 'update',
+            'entityType': 'post',
+            'entityId': 'post-1',
+            'authorId': 'did:key:remote',
+            'createdAt': '2026-05-04T00:05:00Z',
+            'payload': {'content': 'post-1 edited'},
+          },
+        },
       ],
     );
     final remoteNode = RemoteNode(
@@ -852,11 +866,16 @@ void main() {
     );
 
     expect(result.success, isTrue);
-    expect(result.activitiesProcessed, 3);
+    expect(result.activitiesProcessed, 4);
     expect(remoteNodeRepo.updatedCursor, 124);
     expect((await boardRepo.list()).single.title, 'General');
     expect((await threadRepo.list()).single.title, 'Relay discussion');
-    expect((await postRepo.list()).single.content, 'post-1');
+    final post = (await postRepo.list()).single;
+    expect(post.content, 'post-1 edited');
+    expect(post.boardId, 'board-1');
+    expect(post.threadId, 'thread-1');
+    expect(post.createdAt, DateTime.parse('2026-05-04T00:02:00Z'));
+    expect(post.lastEditAt, DateTime.parse('2026-05-04T00:05:00Z'));
   });
 
   test('projects and removes reactions from an enabled board sync', () async {

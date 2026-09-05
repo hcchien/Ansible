@@ -1353,17 +1353,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         }
       }
 
-      var latestActivity = openingPost.lastEditAt;
-      for (final timelineItem in threadItems) {
-        if (timelineItem.timestamp.isAfter(latestActivity)) {
-          latestActivity = timelineItem.timestamp;
-        }
-      }
-      for (final post in availablePosts) {
-        if (post.lastEditAt.isAfter(latestActivity)) {
-          latestActivity = post.lastEditAt;
-        }
-      }
+      // A newly created reply bumps the discussion. Edits and local sync time
+      // do not: older app versions used sync time as lastEditAt for remote
+      // posts, which made dormant threads look active after every fresh pull.
+      final latestActivity = discussionFeedSortTimestamp([
+        ...availablePosts,
+        ...threadItems.map((timelineItem) => timelineItem.entry.post),
+      ]);
 
       final relevantReplyIds = threadItems
           .map((timelineItem) => timelineItem.entry.post.id)
@@ -1373,7 +1369,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           availablePosts
               .where((post) => relevantReplyIds.contains(post.id))
               .toList()
-            ..sort((a, b) => b.lastEditAt.compareTo(a.lastEditAt));
+            ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
       final metadataByPostId = {
         for (final timelineItem in threadItems)
           timelineItem.entry.post.id: timelineItem,
@@ -1386,7 +1382,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               id: post.id,
               author: post.authorId,
               content: post.content,
-              timeAgo: _formatTimeAgo(post.lastEditAt),
+              timeAgo: _formatTimeAgo(post.createdAt),
               authorDisplayName: metadata?.authorDisplayName,
               authorHandle: metadata?.authorHandle,
               signatureVerified: post.signatureVerified,

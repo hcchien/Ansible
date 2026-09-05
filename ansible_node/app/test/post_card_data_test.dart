@@ -55,6 +55,40 @@ void main() {
     expect(replyCountForPosts([post('op'), post('reply')]), 1);
   });
 
+  test('discussion ordering uses reply creation, not local sync time', () {
+    Post post(String id, DateTime createdAt, DateTime lastEditAt) => Post(
+      id: id,
+      threadId: 'thread-1',
+      boardId: 'board-1',
+      authorId: 'did:elix:alice',
+      content: id,
+      createdAt: createdAt,
+      updatedAt: lastEditAt,
+      lastEditAt: lastEditAt,
+    );
+
+    final openingAt = DateTime.utc(2026, 8, 20);
+    final oldReplyAt = DateTime.utc(2026, 8, 21);
+    final falseSyncAt = DateTime.utc(2026, 9, 6);
+    final recentReplyAt = DateTime.utc(2026, 9, 5);
+
+    expect(
+      discussionFeedSortTimestamp([
+        post('opening', openingAt, openingAt),
+        post('old-reply', oldReplyAt, falseSyncAt),
+      ]),
+      oldReplyAt,
+    );
+    expect(
+      discussionFeedSortTimestamp([
+        post('opening', openingAt, openingAt),
+        post('old-reply', oldReplyAt, falseSyncAt),
+        post('new-reply', recentReplyAt, recentReplyAt),
+      ]),
+      recentReplyAt,
+    );
+  });
+
   test('discussion and standalone cards use their detail reaction targets', () {
     final now = DateTime.utc(2026, 8, 29);
     final thread = Thread(
@@ -256,7 +290,8 @@ void main() {
     expect(openedBoard, isNull);
 
     openedAuthor = null;
-    expect(find.text('看板 · General'), findsOneWidget);
+    expect(find.text('General'), findsOneWidget);
+    expect(find.textContaining('看板 ·'), findsNothing);
     await tester.tap(find.byKey(const Key('post_card_board_thread-nav')));
     await tester.pumpAndSettle();
     expect(openedBoard, 'board-nav');

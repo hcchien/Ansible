@@ -33,6 +33,23 @@ int replyCountForPosts(Iterable<Post> posts) {
   return count == 0 ? 0 : count - 1;
 }
 
+/// The home feed bumps a discussion when a post is actually created. Using
+/// [Post.lastEditAt] here would let an old reply jump to the top merely because
+/// an earlier app version stamped its local sync time as the edit time.
+DateTime discussionFeedSortTimestamp(Iterable<Post> posts) {
+  final iterator = posts.iterator;
+  if (!iterator.moveNext()) {
+    throw ArgumentError.value(posts, 'posts', 'must not be empty');
+  }
+  var latest = iterator.current.createdAt;
+  while (iterator.moveNext()) {
+    if (iterator.current.createdAt.isAfter(latest)) {
+      latest = iterator.current.createdAt;
+    }
+  }
+  return latest;
+}
+
 class PostCardData {
   PostCardData({
     required this.thread,
@@ -599,10 +616,7 @@ class _PostCardState extends State<PostCard> {
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
-                  context.uiCopy(
-                    zh: '看板 · $boardName',
-                    en: 'Board · $boardName',
-                  ),
+                  boardName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(

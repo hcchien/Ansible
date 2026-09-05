@@ -1039,7 +1039,14 @@ class RemoteSyncService {
         // ops. They are comments, not malformed forum posts. Route them to the
         // compatibility projector instead of dereferencing boardId with `!`.
         if (activity.boardId == null || activity.boardId!.isEmpty) {
-          await _applyCommentActivity(activity, sourceNodeId);
+          final existing = await _postRepo.getById(activity.entityId);
+          if (existing != null && existing.boardId.isNotEmpty) {
+            // Post update deltas contain only the changed fields, so recover
+            // their forum route from the existing signed projection.
+            await _applyPostActivity(activity, sourceNodeId);
+          } else {
+            await _applyCommentActivity(activity, sourceNodeId);
+          }
         } else {
           if (activity.threadId == null || activity.threadId!.isEmpty) {
             throw FormatException(
@@ -1147,24 +1154,32 @@ class RemoteSyncService {
       await _recordRemoteDelete(activity, sourceNodeId);
       return;
     }
+    final existing = await _postRepo.getById(activity.entityId);
     final targetId =
         (payload['threadId'] ?? payload['targetId'])?.toString() ??
-        activity.threadId;
+        activity.threadId ??
+        existing?.threadId;
     if (targetId == null || targetId.isEmpty) return;
     final now = DateTime.now();
+    final explicitLastEditAt = DateTime.tryParse(
+      payload['lastEditAt']?.toString() ?? '',
+    );
+    final activityAt = explicitLastEditAt ?? activity.createdAt;
     final post = Post(
       id: activity.entityId,
       threadId: targetId,
       boardId: '',
       authorId: activity.authorId,
-      content: payload['content'] as String? ?? '',
-      createdAt: activity.createdAt,
+      content: payload['content'] as String? ?? existing?.content ?? '',
+      createdAt: existing?.createdAt ?? activity.createdAt,
       updatedAt: now,
-      lastEditAt: now,
+      // This is user activity time, not the time this device happened to sync.
+      lastEditAt: activityAt,
       signatureVerified: true,
-      mentions: _postMentions(payload),
+      mentions: payload.containsKey('mentions')
+          ? _postMentions(payload)
+          : existing?.mentions ?? const [],
     );
-    final existing = await _postRepo.getById(activity.entityId);
     if (existing == null) {
       await _postRepo.create(post);
     } else {
@@ -1557,28 +1572,34 @@ class RemoteSyncService {
       await _recordRemoteDelete(activity, sourceNodeId);
     } else {
       final now = DateTime.now();
-      DateTime? lastEditAt;
-      if (payload['lastEditAt'] != null) {
-        lastEditAt = DateTime.parse(payload['lastEditAt'] as String);
-      }
+      final existing = await _postRepo.getById(activity.entityId);
+      final explicitLastEditAt = DateTime.tryParse(
+        payload['lastEditAt']?.toString() ?? '',
+      );
+      final activityAt = explicitLastEditAt ?? activity.createdAt;
 
       final post = Post(
         id: activity.entityId,
-        threadId: activity.threadId ?? '',
-        boardId: activity.boardId ?? '',
+        threadId: activity.threadId ?? existing?.threadId ?? '',
+        boardId: activity.boardId ?? existing?.boardId ?? '',
         authorId: activity.authorId,
-        content: payload['content'] as String? ?? '',
-        parentPostId: payload['parentPostId'] as String?,
-        createdAt: activity.createdAt,
+        content: payload['content'] as String? ?? existing?.content ?? '',
+        parentPostId:
+            payload['parentPostId'] as String? ?? existing?.parentPostId,
+        createdAt: existing?.createdAt ?? activity.createdAt,
         updatedAt: now,
-        lastEditAt: lastEditAt ?? now,
-        isDeleted: payload['isDeleted'] as bool? ?? false,
+        // Never let a pull/replay masquerade as a new reply. The activity's
+        // event timestamp (or explicit signed lastEditAt) is the ordering clock.
+        lastEditAt: activityAt,
+        isDeleted:
+            payload['isDeleted'] as bool? ?? existing?.isDeleted ?? false,
         // Only signature-verified (trusted) ops reach _applyActivity.
         signatureVerified: true,
-        mentions: _postMentions(payload),
+        mentions: payload.containsKey('mentions')
+            ? _postMentions(payload)
+            : existing?.mentions ?? const [],
       );
 
-      final existing = await _postRepo.getById(activity.entityId);
       if (existing == null) {
         await _postRepo.create(post);
       } else {

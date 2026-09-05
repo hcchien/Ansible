@@ -686,6 +686,150 @@ void main() {
     },
   );
 
+  testWidgets(
+    'timeline newest-first lets a real recent reply bump its discussion',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'elix-genesis-subscribed': true,
+        'elix-swipe-coachmark-seen': true,
+      });
+      tester.view.physicalSize = const Size(390, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final oldPublishedAt = DateTime.utc(2026, 8, 20);
+      final newPublishedAt = DateTime.utc(2026, 9, 4);
+      final recentReplyAt = DateTime.utc(2026, 9, 5);
+      final boardRepo = DriftBoardRepository(db);
+      final threadRepo = DriftThreadRepository(db);
+      final postRepo = DriftPostRepository(db);
+      final followRepo = DriftFollowRepository(db);
+
+      await boardRepo.create(
+        Board(
+          id: 'board-order',
+          slug: 'order',
+          title: 'Ordering board',
+          createdAt: oldPublishedAt,
+          updatedAt: recentReplyAt,
+        ),
+      );
+      await threadRepo.create(
+        Thread(
+          id: 'thread-old-with-reply',
+          boardId: 'board-order',
+          title: 'Old thread with a new reply',
+          authorId: 'did:plc:op',
+          createdAt: oldPublishedAt,
+          updatedAt: recentReplyAt,
+        ),
+      );
+      await postRepo.create(
+        Post(
+          id: 'opening-old',
+          threadId: 'thread-old-with-reply',
+          boardId: 'board-order',
+          authorId: 'did:plc:op',
+          content: 'Old opening post',
+          createdAt: oldPublishedAt,
+          updatedAt: oldPublishedAt,
+          lastEditAt: oldPublishedAt,
+        ),
+      );
+      await postRepo.create(
+        Post(
+          id: 'recent-reply',
+          threadId: 'thread-old-with-reply',
+          boardId: 'board-order',
+          authorId: 'did:plc:bob',
+          content: 'Recent reply to an old post',
+          createdAt: recentReplyAt,
+          updatedAt: recentReplyAt,
+          lastEditAt: recentReplyAt,
+        ),
+      );
+      await threadRepo.create(
+        Thread(
+          id: 'thread-new',
+          boardId: 'board-order',
+          title: 'New thread',
+          authorId: 'did:plc:bob',
+          createdAt: newPublishedAt,
+          updatedAt: newPublishedAt,
+        ),
+      );
+      await postRepo.create(
+        Post(
+          id: 'opening-new',
+          threadId: 'thread-new',
+          boardId: 'board-order',
+          authorId: 'did:plc:bob',
+          content: 'New opening post',
+          createdAt: newPublishedAt,
+          updatedAt: newPublishedAt,
+          lastEditAt: newPublishedAt,
+        ),
+      );
+      await followRepo.upsertTarget(
+        FollowTarget(
+          targetId: 'target-bob-order',
+          targetType: FollowTargetType.user,
+          canonicalUri: 'did:plc:bob',
+          displayName: 'Bob',
+          did: 'did:plc:bob',
+          createdAt: oldPublishedAt,
+          updatedAt: recentReplyAt,
+        ),
+      );
+      await followRepo.upsertEdge(
+        FollowEdge(
+          followId: 'follow-bob-order',
+          followerDid: 'did:plc:alice',
+          targetId: 'target-bob-order',
+          targetType: FollowTargetType.user,
+          direction: FollowDirection.outbound,
+          status: FollowStatus.accepted,
+          visibility: FollowVisibility.localOnly,
+          createdAt: oldPublishedAt,
+          updatedAt: recentReplyAt,
+          acceptedAt: oldPublishedAt,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HomeShell(
+            db: db,
+            did: 'did:plc:alice',
+            networkStatusMonitor: _FakeNetworkStatusMonitor(
+              NetworkStatus.offline,
+            ),
+            relayDiscoveryLoader: () async => _emptyDiscovery(),
+            autoSeedDefaultRelay: false,
+            initialBoard: HomeBoard.timeline,
+          ),
+        ),
+      );
+      for (var i = 0; i < 20; i += 1) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+
+      final newCard = find.byKey(const Key('post_card_thread-new'));
+      final oldCard = find.byKey(const Key('post_card_thread-old-with-reply'));
+      expect(newCard, findsOneWidget);
+      expect(oldCard, findsOneWidget);
+      expect(
+        tester.getTopLeft(oldCard).dy,
+        lessThan(tester.getTopLeft(newCard).dy),
+      );
+
+      await _disposeWidgetTree(tester);
+    },
+  );
+
   testWidgets('timeline card shows standalone content engagement counts', (
     tester,
   ) async {
