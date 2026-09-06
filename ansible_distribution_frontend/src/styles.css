@@ -1857,6 +1857,13 @@ p {
   white-space: nowrap;
 }
 
+.thread-reply-time {
+  flex-basis: 100%;
+  display: block;
+  color: var(--muted);
+  white-space: normal;
+}
+
 .board-thread-tools {
   display: flex;
   justify-content: flex-end;

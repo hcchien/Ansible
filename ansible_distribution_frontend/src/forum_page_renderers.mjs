@@ -722,8 +722,11 @@ function renderProfileAuthorLink({ author, label, className }) {
 }
 
 function renderThreadTime(value, className = 'thread-time') {
-  const label = value ? formatExpiry(value) : t('common.recent');
   const parsed = value ? new Date(value) : null;
+  const pad = (number) => String(number).padStart(2, '0');
+  const label = parsed && !Number.isNaN(parsed.getTime())
+    ? `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())} ${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`
+    : t('common.recent');
   const datetime =
     parsed && !Number.isNaN(parsed.getTime()) ? ` datetime="${escapeAttribute(parsed.toISOString())}"` : '';
 

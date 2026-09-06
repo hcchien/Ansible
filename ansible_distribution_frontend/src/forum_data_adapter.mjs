@@ -1313,9 +1313,9 @@ function isAnonymousReadableBoard(board) {
 }
 
 function compareThreadsNewestFirst(left, right) {
-  const leftTime = Date.parse(left?.updatedAt ?? left?.createdAt ?? '') || 0;
-  const rightTime = Date.parse(right?.updatedAt ?? right?.createdAt ?? '') || 0;
-  return rightTime - leftTime;
+  const leftTime = Date.parse(left?.lastActivityAt ?? left?.createdAt ?? left?.updatedAt ?? '') || 0;
+  const rightTime = Date.parse(right?.lastActivityAt ?? right?.createdAt ?? right?.updatedAt ?? '') || 0;
+  return rightTime - leftTime || String(left?.id ?? "").localeCompare(String(right?.id ?? ""));
 }
 
 function isProhibitedCredentialClaim(path) {
@@ -1387,6 +1387,7 @@ export function buildThreadsFromFeed(items) {
         authorDid: item.author_did,
         authorDisplayName: normalizeAuthorDisplayName(item, payload),
         authorHandle: normalizeAuthorHandle(item, payload),
+        createdAt: item.created_at,
         updatedAt: item.created_at,
         replyCount: 0,
         posts: [],
@@ -1475,9 +1476,9 @@ export function buildThreadsFromFeed(items) {
     posts.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     thread.posts = posts;
     thread.replyCount = posts.length;
-    if (posts.length > 0) {
-      thread.updatedAt = posts[posts.length - 1].createdAt;
-    }
+    thread.lastActivityAt = [thread.createdAt, ...posts.map((post) => post.createdAt)]
+      .filter(Boolean).sort((a, b) => Date.parse(b) - Date.parse(a))[0];
+    thread.updatedAt = thread.lastActivityAt;
   }
 
   const threadById = new Map(threads.map((thread) => [thread.id, thread]));
@@ -1498,7 +1499,7 @@ export function buildThreadsFromFeed(items) {
     }
   }
 
-  threads.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  threads.sort(compareThreadsNewestFirst);
 
   return threads;
 }

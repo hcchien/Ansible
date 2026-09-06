@@ -237,6 +237,15 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                 .map((p) => p.createdAt)
                 .reduce((a, b) => a.isAfter(b) ? a : b);
     }
+    // A sync or edit must not bump a discussion; only publication of a post does.
+    threads.sort((a, b) {
+      final activity = (lastActivityByThread[b.id] ?? b.createdAt).compareTo(
+        lastActivityByThread[a.id] ?? a.createdAt,
+      );
+      if (activity != 0) return activity;
+      final created = b.createdAt.compareTo(a.createdAt);
+      return created != 0 ? created : a.id.compareTo(b.id);
+    });
     setState(() {
       _threads = threads;
       _deliberations = deliberations;

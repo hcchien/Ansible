@@ -25,6 +25,7 @@ import '../widgets/author_label.dart';
 import '../widgets/community_notes_panel.dart';
 import '../widgets/mention_text.dart';
 import '../widgets/reaction_bar.dart';
+import '../widgets/publication_time.dart';
 import 'post_composer_screen.dart';
 import '../widgets/posting_gate_notice.dart';
 import '../widgets/report_dialog.dart';
@@ -1589,23 +1590,19 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                               const SizedBox(width: 4),
                               Icon(Icons.verified, size: 13, color: _accent),
                             ],
-                            const SizedBox(width: 6),
-                            Text(
-                              _formatDate(context, post.createdAt) +
-                                  (edited
-                                      ? context.uiCopy(
-                                          zh: '（已編輯）',
-                                          en: ' (edited)',
-                                        )
-                                      : ''),
-                              style: TextStyle(
-                                fontFamily: AnsibleDesign.sans,
-                                fontSize: 12,
-                                color: _faint,
-                              ),
-                            ),
                           ],
                         ),
+                        const SizedBox(height: 3),
+                        PublicationTime(
+                          key: ValueKey('reply_time_${post.id}'),
+                          date: post.createdAt,
+                          color: _muted,
+                        ),
+                        if (edited)
+                          Text(
+                            context.uiCopy(zh: '已編輯', en: 'Edited'),
+                            style: TextStyle(fontSize: 12, color: _muted),
+                          ),
                         if (removal != null) ...[
                           const SizedBox(height: 6),
                           _ownPostRemovalNotice(context, removal),

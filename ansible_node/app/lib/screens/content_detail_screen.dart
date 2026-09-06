@@ -20,6 +20,7 @@ import '../widgets/community_notes_panel.dart';
 import '../widgets/mention_picker.dart';
 import '../widgets/mention_text.dart';
 import '../widgets/reaction_bar.dart';
+import '../widgets/publication_time.dart';
 import '../widgets/report_dialog.dart';
 import 'user_profile_screen.dart';
 
@@ -733,13 +734,26 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           Row(
             children: [
               Expanded(
-                child: AuthorLabel(
-                  did: c.authorDid,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: _muted,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AuthorLabel(
+                      did: c.authorDid,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _muted,
+                      ),
+                    ),
+                    if (c.createdAt case final date?) ...[
+                      const SizedBox(height: 3),
+                      PublicationTime(
+                        key: ValueKey('comment_time_${c.id}'),
+                        date: date,
+                        color: _muted,
+                      ),
+                    ],
+                  ],
                 ),
               ),
               // Authors can edit/delete their own comment; other users expose

@@ -53,7 +53,7 @@ void main() {
             appViewBaseUrl: '',
             threadFetcher: ({required threadId}) async {
               expect(threadId, contentId);
-              return const AppViewTimelinePage(
+              return AppViewTimelinePage(
                 items: [
                   AppViewTimelineItem(
                     entityType: 'reaction',
@@ -80,6 +80,7 @@ void main() {
                   AppViewTimelineItem(
                     entityType: 'comment',
                     entityId: 'comment-1',
+                    createdAt: DateTime(2026, 9, 6, 13, 4),
                     authorDid: 'did:elix:commenter-1',
                     payload: {'content': 'First'},
                   ),
@@ -121,6 +122,7 @@ void main() {
         findsOneWidget,
       );
       expect(commentLabels, contains('2'));
+      expect(find.text('2026-09-06 13:04'), findsOneWidget);
       expect(find.text('First'), findsOneWidget);
       expect(find.text('Second'), findsOneWidget);
       await tester.runAsync(db.close);
