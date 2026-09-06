@@ -19,7 +19,7 @@ import '../widgets/author_label.dart';
 import '../widgets/community_notes_panel.dart';
 import '../widgets/mention_picker.dart';
 import '../widgets/mention_text.dart';
-import '../widgets/reaction_picker.dart';
+import '../widgets/reaction_bar.dart';
 import '../widgets/report_dialog.dart';
 import 'user_profile_screen.dart';
 
@@ -80,18 +80,11 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   final _composerFocus = FocusNode();
   final MentionDraft _mentions = MentionDraft();
   late final DriftPostRepository _postRepo;
-  late final DriftReactionRepository _reactionRepo;
+  List<AppViewTimelineItem> _remoteReactionItems = const [];
   List<_Comment> _comments = const [];
   bool _loading = true;
   bool _posting = false;
   bool _mentionPickerOpen = false;
-  bool _reacted = false;
-  ReactionType? _selectedReaction;
-  bool _isReacting = false;
-  int _likeCount = 0;
-  final Set<String> _reactionUsers = {};
-  final Map<String, String> _reactionAliases = {};
-
   bool get _dark {
     switch (widget.screenStyle) {
       case ElixScreenStyle.ink:
@@ -126,7 +119,6 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   void initState() {
     super.initState();
     _postRepo = DriftPostRepository(widget.db);
-    _reactionRepo = DriftReactionRepository(widget.db);
     unawaited(_load());
   }
 
@@ -137,121 +129,6 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     super.dispose();
   }
 
-  Future<void> _loadLocalReactions() async {
-    final reactions = await _reactionRepo.listByTarget(
-      TargetType.thread.name,
-      widget.contentId,
-    );
-    var reacted = false;
-    _reactionUsers.clear();
-    _reactionAliases.clear();
-    for (final r in reactions) {
-      _reactionUsers.add(r.userId);
-      if (r.userId == widget.localDid) {
-        reacted = true;
-        _selectedReaction = r.reactionType;
-      }
-    }
-    if (mounted) {
-      setState(() {
-        _likeCount = _reactionUsers.length;
-        _reacted = reacted;
-      });
-    }
-  }
-
-  Future<void> _toggleReaction() async {
-    if (_isReacting) return;
-    final choice = await showReactionPicker(
-      context,
-      selected: _selectedReaction,
-    );
-    if (choice == null) return;
-    setState(() => _isReacting = true);
-    try {
-      final existing = await _reactionRepo.getByUserAndTarget(
-        widget.localDid,
-        TargetType.thread.name,
-        widget.contentId,
-      );
-      if (choice.remove) {
-        if (existing != null) {
-          await _reactionRepo.delete(existing.id);
-          await widget.opsDispatchService.signAndEnqueue(
-            CrdtOpBuilder.deleteReaction(
-              authorDid: widget.localDid,
-              entityId: existing.id,
-              targetType: TargetType.thread.name,
-              targetId: widget.contentId,
-            ),
-          );
-          unawaited(widget.onFlushPendingOps());
-          setState(() {
-            _reactionUsers.remove(widget.localDid);
-            _reactionUsers.remove(_reactionAliases[widget.localDid]);
-            _reacted = false;
-            _selectedReaction = null;
-            _likeCount = _reactionUsers.length;
-          });
-        }
-      } else if (existing != null) {
-        final next = choice.type!;
-        await _reactionRepo.create(
-          Reaction(
-            id: existing.id,
-            userId: existing.userId,
-            targetType: existing.targetType,
-            targetId: existing.targetId,
-            reactionType: next,
-            createdAt: existing.createdAt,
-          ),
-        );
-        await widget.opsDispatchService.signAndEnqueue(
-          CrdtOpBuilder.updateReaction(
-            authorDid: widget.localDid,
-            entityId: existing.id,
-            targetType: existing.targetType.name,
-            targetId: existing.targetId,
-            reactionType: next.name,
-          ),
-        );
-        unawaited(widget.onFlushPendingOps());
-        setState(() => _selectedReaction = next);
-      } else {
-        final next = choice.type!;
-        final reaction = Reaction(
-          id: const Uuid().v4(),
-          userId: widget.localDid,
-          targetType: TargetType.thread,
-          targetId: widget.contentId,
-          reactionType: next,
-          createdAt: DateTime.now(),
-        );
-        await _reactionRepo.create(reaction);
-        await widget.opsDispatchService.signAndEnqueue(
-          CrdtOpBuilder.createReaction(
-            authorDid: widget.localDid,
-            entityId: reaction.id,
-            targetType: reaction.targetType.name,
-            targetId: reaction.targetId,
-            reactionType: reaction.reactionType.name,
-          ),
-        );
-        unawaited(widget.onFlushPendingOps());
-        setState(() {
-          _reactionUsers.add(
-            _reactionAliases[widget.localDid] ?? widget.localDid,
-          );
-          _reacted = true;
-          _selectedReaction = next;
-          _likeCount = _reactionUsers.length;
-        });
-      }
-    } finally {
-      if (mounted) setState(() => _isReacting = false);
-    }
-  }
-
   Future<void> _load() async {
     // Local-first: comments are stored as local posts keyed by the content id
     // (own comments + any synced from followed users), so they show and persist
@@ -259,7 +136,6 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     // remote comments not yet synced locally.
     final byId = <String, _Comment>{};
     final blockedAuthors = await _safetyActions.blockedAuthors(widget.localDid);
-    await _loadLocalReactions();
     for (final p in await _postRepo.list(threadId: widget.contentId)) {
       if (blockedAuthors.contains(p.authorId)) continue;
       byId[p.id] = _Comment(
@@ -283,23 +159,9 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           ? await widget.threadFetcher!(threadId: widget.contentId)
           : await AppViewTimelineClient(
               baseUrl: _appViewBaseUrl,
-            ).fetchThread(threadId: widget.contentId);
+            ).fetchCompleteThread(threadId: widget.contentId);
       for (final i in page.items) {
-        if (i.entityType == 'reaction') {
-          final targetId = i.payload['targetId']?.toString();
-          final targetType = i.payload['targetType']?.toString();
-          if (targetId == widget.contentId && targetType == 'thread') {
-            final canonicalDid = i.canonicalAuthorDid?.trim();
-            final identity = canonicalDid == null || canonicalDid.isEmpty
-                ? i.authorDid
-                : canonicalDid;
-            _reactionAliases[i.authorDid] = identity;
-            _reactionUsers
-              ..remove(i.authorDid)
-              ..add(identity);
-          }
-          continue;
-        }
+        if (i.entityType == 'reaction') continue;
         if (i.entityType != 'comment') continue;
         if (blockedAuthors.contains(i.authorDid)) continue;
         final remoteMentionDids = _parseMentionDids(i.payload['mentionDids']);
@@ -325,7 +187,9 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       if (mounted) {
         setState(() {
           _comments = _sorted(byId.values);
-          _likeCount = _reactionUsers.length;
+          _remoteReactionItems = page.items
+              .where((i) => i.entityType == 'reaction')
+              .toList();
         });
       }
     } catch (_) {
@@ -765,12 +629,16 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           // Threads-style actions.
           Row(
             children: [
-              _detailAction(
-                _reacted ? Icons.favorite : Icons.favorite_border,
+              ReactionBar(
                 key: const Key('content_detail_reactions'),
-                count: _likeCount,
-                active: _reacted,
-                onTap: _toggleReaction,
+                db: widget.db,
+                targetId: widget.contentId,
+                targetType: TargetType.thread,
+                localDid: widget.localDid,
+                opsDispatchService: widget.opsDispatchService,
+                onFlushPendingOps: widget.onFlushPendingOps,
+                remoteItems: _remoteReactionItems,
+                color: _muted,
               ),
               const SizedBox(width: 26),
               _detailAction(
@@ -937,6 +805,17 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
               height: 1.6,
               color: _fg,
             ),
+          ),
+          ReactionBar(
+            key: ValueKey('comment_reactions_${c.id}'),
+            db: widget.db,
+            targetId: c.id,
+            targetType: TargetType.post,
+            localDid: widget.localDid,
+            opsDispatchService: widget.opsDispatchService,
+            onFlushPendingOps: widget.onFlushPendingOps,
+            remoteItems: _remoteReactionItems,
+            color: _muted,
           ),
         ],
       ),

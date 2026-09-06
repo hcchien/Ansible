@@ -19,7 +19,12 @@ void main() {
     (tester) async {
       SharedPreferences.setMockInitialValues({});
       final db = AppDatabase(NativeDatabase.memory());
-      addTearDown(db.close);
+      addTearDown(() async {
+        await tester.runAsync(db.close);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+        await db.close();
+      });
       const contentId = 'content-1';
       const localDid = 'did:elix:local-legacy';
       await DriftReactionRepository(db).create(
@@ -55,14 +60,22 @@ void main() {
                     entityId: 'remote-copy-of-local-reaction',
                     authorDid: localDid,
                     canonicalAuthorDid: 'did:elix:local-current',
-                    payload: {'targetId': contentId, 'targetType': 'thread'},
+                    payload: {
+                      'targetId': contentId,
+                      'targetType': 'thread',
+                      'reactionType': 'thumbsUp',
+                    },
                   ),
                   AppViewTimelineItem(
                     entityType: 'reaction',
                     entityId: 'remote-reaction',
                     authorDid: 'did:elix:remote',
                     canonicalAuthorDid: 'did:elix:remote',
-                    payload: {'targetId': contentId, 'targetType': 'thread'},
+                    payload: {
+                      'targetId': contentId,
+                      'targetType': 'thread',
+                      'reactionType': 'thumbsUp',
+                    },
                   ),
                   AppViewTimelineItem(
                     entityType: 'comment',
@@ -102,10 +115,17 @@ void main() {
           )
           .map((text) => text.data)
           .toList();
-      expect(reactionLabels, contains('2'));
+      expect(reactionLabels, contains('👍 2'));
+      expect(
+        find.byKey(const ValueKey('comment_reactions_comment-1')),
+        findsOneWidget,
+      );
       expect(commentLabels, contains('2'));
       expect(find.text('First'), findsOneWidget);
       expect(find.text('Second'), findsOneWidget);
+      await tester.runAsync(db.close);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
     },
   );
 
@@ -114,7 +134,12 @@ void main() {
   ) async {
     SharedPreferences.setMockInitialValues({});
     final db = AppDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
+    addTearDown(() async {
+      await tester.runAsync(db.close);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+      await db.close();
+    });
 
     await tester.pumpWidget(
       MaterialApp(
@@ -164,6 +189,9 @@ void main() {
       find.byKey(const Key('comment_composer_field')),
     );
     expect(field.controller!.text, 'Hello @Alice ');
+    await tester.runAsync(db.close);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
   });
 
   testWidgets(
@@ -171,7 +199,12 @@ void main() {
     (tester) async {
       SharedPreferences.setMockInitialValues({});
       final db = AppDatabase(NativeDatabase.memory());
-      addTearDown(db.close);
+      addTearDown(() async {
+        await tester.runAsync(db.close);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+        await db.close();
+      });
       final handleResolver = HandleResolver(
         baseUrl: 'https://relay.example',
         client: MockClient(
@@ -242,6 +275,9 @@ void main() {
       );
       expect(profile.did, 'did:elix:alice');
       expect(profile.displayName, 'Alice');
+      await tester.runAsync(db.close);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
     },
   );
 }

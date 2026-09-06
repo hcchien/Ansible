@@ -24,7 +24,7 @@ import '../services/handle_resolver.dart';
 import '../widgets/author_label.dart';
 import '../widgets/community_notes_panel.dart';
 import '../widgets/mention_text.dart';
-import '../widgets/reaction_picker.dart';
+import '../widgets/reaction_bar.dart';
 import 'post_composer_screen.dart';
 import '../widgets/posting_gate_notice.dart';
 import '../widgets/report_dialog.dart';
@@ -1452,15 +1452,19 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
     final replyCount = (_posts.length - 1).clamp(0, 1 << 30);
     return Row(
       children: [
-        _PostReactionBar(
+        ReactionBar(
           key: ValueKey('post_reactions_${post.id}'),
           db: widget.db,
-          postId: post.id,
+          targetId: post.id,
+          targetType: TargetType.post,
+          publicThreadId: _hostedProjection?.contentVisibility == 'public'
+              ? widget.thread.id
+              : null,
           boardId: widget.thread.boardId,
           localDid: widget.authorDid,
           opsDispatchService: widget.opsDispatchService,
           onFlushPendingOps: widget.onFlushPendingOps,
-          dark: _dark,
+          color: _muted,
         ),
         const SizedBox(width: 22),
         _actionIcon(
@@ -1624,15 +1628,20 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                         ),
                         if (removal == null) ...[
                           const SizedBox(height: 8),
-                          _PostReactionBar(
+                          ReactionBar(
                             key: ValueKey('post_reactions_${post.id}'),
                             db: widget.db,
-                            postId: post.id,
+                            targetId: post.id,
+                            targetType: TargetType.post,
+                            publicThreadId:
+                                _hostedProjection?.contentVisibility == 'public'
+                                ? widget.thread.id
+                                : null,
                             boardId: widget.thread.boardId,
                             localDid: widget.authorDid,
                             opsDispatchService: widget.opsDispatchService,
                             onFlushPendingOps: widget.onFlushPendingOps,
-                            dark: _dark,
+                            color: _muted,
                           ),
                         ],
                       ],
@@ -1936,209 +1945,5 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
     } else {
       return context.uiCopy(zh: '剛剛', en: 'Just now');
     }
-  }
-}
-
-/// Per-post reaction footer (👍). Reuses the same drift reaction store + CRDT
-/// `create/deleteReaction` ops as the feed [PostCard], but targets the
-/// individual post ([TargetType.post]) rather than the whole thread. Reacting
-/// requires a known local DID and an ops dispatcher; without them the bar is a
-/// read-only count. The action row is intentionally a [Row] so a share / reply
-/// affordance can be appended here later.
-class _PostReactionBar extends StatefulWidget {
-  const _PostReactionBar({
-    super.key,
-    required this.db,
-    required this.postId,
-    required this.boardId,
-    required this.localDid,
-    required this.opsDispatchService,
-    required this.onFlushPendingOps,
-    this.dark = false,
-  });
-
-  final AppDatabase db;
-  final String postId;
-  final String boardId;
-  final String? localDid;
-  final OpsDispatchService? opsDispatchService;
-  final Future<void> Function()? onFlushPendingOps;
-  final bool dark;
-
-  @override
-  State<_PostReactionBar> createState() => _PostReactionBarState();
-}
-
-class _PostReactionBarState extends State<_PostReactionBar> {
-  late final DriftReactionRepository _reactionRepo;
-  bool _loading = true;
-  bool _busy = false;
-  bool _reacted = false;
-  ReactionType? _selectedReaction;
-  int _likeCount = 0;
-
-  bool get _canReact =>
-      widget.localDid != null && widget.opsDispatchService != null;
-
-  @override
-  void initState() {
-    super.initState();
-    _reactionRepo = DriftReactionRepository(widget.db);
-    unawaited(_load());
-  }
-
-  Future<void> _load() async {
-    final reactions = await _reactionRepo.listByTarget(
-      TargetType.post.name,
-      widget.postId,
-    );
-    if (!mounted) return;
-    setState(() {
-      _likeCount = reactions.map((reaction) => reaction.userId).toSet().length;
-      final mine = widget.localDid == null
-          ? null
-          : reactions.where((r) => r.userId == widget.localDid).firstOrNull;
-      _reacted = mine != null;
-      _selectedReaction = mine?.reactionType;
-      _loading = false;
-    });
-  }
-
-  Future<void> _toggle() async {
-    final localDid = widget.localDid;
-    final ops = widget.opsDispatchService;
-    if (localDid == null || ops == null) return;
-    final choice = await showReactionPicker(
-      context,
-      selected: _selectedReaction,
-    );
-    if (choice == null) return;
-    setState(() => _busy = true);
-    try {
-      final existing = await _reactionRepo.getByUserAndTarget(
-        localDid,
-        TargetType.post.name,
-        widget.postId,
-      );
-      if (choice.remove) {
-        if (existing != null) {
-          await _reactionRepo.delete(existing.id);
-          await ops.signAndEnqueue(
-            CrdtOpBuilder.deleteReaction(
-              authorDid: localDid,
-              entityId: existing.id,
-              targetType: TargetType.post.name,
-              targetId: widget.postId,
-              boardId: widget.boardId,
-            ),
-          );
-          if (widget.onFlushPendingOps != null) {
-            unawaited(widget.onFlushPendingOps!());
-          }
-          if (mounted) {
-            setState(() {
-              _reacted = false;
-              _selectedReaction = null;
-              _likeCount = (_likeCount - 1).clamp(0, 1 << 30);
-            });
-          }
-        }
-      } else if (existing != null) {
-        final next = choice.type!;
-        await _reactionRepo.create(
-          Reaction(
-            id: existing.id,
-            userId: existing.userId,
-            targetType: existing.targetType,
-            targetId: existing.targetId,
-            reactionType: next,
-            createdAt: existing.createdAt,
-          ),
-        );
-        await ops.signAndEnqueue(
-          CrdtOpBuilder.updateReaction(
-            authorDid: localDid,
-            entityId: existing.id,
-            targetType: existing.targetType.name,
-            targetId: existing.targetId,
-            reactionType: next.name,
-            boardId: widget.boardId,
-          ),
-        );
-        if (widget.onFlushPendingOps != null) {
-          unawaited(widget.onFlushPendingOps!());
-        }
-        if (mounted) setState(() => _selectedReaction = next);
-      } else {
-        final next = choice.type!;
-        final reaction = Reaction(
-          id: const Uuid().v4(),
-          userId: localDid,
-          targetType: TargetType.post,
-          targetId: widget.postId,
-          reactionType: next,
-          createdAt: DateTime.now(),
-        );
-        await _reactionRepo.create(reaction);
-        await ops.signAndEnqueue(
-          CrdtOpBuilder.createReaction(
-            authorDid: localDid,
-            entityId: reaction.id,
-            targetType: reaction.targetType.name,
-            targetId: reaction.targetId,
-            reactionType: reaction.reactionType.name,
-            boardId: widget.boardId,
-          ),
-        );
-        if (widget.onFlushPendingOps != null) {
-          unawaited(widget.onFlushPendingOps!());
-        }
-        if (mounted) {
-          setState(() {
-            _reacted = true;
-            _selectedReaction = next;
-            _likeCount += 1;
-          });
-        }
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Threads-style heart: ember when reacted, muted otherwise.
-    final heartColor = _reacted
-        ? (widget.dark ? AnsibleDesign.darkEmber : AnsibleDesign.ember)
-        : (widget.dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted);
-    final countColor = widget.dark
-        ? AnsibleDesign.darkInkMuted
-        : AnsibleDesign.inkMuted;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: (_canReact && !_busy && !_loading) ? _toggle : null,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            _reacted ? Icons.favorite : Icons.favorite_border,
-            size: 20,
-            color: heartColor,
-          ),
-          if (_likeCount > 0) ...[
-            const SizedBox(width: 6),
-            Text(
-              '$_likeCount',
-              style: TextStyle(
-                fontFamily: AnsibleDesign.sans,
-                fontSize: 13,
-                color: countColor,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
   }
 }

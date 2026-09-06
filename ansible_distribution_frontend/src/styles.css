@@ -4939,3 +4939,16 @@ h4 {
     padding: 0 0 86px;
   }
 }
+
+/* Shared post/reply reactions: selection and attribution are separate controls. */
+.reaction-controls { display:flex; flex-wrap:wrap; align-items:flex-start; gap:8px 16px; margin:10px 0; font-size:13px; }
+.reaction-controls summary { cursor:pointer; padding:8px 0; }
+.reaction-options { display:flex; flex-wrap:wrap; gap:8px; padding:8px 0; }
+.reaction-options button { min-width:44px; min-height:44px; border:1px solid var(--rule); border-radius:12px; background:var(--paper); color:var(--ink); font:inherit; font-size:20px; cursor:pointer; }
+.reaction-options button[aria-pressed="true"] { outline:2px solid var(--ink); outline-offset:2px; }
+.reaction-options button:disabled { opacity:.5; }
+.reaction-people-list { max-height:320px; overflow:auto; padding:8px 12px; border:1px solid var(--rule); border-radius:10px; background:var(--paper); color:var(--ink); min-width:180px; }
+.reaction-people-list h4 { margin:8px 0; }
+.reaction-people-list ul { list-style:none; margin:0; padding:0; }
+.reaction-people-list li { padding:6px 0; overflow-wrap:anywhere; }
+.reaction-person { color:inherit; }

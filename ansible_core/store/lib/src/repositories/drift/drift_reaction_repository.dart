@@ -53,6 +53,17 @@ class DriftReactionRepository implements ReactionRepository {
     return rows.map(_mapRowToEntity).toList();
   }
 
+  Stream<List<entity.Reaction>> watchByTarget(
+    String targetType,
+    String targetId,
+  ) {
+    return (_db.select(_db.reactions)..where(
+          (r) => r.targetType.equals(targetType) & r.targetId.equals(targetId),
+        ))
+        .watch()
+        .map((rows) => rows.map(_mapRowToEntity).toList());
+  }
+
   @override
   Future<entity.Reaction?> getByUserAndTarget(
     String userId,

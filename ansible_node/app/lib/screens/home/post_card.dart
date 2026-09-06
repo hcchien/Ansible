@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:ansible_store/ansible_store.dart' as store;
 import 'package:flutter/material.dart';
-import 'package:uuid/uuid.dart';
 
 import 'package:share_plus/share_plus.dart';
 
@@ -17,7 +16,7 @@ import '../../services/safety_actions.dart';
 import '../../theme/ansible_design.dart';
 import '../../theme/elix_screen_style.dart';
 import '../../widgets/author_label.dart';
-import '../../widgets/reaction_picker.dart';
+import '../../widgets/reaction_bar.dart';
 import '../../widgets/report_dialog.dart';
 import '../posts_view_screen.dart';
 
@@ -215,122 +214,9 @@ class PostCard extends StatefulWidget {
 
 class _PostCardState extends State<PostCard> {
   bool _hover = false;
-  late final store.DriftReactionRepository _reactionRepo;
-  bool _isReacting = false;
-  bool _reacted = false;
-  store.ReactionType? _selectedReaction;
-  int _likeCount = 0;
   bool _hidden = false;
 
   SafetyActions get _safetyActions => widget.safetyActions ?? SafetyActions();
-
-  @override
-  void initState() {
-    super.initState();
-    _reacted = widget.data.reacted;
-    _selectedReaction = _reacted ? store.ReactionType.thumbsUp : null;
-    _likeCount = widget.data.reactions['👍'] ?? 0;
-    _reactionRepo = store.DriftReactionRepository(widget.db);
-  }
-
-  @override
-  void didUpdateWidget(covariant PostCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.data.thread.id != widget.data.thread.id ||
-        oldWidget.data.reactions['👍'] != widget.data.reactions['👍'] ||
-        oldWidget.data.reacted != widget.data.reacted) {
-      _reacted = widget.data.reacted;
-      _selectedReaction = _reacted ? store.ReactionType.thumbsUp : null;
-      _likeCount = widget.data.reactions['👍'] ?? 0;
-    }
-  }
-
-  Future<void> _toggleThumbsUp() async {
-    final choice = await showReactionPicker(
-      context,
-      selected: _selectedReaction,
-    );
-    if (choice == null) return;
-    final localDid = widget.authorDid;
-    final targetType = widget.data.reactionTargetType;
-    final targetId = widget.data.reactionTargetId;
-    final existing = await _reactionRepo.getByUserAndTarget(
-      localDid,
-      targetType.name,
-      targetId,
-    );
-    if (choice.remove) {
-      if (existing != null) {
-        await _reactionRepo.delete(existing.id);
-        await widget.opsDispatchService.signAndEnqueue(
-          CrdtOpBuilder.deleteReaction(
-            authorDid: localDid,
-            entityId: existing.id,
-            targetType: targetType.name,
-            targetId: targetId,
-            boardId: widget.data.thread.boardId,
-          ),
-        );
-        unawaited(widget.onFlushPendingOps());
-        setState(() {
-          _reacted = false;
-          _selectedReaction = null;
-          _likeCount = (_likeCount - 1).clamp(0, 1 << 30);
-        });
-      }
-    } else if (existing != null) {
-      final nextType = choice.type!;
-      await _reactionRepo.create(
-        store.Reaction(
-          id: existing.id,
-          userId: existing.userId,
-          targetType: existing.targetType,
-          targetId: existing.targetId,
-          reactionType: nextType,
-          createdAt: existing.createdAt,
-        ),
-      );
-      await widget.opsDispatchService.signAndEnqueue(
-        CrdtOpBuilder.updateReaction(
-          authorDid: localDid,
-          entityId: existing.id,
-          targetType: existing.targetType.name,
-          targetId: existing.targetId,
-          reactionType: nextType.name,
-          boardId: widget.data.thread.boardId,
-        ),
-      );
-      unawaited(widget.onFlushPendingOps());
-      setState(() => _selectedReaction = nextType);
-    } else {
-      final nextType = choice.type!;
-      final reaction = store.Reaction(
-        id: const Uuid().v4(),
-        userId: localDid,
-        targetType: targetType,
-        targetId: targetId,
-        reactionType: nextType,
-        createdAt: DateTime.now(),
-      );
-      await _reactionRepo.create(reaction);
-      await widget.opsDispatchService.signAndEnqueue(
-        CrdtOpBuilder.createReaction(
-          authorDid: localDid,
-          entityId: reaction.id,
-          targetType: reaction.targetType.name,
-          targetId: reaction.targetId,
-          reactionType: reaction.reactionType.name,
-          boardId: widget.data.thread.boardId,
-        ),
-      );
-      unawaited(widget.onFlushPendingOps());
-      setState(() {
-        _reacted = true;
-        _selectedReaction = nextType;
-        _likeCount += 1;
-      });
-    }
-  }
 
   void _openThread(BuildContext context) {
     Navigator.of(context).push(
@@ -873,21 +759,16 @@ class _PostCardState extends State<PostCard> {
             const SizedBox(height: 10),
             Row(
               children: [
-                _feedAction(
-                  _reacted ? Icons.favorite : Icons.favorite_border,
-                  count: _likeCount,
-                  active: _reacted,
-                  color: style,
-                  onTap: _isReacting
-                      ? null
-                      : () async {
-                          setState(() => _isReacting = true);
-                          try {
-                            await _toggleThumbsUp();
-                          } finally {
-                            setState(() => _isReacting = false);
-                          }
-                        },
+                ReactionBar(
+                  db: widget.db,
+                  targetId: data.reactionTargetId,
+                  publicThreadId: data.thread.id,
+                  targetType: data.reactionTargetType,
+                  boardId: data.thread.boardId,
+                  localDid: widget.authorDid,
+                  opsDispatchService: widget.opsDispatchService,
+                  onFlushPendingOps: widget.onFlushPendingOps,
+                  fallbackCount: data.reactions['👍'] ?? 0,
                 ),
                 const SizedBox(width: 26),
                 _feedAction(

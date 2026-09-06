@@ -12,6 +12,15 @@ export const SUPPORTED_LOCALES = Object.freeze([
 
 const BASE_TRANSLATIONS = Object.freeze({
   en: {
+    'reaction.choose': 'Choose reaction',
+    'reaction.remove': 'Remove my reaction',
+    'reaction.people': 'Who reacted',
+    'reaction.empty': 'No reactions yet',
+    'reaction.thumbsUp': 'Like',
+    'reaction.happy': 'Happy',
+    'reaction.sad': 'Sad',
+    'reaction.angry': 'Angry',
+
     'common.appName': 'Elix',
     'common.socialIdentity': 'SOCIAL IDENTITY',
     'common.anonymous': 'Anonymous',
@@ -436,6 +445,15 @@ const BASE_TRANSLATIONS = Object.freeze({
     'scope.empty': 'No scopes granted.',
   },
   'zh-Hant': {
+    'reaction.choose': '選擇反應',
+    'reaction.remove': '移除我的反應',
+    'reaction.people': '誰按了哪些反應',
+    'reaction.empty': '尚無反應',
+    'reaction.thumbsUp': '讚',
+    'reaction.happy': '開心',
+    'reaction.sad': '難過',
+    'reaction.angry': '生氣',
+
     'common.appName': 'Elix',
     'common.socialIdentity': 'SOCIAL IDENTITY',
     'common.anonymous': '匿名',

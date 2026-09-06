@@ -111,6 +111,37 @@ export function createForumDataAdapter({
 }) {
   const notificationReadStore = createWebNotificationReadStore({ storage });
   const publicHandleCache = new Map();
+  // Accepted local writes bridge AppView indexing latency without pretending
+  // that an unsigned or failed publication succeeded.
+  const acceptedReactions = new Map();
+  function rememberReaction(response, targetType, targetId, reactionType, subjectDid) {
+    const publication = response?.publication;
+    if (response?.accepted && publication?.entity_id && publication?.operation_id) {
+      acceptedReactions.set(`${targetType}:${targetId}:${subjectDid}`, {
+        targetType, targetId, subjectDid, removed: reactionType === null,
+        reaction: { id: publication.entity_id, revision: publication.operation_id,
+          authorDid: subjectDid, signingAuthorDid: subjectDid, reactionType },
+      });
+    }
+    return response;
+  }
+  function mergeAcceptedReactions(threads) {
+    for (const thread of threads) {
+      for (const [targetType, entity] of [['thread', thread], ...(thread.posts ?? []).map((post) => ['post', post])]) {
+        for (const [key, pending] of acceptedReactions) {
+          if (pending.targetType !== targetType || pending.targetId !== entity.id) continue;
+          const current = (entity.reactions ?? []).find((r) => (r.signingAuthorDid || r.authorDid) === pending.subjectDid);
+          if ((!current && pending.removed) || current?.revision === pending.reaction.revision) {
+            acceptedReactions.delete(key);
+            continue;
+          }
+          entity.reactions = (entity.reactions ?? []).filter((r) => (r.signingAuthorDid || r.authorDid) !== pending.subjectDid);
+          if (!pending.removed) entity.reactions.push(pending.reaction);
+          entity.likeCount = entity.reactions.length;
+        }
+      }
+    }
+  }
   const mentionProfileCache = new Map();
 
   async function loadForumHome({ sessionViewModel, includePublicFeed = false } = {}) {
@@ -372,19 +403,16 @@ export function createForumDataAdapter({
   }
 
   async function loadThreadFeed(threadId) {
-    if (typeof appViewClient.fetchThreadFeed !== 'function') {
-      return { items: [] };
-    }
-
-    try {
-      return await appViewClient.fetchThreadFeed({
-        appViewBaseUrl,
-        fetchImpl,
-        threadId,
-      });
-    } catch {
-      return { items: [] };
-    }
+    if (typeof appViewClient.fetchThreadFeed !== 'function') return { items: [] };
+    const items = [];
+    let cursor;
+    do {
+      const page = await appViewClient.fetchThreadFeed({ appViewBaseUrl, fetchImpl, threadId, cursor });
+      items.push(...(page.items ?? []));
+      if (!page.has_more || page.next_cursor == null || page.next_cursor === cursor) break;
+      cursor = page.next_cursor;
+    } while (true);
+    return { items };
   }
 
   async function loadCommunityNotes(targetRef) {
@@ -411,9 +439,11 @@ export function createForumDataAdapter({
   // only as a presentation fallback; it never changes the author DID or any
   // authorization decision.
   async function fillMissingAuthorHandles(threads) {
+    mergeAcceptedReactions(threads);
     const authors = [];
     for (const thread of threads) {
-      authors.push(thread, ...(thread.posts ?? []));
+      authors.push(thread, ...(thread.reactions ?? []), ...(thread.posts ?? []));
+      for (const post of thread.posts ?? []) authors.push(...(post.reactions ?? []));
     }
 
     await Promise.all(
@@ -690,6 +720,40 @@ export function createForumDataAdapter({
         ...(normalizedMentions.length ? { mentions: normalizedMentions } : {}),
       },
     });
+  }
+
+  async function submitReaction({ boardId, targetType, targetId, reactionType,
+    existingId, expectedPreviousRevision, sessionViewModel }) {
+    if (!sessionViewModel?.capabilities?.canReact) throw scopeError('forum:react');
+    if (!['thread', 'post'].includes(targetType) || !targetId ||
+        (reactionType !== null && !['thumbsUp', 'happy', 'sad', 'angry'].includes(reactionType))) {
+      throw notFoundError('invalid_reaction');
+    }
+    const payload = { targetType, targetId, ...(reactionType ? { reactionType } : {}) };
+    if (existingId) {
+      const response = await submitContentMutation({
+        action: reactionType === null ? 'forum.delete' : 'forum.edit',
+        entityType: 'reaction', entityId: existingId, boardId,
+        expectedPreviousRevision, payload, sessionViewModel,
+      });
+      return rememberReaction(response, targetType, targetId, reactionType, sessionViewModel.subjectDid);
+    }
+    if (reactionType === null) throw notFoundError('reaction_not_found');
+    const [host, boardsResponse] = await Promise.all([
+      forumHostClient.fetchForumHostInfo({ relayBaseUrl, fetchImpl }),
+      forumHostClient.fetchHostedBoards({ relayBaseUrl, fetchImpl }),
+    ]);
+    const board = (boardsResponse.boards ?? []).find((b) => String(b.board_id ?? b.hosted_board_id) === String(boardId));
+    if (!board) throw notFoundError('board_not_found', { boardId });
+    const publisher = forumHostClient.createPasskeySignedOperation ?? webPublicationClient.createPasskeySignedOperation;
+    const response = await publisher({ relayBaseUrl, storage, fetchImpl,
+      authorDid: sessionViewModel.subjectDid,
+      targetForumHost: host.canonical_base_url ?? host.base_url ?? relayBaseUrl,
+      boardId: String(board.board_id ?? board.hosted_board_id),
+      boardPolicyVersion: board.access_policy_version ?? 1,
+      action: 'forum.react', entityType: 'reaction', parentId: String(targetId), payload,
+    });
+    return rememberReaction(response, targetType, targetId, reactionType, sessionViewModel.subjectDid);
   }
 
   async function submitPollVote({ boardId, pollId, optionId, sessionViewModel }) {
@@ -969,6 +1033,7 @@ export function createForumDataAdapter({
     submitThreadDraft,
     searchMentionActors,
     submitReplyDraft,
+    submitReaction,
     submitPollVote,
     submitDeliberationDraft,
     submitDeliberationStatement,
@@ -1390,7 +1455,16 @@ export function buildThreadsFromFeed(items) {
       } else if (item.op_type === 'insert' || item.op_type === 'update') {
         // Relay enforces one active reaction per author/target and updates keep
         // the entity id stable, so replacing this entry avoids double-counting.
-        activeReactions.set(item.entity_id, { targetType, targetId });
+        const type = payload.reactionType;
+        if (!['thumbsUp', 'happy', 'sad', 'angry'].includes(type)) continue;
+        activeReactions.set(item.entity_id, {
+          id: item.entity_id, targetType, targetId, reactionType: type,
+          authorDid: item.canonical_author_did || item.author_did,
+          signingAuthorDid: item.author_did,
+          authorDisplayName: normalizeAuthorDisplayName(item, payload),
+          authorHandle: normalizeAuthorHandle(item, payload),
+          revision: item.op_id ?? String(item.log_id ?? ''),
+        });
       }
     }
   }
@@ -1415,7 +1489,13 @@ export function buildThreadsFromFeed(items) {
     const target = reaction.targetType === 'thread'
       ? threadById.get(reaction.targetId)
       : postById.get(reaction.targetId);
-    if (target) target.likeCount = (target.likeCount ?? 0) + 1;
+    if (target) {
+      target.reactions ??= [];
+      const previous = target.reactions.findIndex((r) => r.authorDid === reaction.authorDid);
+      if (previous >= 0) target.reactions.splice(previous, 1);
+      target.reactions.push(reaction);
+      target.likeCount = target.reactions.length;
+    }
   }
 
   threads.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));

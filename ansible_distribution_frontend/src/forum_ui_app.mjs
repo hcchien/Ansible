@@ -98,6 +98,8 @@ export function createForumUiApp({
         selectReplyMention(actionElement);
       } else if (action === 'submit-reply-draft') {
         await submitReplyDraft(actionElement);
+      } else if (action === 'react') {
+        await submitReaction(actionElement);
       } else if (action === 'cast-poll-vote') {
         await castPollVote(actionElement);
       } else if (action === 'new-deliberation') {
@@ -531,6 +533,26 @@ export function createForumUiApp({
     const durationDays = Number(form?.querySelector?.('[data-thread-draft-poll-duration]')?.value ?? 0);
     const closesAt = durationDays > 0 ? new Date(Date.now() + durationDays * 86400000).toISOString() : null;
     return { options: lines.map((label, index) => ({ id: `option-${index + 1}`, label })), ...(closesAt ? { closes_at: closesAt } : {}) };
+  }
+
+  let reactionSubmitting = false;
+  async function submitReaction(element) {
+    if (reactionSubmitting || !forumDataAdapter?.submitReaction) return;
+    reactionSubmitting = true;
+    element.disabled = true;
+    try {
+      await forumDataAdapter.submitReaction({
+        boardId: element.dataset.boardId, targetId: element.dataset.targetId,
+        targetType: element.dataset.targetType,
+        reactionType: element.dataset.reactionType === 'remove' ? null : element.dataset.reactionType,
+        existingId: element.dataset.existingId || null,
+        expectedPreviousRevision: element.dataset.revision || null,
+        sessionViewModel: currentSessionViewModel(),
+      });
+      state = await pageController.loadCurrentRoute();
+      uiError = null;
+      render();
+    } finally { reactionSubmitting = false; element.disabled = false; }
   }
 
   async function castPollVote(actionElement) {

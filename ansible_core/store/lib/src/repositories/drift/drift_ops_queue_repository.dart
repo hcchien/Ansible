@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../../db/app_database.dart';
@@ -54,6 +55,38 @@ class DriftOpsQueueRepository implements OpsQueueRepository {
               ..limit(limit)))
             .get();
     return rows.map(_mapRow).toList();
+  }
+
+  /// The latest signed local choice, including a deletion, bridges the delay
+  /// between Relay acceptance and the public AppView projection after reopening.
+  Future<entity.OpsQueueEntry?> latestReactionForTarget(
+    String authorDid,
+    String targetType,
+    String targetId,
+  ) async {
+    final rows =
+        await (_db.select(_db.opsQueue)
+              ..where(
+                (t) =>
+                    t.authorDid.equals(authorDid) &
+                    t.entityType.equals('reaction') &
+                    t.status.isNotValue('rejected'),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
+            .get();
+    for (final row in rows) {
+      try {
+        final payload = jsonDecode(utf8.decode(base64Decode(row.payload)));
+        if (payload is Map &&
+            payload['targetType'] == targetType &&
+            payload['targetId'] == targetId) {
+          return _mapRow(row);
+        }
+      } on FormatException {
+        continue;
+      }
+    }
+    return null;
   }
 
   // ---------------------------------------------------------------- markSent

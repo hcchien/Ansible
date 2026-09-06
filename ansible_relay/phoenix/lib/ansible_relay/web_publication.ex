@@ -96,6 +96,7 @@ defmodule AnsibleRelay.WebPublication do
          :ok <- ensure(is_boolean(operation["federate"])),
          :ok <- validate_action_shape(operation),
          :ok <- validate_original_author(operation),
+         :ok <- validate_reaction_payload(operation),
          :ok <- validate_times(operation),
          payload_hash <- sha256(canonical_json(operation["payload"])),
          :ok <-
@@ -239,7 +240,7 @@ defmodule AnsibleRelay.WebPublication do
       "forum.react" ->
         # Web publication previously called append/1 directly and bypassed the
         # semantic per-author/per-target reaction lock.
-        OpStore.append_reaction_insert(op, "post", operation["parent_id"])
+        OpStore.append_reaction_insert(op, payload_map["targetType"], operation["parent_id"])
 
       action when action in ["forum.edit", "forum.delete"] ->
         OpStore.append_author_mutation(op, operation["expected_previous_revision"])
@@ -251,11 +252,13 @@ defmodule AnsibleRelay.WebPublication do
 
   defp maybe_add_reaction_target(payload, %{"action" => "forum.react"} = operation) do
     payload
-    |> Map.put("targetType", "post")
+    |> Map.put_new("targetType", "post")
     |> Map.put("targetId", operation["parent_id"])
   end
 
   defp maybe_add_reaction_target(payload, _operation), do: payload
+
+  defp enqueue_federation(%{"entity_type" => "reaction"}, _proof), do: :ok
 
   defp enqueue_federation(%{"federate" => false}, _proof), do: :ok
 
@@ -339,6 +342,44 @@ defmodule AnsibleRelay.WebPublication do
   end
 
   defp validate_original_author(_operation), do: :ok
+
+  # Signed reactions retain their target across edits and expose only a public
+  # DID plus one of the four supported expressions. Older web clients omit
+  # targetType on insert; their parent has always meant a post.
+  defp validate_reaction_payload(%{"entity_type" => "reaction"} = operation) do
+    payload = maybe_add_reaction_target(operation["payload"], operation)
+
+    with :ok <- ensure(payload["targetType"] in ~w(thread post)),
+         :ok <- ensure(is_binary(payload["targetId"]) and payload["targetId"] != ""),
+         :ok <-
+           ensure(
+             operation["action"] == "forum.delete" or
+               payload["reactionType"] in ~w(thumbsUp happy sad angry)
+           ) do
+      if operation["action"] in ["forum.edit", "forum.delete"] do
+        case OpStore.create_op("reaction", operation["entity_id"]) do
+          %{payload: encoded} ->
+            with {:ok, json} <- Base.decode64(encoded),
+                 {:ok, original} <- Jason.decode(json) do
+              ensure(
+                payload["targetType"] == original["targetType"] and
+                  payload["targetId"] == original["targetId"] and
+                  operation["board_id"] == original["boardId"]
+              )
+            else
+              _ -> {:error, :invalid_operation}
+            end
+
+          _ ->
+            {:error, :original_content_not_found}
+        end
+      else
+        :ok
+      end
+    end
+  end
+
+  defp validate_reaction_payload(_operation), do: :ok
 
   defp validate_times(operation) do
     with {:ok, created_at, _} <- DateTime.from_iso8601(operation["created_at"]),

@@ -760,7 +760,9 @@ function renderThreadOriginalPost(thread, context = {}) {
         </div>
         <div class="thread-body-copy">${renderThreadParagraphs(body, { mentions: thread.mentions })}</div>
         ${renderPollDetail(thread.poll, { ...context, pollId: threadId })}
+        ${renderReactions(thread, 'thread', context)}
         ${renderThreadActionRow({
+          hideHearts: true,
           hearts: thread.likeCount ?? thread.likes ?? 0,
           comments: threadReplyCount(thread, thread.posts ?? []),
           reposts: thread.repostCount ?? 0,
@@ -820,10 +822,10 @@ function renderMentionLinks(value, mentions) {
   return html;
 }
 
-function renderThreadActionRow({ hearts = 0, comments = 0, reposts = 0, report = '' } = {}) {
+function renderThreadActionRow({ hideHearts = false, hearts = 0, comments = 0, reposts = 0, report = '' } = {}) {
   return `
     <div class="thread-action-row" aria-label="${escapeAttribute(t('thread.actionsAria'))}">
-      ${renderThreadIconButton('heart', hearts)}
+      ${hideHearts ? '' : renderThreadIconButton('heart', hearts)}
       ${renderThreadIconButton('comment', comments)}
       ${renderThreadIconButton('repost', reposts)}
       ${renderThreadIconButton('share', '')}
@@ -923,6 +925,25 @@ function renderThreadReplies(posts, context = {}) {
   `;
 }
 
+export function renderReactions(entity, targetType, context = {}) {
+  const reactions = entity.reactions ?? [];
+  const did = context.session?.subjectDid ?? context.session?.did;
+  const mine = reactions.find((r) => (r.signingAuthorDid || r.authorDid) === did);
+  const common = ` data-board-id="${escapeAttribute(context.boardId ?? entity.boardId ?? '')}" data-target-id="${escapeAttribute(entity.id ?? '')}" data-target-type="${targetType}" data-existing-id="${escapeAttribute(mine?.id ?? '')}" data-revision="${escapeAttribute(mine?.revision ?? '')}"`;
+  const types = [['thumbsUp', '👍'], ['happy', '😄'], ['sad', '😢'], ['angry', '😠']];
+  return `<div class="reaction-controls">
+    ${context.session?.capabilities?.canReact ? `<details class="reaction-picker"><summary aria-label="${escapeAttribute(t('reaction.choose'))}">${types.find(([type]) => type === mine?.reactionType)?.[1] ?? '♡'} ${escapeHtml(t('reaction.choose'))}</summary>
+      <div class="reaction-options">${types.map(([type, emoji]) => `<button type="button" data-action="react"${common} data-reaction-type="${type}" aria-pressed="${mine?.reactionType === type}" aria-label="${escapeAttribute(t(`reaction.${type}`))}">${emoji}</button>`).join('')}
+      ${mine ? `<button type="button" data-action="react"${common} data-reaction-type="remove">${escapeHtml(t('reaction.remove'))}</button>` : ''}</div></details>` : ''}
+    <details class="reaction-people"><summary>${types.filter(([type]) => reactions.some((r) => r.reactionType === type)).map(([type, emoji]) => `${emoji} ${reactions.filter((r) => r.reactionType === type).length}`).join(' · ') || '♡ 0'} <span>${escapeHtml(t('reaction.people'))}</span></summary>
+      <div class="reaction-people-list">${reactions.length ? types.map(([type, emoji]) => {
+        const people = reactions.filter((r) => r.reactionType === type);
+        return people.length ? `<section><h4>${emoji} ${escapeHtml(t(`reaction.${type}`))} · ${people.length}</h4><ul>${people.map((person) => `<li>${renderProfileAuthorLink({ author: person.authorDid, label: authorDisplayName(person), className: 'reaction-person' })}</li>`).join('')}</ul></section>` : '';
+      }).join('') : escapeHtml(t('reaction.empty'))}</div>
+    </details>
+  </div>`;
+}
+
 function renderThreadReplyItem(post, context = {}) {
   const anonymous = Boolean(context.anonymousReplies) || !post.authorDid && !post.subjectDid && !post.author;
   const author = post.authorDid || post.subjectDid || post.author || null;
@@ -975,7 +996,7 @@ function renderThreadReplyItem(post, context = {}) {
         </div>
         <div class="thread-reply-body">${renderThreadParagraphs(post.body ?? post.content ?? '', { mentions: post.mentions })}</div>
         <div class="thread-mini-actions">
-          ${renderThreadMiniAction('heart', post.likeCount ?? post.likes ?? 0)}
+          ${renderReactions(post, 'post', context)}
           ${renderThreadMiniAction('comment', post.replyCount ?? 0)}
           ${report}
         </div>
@@ -1762,7 +1783,7 @@ function renderThreadItem(thread, context = {}) {
           ? `<a class="board-thread-link thread-title-link" href="${escapeAttribute(href)}">${rowBody}</a>`
           : `<div class="board-thread-link">${rowBody}</div>`
       }
-      ${report ? `<div class="board-thread-tools">${report}</div>` : ''}
+      <div class="board-thread-tools">${renderReactions(thread, 'thread', { ...context, boardId })}${report}</div>
     </li>
   `;
 }

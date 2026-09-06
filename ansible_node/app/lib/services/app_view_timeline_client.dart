@@ -161,6 +161,25 @@ class AppViewTimelineClient {
     return _parse('thread', response);
   }
 
+  /// Attribution must include all reaction pages, not just the first replies.
+  Future<AppViewTimelinePage> fetchCompleteThread({
+    required String threadId,
+  }) async {
+    final items = <AppViewTimelineItem>[];
+    int? cursor;
+    do {
+      final page = await fetchThread(threadId: threadId, cursor: cursor);
+      items.addAll(page.items);
+      if (!page.hasMore ||
+          page.nextCursor == null ||
+          page.nextCursor == cursor) {
+        break;
+      }
+      cursor = page.nextCursor;
+    } while (true);
+    return AppViewTimelinePage(items: items);
+  }
+
   Future<CommunityNotesBundle> fetchCommunityNotes({
     required String targetRef,
     int limit = 20,

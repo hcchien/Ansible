@@ -186,6 +186,7 @@ void main() {
 
     expect(sharedText, 'Original post body');
     expect(find.byTooltip('分享貼文'), findsOneWidget);
+    await tester.runAsync(db.close);
   });
 
   testWidgets('reaction action does not open the post thread', (tester) async {
@@ -231,11 +232,12 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byIcon(Icons.favorite_border));
+    await tester.tap(find.byTooltip('選擇反應'));
     await tester.pumpAndSettle();
 
     expect(openedContent, isFalse);
     expect(find.text('👍'), findsOneWidget);
+    await tester.runAsync(db.close);
   });
 
   testWidgets('discussion author and board are separate navigation targets', (
@@ -296,6 +298,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(openedBoard, 'board-nav');
     expect(openedAuthor, isNull);
+    await tester.runAsync(db.close);
   });
 
   testWidgets('hosted discussion share uses the Web frontend URL', (
@@ -364,6 +367,7 @@ void main() {
       sharedText,
       'https://forum.elix.cool/boards/hosted-1/threads/thread-1',
     );
+    await tester.runAsync(db.close);
   });
 
   testWidgets(
@@ -433,6 +437,7 @@ void main() {
       );
       expect(transport.body?['action'], 'block_user');
       expect(transport.body?['signature'], 'signed-proof');
+      await tester.runAsync(db.close);
     },
   );
 }
