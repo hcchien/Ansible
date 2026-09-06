@@ -4,7 +4,11 @@
 
 Improve Flutter phone and desktop entry points and public-profile guidance.
 Discovery gets a labelled phone navigation destination and a desktop sidebar
-entry. Phone navigation uses Timeline / Discover / compose / Notifications / Me.
+entry. Phone navigation uses Timeline / Boards / compose / Discover / Me.
+Boards opens all subscribed-board activity directly and clears a previous
+board filter. Search, sync and a notification bell with local unread status
+live in a fixed header across all compact shell destinations. The header stays
+visible when scrolling hides the bottom bar.
 Discover contains People / Boards / Posts; Boards links to subscribed boards.
 Desktop retains its board sidebar.
 The phone Discovery destination keeps navigation available.

@@ -194,15 +194,19 @@ class BoardSwipeProgressPill extends StatelessWidget {
                         color: ochreColor,
                       ),
                       const SizedBox(width: 6),
-                      Text(
-                        motion == ElixBoardMotion.book
-                            ? '$targetLabel · $percent%'
-                            : targetLabel,
-                        style: TextStyle(
-                          fontFamily: AnsibleDesign.mono,
-                          fontSize: 10,
-                          letterSpacing: 1.2,
-                          color: ochreColor,
+                      Flexible(
+                        child: Text(
+                          motion == ElixBoardMotion.book
+                              ? '$targetLabel · $percent%'
+                              : targetLabel,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: AnsibleDesign.mono,
+                            fontSize: 10,
+                            letterSpacing: 1.2,
+                            color: ochreColor,
+                          ),
                         ),
                       ),
                     ],

@@ -8,8 +8,6 @@ import '../../services/network_status_service.dart';
 import '../../services/ops_dispatch_service.dart';
 import '../../services/reading_preferences_controller.dart';
 import '../../services/relay_discovery_client.dart';
-import '../../l10n/app_l10n.dart';
-import '../../theme/ansible_design.dart';
 import '../../theme/elix_screen_style.dart';
 import '../../widgets/feed_filter_tabs.dart';
 import '../contact_picker_screen.dart' show ContactInputResolver;
@@ -17,6 +15,7 @@ import '../inbox_screen.dart' show ContactAvailabilityResolver;
 import '../search_screen.dart';
 import '../settings_home_screen.dart';
 import 'board_swipe.dart';
+import 'compact_header.dart';
 import 'board_swipe_header.dart';
 import 'forum_board.dart';
 import 'home_types.dart';
@@ -312,103 +311,21 @@ class MainPanel extends StatelessWidget {
     );
   }
 
-  /// The Elix brand header shown on phone (b01 design): constellation mark +
-  /// "Elix" wordmark on the left, search + passkey identity chip on the right.
-  Widget _compactBrandHeader(BuildContext context) {
-    final s = (screenStyles[selectedTab] ?? ElixScreenStyle.paper).dataFor(
+  /// Standalone panels reuse the shell header and its everyday actions.
+  Widget _compactBrandHeader(BuildContext context) => HomeCompactHeader(
+    colors: (screenStyles[selectedTab] ?? ElixScreenStyle.paper).dataFor(
       Theme.of(context).brightness,
-    );
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 13, 14, 12),
-      color: s.background,
-      child: Row(
-        children: [
-          AnsibleMark(size: 20, color: s.foreground),
-          const SizedBox(width: 9),
-          Text(
-            AnsibleDesign.brandName,
-            style: TextStyle(
-              fontFamily: AnsibleDesign.sans,
-              fontFamilyFallback: AnsibleDesign.fallback,
-              fontSize: 21,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.2,
-              color: s.foreground,
-            ),
-          ),
-          const Spacer(),
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(color: s.surface, shape: BoxShape.circle),
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => SearchScreen(db: db, localDid: did),
-                ),
-              ),
-              icon: const Icon(Icons.search, size: 20),
-              color: s.foreground,
-              tooltip: context.uiCopy(zh: '搜尋', en: 'Search'),
-              visualDensity: VisualDensity.compact,
-            ),
-          ),
-          const SizedBox(width: 10),
-          _sessionChip(context, s),
-        ],
+    ),
+    onSearch: () => Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SearchScreen(db: db, localDid: did),
       ),
-    );
-  }
-
-  Widget _sessionChip(BuildContext context, ElixScreenStyleData s) {
-    return Tooltip(
-      message: context.uiCopy(zh: '同步', en: 'Sync'),
-      child: Semantics(
-        button: true,
-        label: context.uiCopy(zh: '同步', en: 'Sync'),
-        child: GestureDetector(
-          key: const Key('compact_home_sync_button'),
-          behavior: HitTestBehavior.opaque,
-          onTap: syncing ? null : onSync,
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(3, 3, 9, 3),
-            decoration: BoxDecoration(
-              border: Border.all(color: s.rule),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 26,
-                  height: 26,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? AnsibleDesign.darkLavender
-                        : AnsibleDesign.lavender,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  'PK',
-                  style: TextStyle(
-                    fontFamily: AnsibleDesign.mono,
-                    fontSize: 10,
-                    letterSpacing: 1,
-                    fontWeight: FontWeight.w600,
-                    color: s.muted,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+    ),
+    onSync: onSync,
+    syncing: syncing,
+    onNotifications: onOpenNotifications,
+    unreadCount: notificationUnreadCount,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -422,7 +339,7 @@ class MainPanel extends StatelessWidget {
             // Phone: the design's clean "Elix" brand header (mark + wordmark +
             // search + identity chip) sits above the boards; navigation lives in
             // the bottom bar.
-            if (compact) _compactBrandHeader(context),
+            if (compact && !bottomNav) _compactBrandHeader(context),
             // The bottom nav (compact/phone) replaces the top header entirely;
             // gate on bottomNav too so the 640–720 band doesn't show both.
             if (!compact && !bottomNav)

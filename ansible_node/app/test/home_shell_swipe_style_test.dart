@@ -3,6 +3,7 @@ import 'package:ansible_node/services/canonical_identity_store.dart';
 import 'package:ansible_node/main.dart';
 import 'package:ansible_node/screens/home_shell.dart';
 import 'package:ansible_node/screens/discover_screen.dart';
+import 'package:ansible_node/screens/notifications_screen.dart';
 import 'package:ansible_node/theme/ansible_design.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
@@ -34,6 +35,47 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(DiscoverScreen), findsNothing);
       expect(find.byKey(const Key('board_swipe_page_view')), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'boards and a fixed notification bell remain reachable across phone destinations',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await _pumpHomeShell(tester, coachmarkSeen: true);
+      final bell = find.byKey(const Key('home_notifications_button'));
+      final originalPosition = tester.getRect(bell);
+      for (final destination in [
+        'board_switch_forum',
+        'home_discover_tab',
+        'settings_button',
+        'board_switch_timeline',
+      ]) {
+        await tester.tap(find.byKey(Key(destination)));
+        await tester.pumpAndSettle();
+        expect(tester.getRect(bell), originalPosition);
+        expect(find.byKey(const Key('board_switch_forum')), findsOneWidget);
+        if (destination == 'board_switch_forum') {
+          expect(find.byType(DiscoverScreen), findsNothing);
+          expect(_screenStyleColor(tester, 'circle'), AnsibleDesign.paper);
+        }
+        await tester.tap(bell);
+        await tester.pumpAndSettle();
+        expect(find.byType(NotificationsScreen), findsOneWidget);
+        expect(tester.getRect(bell), originalPosition);
+      }
+      await tester.tap(find.byKey(const Key('settings_button')));
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, -400));
+      await tester.pumpAndSettle();
+      expect(tester.getRect(bell), originalPosition);
+      await tester.tap(bell);
+      await tester.pumpAndSettle();
+      expect(find.byType(NotificationsScreen), findsOneWidget);
+      expect(tester.takeException(), isNull);
     },
   );
 

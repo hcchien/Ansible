@@ -80,6 +80,8 @@ import 'thread_composer_screen.dart';
 import 'home/circle_full_screen.dart';
 import 'home/compose_action_item.dart';
 import 'home/home_bottom_bar.dart';
+import 'home/compact_header.dart';
+import 'search_screen.dart';
 import 'home/home_types.dart';
 import 'home/main_panel.dart';
 import 'home/post_card.dart';
@@ -2821,13 +2823,44 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // sidebar + top header.
     final compactShell = MediaQuery.sizeOf(context).width < 720;
     final shell = Scaffold(
+      appBar: compactShell
+          ? PreferredSize(
+              preferredSize: const Size.fromHeight(60),
+              child: SafeArea(
+                bottom: false,
+                child: HomeCompactHeader(
+                  colors: _dest == _ShellDest.board
+                      ? currentScreenStyle
+                      : ElixScreenStyle.forAppBrightness(
+                          Theme.of(context).brightness,
+                        ).dataFor(Theme.of(context).brightness),
+                  onSearch: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) =>
+                          SearchScreen(db: widget.db, localDid: widget.did),
+                    ),
+                  ),
+                  onSync: () => _runHeaderSync(),
+                  syncing: _syncing,
+                  unreadCount: _notificationUnreadCount,
+                  notificationsActive: _dest == _ShellDest.notifications,
+                  onNotifications: () {
+                    setState(() {
+                      _mobileNavigationVisible = true;
+                      _dest = _ShellDest.notifications;
+                    });
+                    unawaited(_refreshNotificationUnread());
+                  },
+                ),
+              ),
+            )
+          : null,
       bottomNavigationBar: compactShell
           ? AutoHidingHomeBottomBar(
               visible: _mobileNavigationVisible,
               child: HomeBottomBar(
                 selectedBoard: _selectedBoard,
                 boardActive: _dest == _ShellDest.board,
-                notificationsActive: _dest == _ShellDest.notifications,
                 meActive: _dest == _ShellDest.me,
                 discoverActive: _dest == _ShellDest.discover,
                 onDiscover: _openDiscover,
@@ -2836,23 +2869,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                     _mobileNavigationVisible = true;
                     _dest = _ShellDest.board;
                   });
+                  if (board == HomeBoard.forum) _selectBoard(null);
                   _selectBoardSwipe(board);
                 },
                 onCompose: () => _selectedBoard == HomeBoard.forum
                     ? _showCreateThreadMenu()
                     : _openCompose(context),
-                onNotifications: () {
-                  setState(() {
-                    _mobileNavigationVisible = true;
-                    _dest = _ShellDest.notifications;
-                  });
-                  unawaited(_refreshNotificationUnread());
-                },
                 onProfile: () => setState(() {
                   _mobileNavigationVisible = true;
                   _dest = _ShellDest.me;
                 }),
-                unreadCount: _notificationUnreadCount,
               ),
             )
           : null,
