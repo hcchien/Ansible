@@ -18,8 +18,7 @@ const _reactionEmoji = {
   ReactionType.angry: '😠',
 };
 
-String reactionEmoji(ReactionType? type) =>
-    type == null ? '♡' : _reactionEmoji[type]!;
+String reactionEmoji(ReactionType type) => _reactionEmoji[type]!;
 
 /// Shared adaptive picker for every Flutter target (web, mobile, desktop).
 Future<ReactionPickerResult?> showReactionPicker(

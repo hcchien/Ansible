@@ -205,6 +205,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: ThemeData.dark(),
         home: Scaffold(
           body: PostCard(
             db: db,
@@ -231,6 +232,14 @@ void main() {
         ),
       ),
     );
+
+    final heart = tester.widget<Icon>(find.byIcon(Icons.favorite_border));
+    final comment = tester.widget<Icon>(
+      find.byIcon(Icons.mode_comment_outlined),
+    );
+    expect(heart.color, AnsibleDesign.inkMuted);
+    expect(heart.color, comment.color);
+    expect(heart.size, comment.size);
 
     await tester.tap(find.byTooltip('選擇反應'));
     await tester.pumpAndSettle();

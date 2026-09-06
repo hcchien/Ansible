@@ -395,10 +395,12 @@ class _ReactionBarState extends State<ReactionBar> {
                   widget.opsDispatchService == null
               ? null
               : _choose,
-          icon: Text(
-            reactionEmoji(selected?.reactionType),
-            style: TextStyle(fontSize: 20, color: widget.color),
-          ),
+          icon: selected == null
+              ? Icon(Icons.favorite_border, size: 19, color: widget.color)
+              : Text(
+                  reactionEmoji(selected.reactionType),
+                  style: TextStyle(fontSize: 20, color: widget.color),
+                ),
         ),
         if (count > 0)
           TextButton(

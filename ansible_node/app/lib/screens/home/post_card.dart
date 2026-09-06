@@ -769,6 +769,7 @@ class _PostCardState extends State<PostCard> {
                   opsDispatchService: widget.opsDispatchService,
                   onFlushPendingOps: widget.onFlushPendingOps,
                   fallbackCount: data.reactions['👍'] ?? 0,
+                  color: style.muted,
                 ),
                 const SizedBox(width: 26),
                 _feedAction(

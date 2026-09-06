@@ -132,7 +132,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byType(TextButton), findsNothing);
-      expect(find.text('♡'), findsOneWidget);
+      expect(find.byIcon(Icons.favorite_border), findsOneWidget);
       await tester.runAsync(db.close);
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpAndSettle();
