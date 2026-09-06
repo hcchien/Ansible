@@ -2,7 +2,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
 import '../l10n/app_l10n.dart';
-import '../theme/ansible_design.dart';
+import '../theme/elix_screen_style.dart';
 import '../services/canonical_identity_store.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import 'sync_settings_screen.dart';
@@ -27,6 +27,10 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
+  ElixScreenStyleData get _colors => ElixScreenStyleScope.styleOf(
+    context,
+  ).dataFor(Theme.of(context).brightness);
+
   late final ContactRepository _contacts = DriftContactRepository(widget.db);
   final _displayNameController = TextEditingController();
   final _handleController = TextEditingController();
@@ -191,10 +195,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     zh: '選擇別人搜尋與追蹤你時看到的名稱。下一步會引導你發布，儲存不代表已公開成功。',
                     en: 'Choose the name people see when finding and following you. Next, review publication. Saving does not confirm that your profile is online.',
                   ),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12.5,
                     height: 1.6,
-                    color: AnsibleDesign.inkMuted,
+                    color: _colors.muted,
                   ),
                 ),
                 if (widget.isOnboarding)
@@ -228,10 +232,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       zh: 'Handle 與你的 DID 身分綁定，不能在個人檔案中直接變更。你仍可自由修改上方的顯示名稱。',
                       en: 'Your handle is bound to your DID and cannot be changed from profile settings. You can still change your display name above.',
                     ),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11.5,
                       height: 1.5,
-                      color: AnsibleDesign.inkMuted,
+                      color: _colors.muted,
                     ),
                   ),
                 ],
@@ -325,22 +329,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return TextField(
       controller: controller,
       readOnly: readOnly,
-      style: const TextStyle(fontSize: 14, color: AnsibleDesign.ink),
+      style: TextStyle(fontSize: 14, color: _colors.foreground),
       decoration: InputDecoration(
         hintText: hint,
         filled: true,
-        fillColor: AnsibleDesign.paperDeep.withValues(alpha: 0.45),
+        fillColor: _colors.surface.withValues(alpha: 0.45),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AnsibleDesign.ink),
+          borderSide: BorderSide(color: _colors.foreground),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AnsibleDesign.ink),
+          borderSide: BorderSide(color: _colors.foreground),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AnsibleDesign.ink),
+          borderSide: BorderSide(color: _colors.foreground),
         ),
       ),
     );

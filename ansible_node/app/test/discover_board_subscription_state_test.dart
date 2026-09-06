@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:ansible_node/screens/discover_screen.dart';
+import 'package:ansible_node/theme/ansible_design.dart';
 import 'package:ansible_node/services/discovery_client.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
@@ -35,6 +36,47 @@ void main() {
       ),
     ),
   );
+
+  testWidgets('embedded discovery remains readable on a narrow dark phone', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AnsibleDesign.darkTheme(),
+        home: Scaffold(
+          body: DiscoverScreen(
+            embedded: true,
+            db: db,
+            localDid: 'did:plc:test',
+            client: client(),
+            startOnBoards: true,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final title = tester.widget<Text>(find.text('General'));
+    final background = tester
+        .widget<Material>(
+          find
+              .ancestor(
+                of: find.text('General'),
+                matching: find.byType(Material),
+              )
+              .first,
+        )
+        .color!;
+    final foreground = title.style!.color!;
+    final contrast =
+        (foreground.computeLuminance() + 0.05) /
+        (background.computeLuminance() + 0.05);
+    expect(contrast, greaterThan(4.5));
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('board discovery distinguishes followed and unfollowed boards', (
     tester,

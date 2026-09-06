@@ -57,6 +57,12 @@ class DiscoverScreen extends StatefulWidget {
 }
 
 class _DiscoverScreenState extends State<DiscoverScreen> {
+  ElixScreenStyleData get _colors =>
+      (widget.embedded
+              ? ElixScreenStyle.forAppBrightness(Theme.of(context).brightness)
+              : ElixScreenStyleScope.styleOf(context))
+          .dataFor(Theme.of(context).brightness);
+
   final _queryController = TextEditingController();
   Timer? _debounce;
 
@@ -360,7 +366,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         ),
       ],
     );
-    if (widget.embedded) return Material(child: content);
+    if (widget.embedded) {
+      return Material(color: _colors.background, child: content);
+    }
     return AnsibleScreenScaffold(
       title: context.uiCopy(zh: '探索', en: 'DISCOVER'),
       leadingLabel: context.uiCopy(zh: '← 返回', en: '← Back'),
@@ -377,10 +385,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   Widget _tabBar(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
-        ),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: _colors.rule, width: 0.5)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 22),
       child: Row(
@@ -412,7 +418,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(
-                  color: active ? AnsibleDesign.ink : Colors.transparent,
+                  color: active ? _colors.foreground : Colors.transparent,
                   width: 2,
                 ),
               ),
@@ -424,7 +430,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   fontFamily: AnsibleDesign.mono,
                   fontSize: 11,
                   letterSpacing: 1.2,
-                  color: active ? AnsibleDesign.ink : AnsibleDesign.inkFaint,
+                  color: active ? _colors.foreground : _colors.faint,
                   fontWeight: active ? FontWeight.w600 : FontWeight.w400,
                 ),
               ),
@@ -514,7 +520,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       child: TextField(
         controller: _queryController,
         onChanged: _onQueryChanged,
-        style: const TextStyle(fontSize: 14, color: AnsibleDesign.ink),
+        style: TextStyle(fontSize: 14, color: _colors.foreground),
         decoration: InputDecoration(
           prefixIcon: const Icon(Icons.search, size: 18),
           suffixIcon: _query.isEmpty
@@ -532,18 +538,18 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             en: 'Search people, boards, posts',
           ),
           filled: true,
-          fillColor: AnsibleDesign.paperDeep.withValues(alpha: 0.45),
+          fillColor: _colors.surface.withValues(alpha: 0.45),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AnsibleDesign.ink),
+            borderSide: BorderSide(color: _colors.foreground),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AnsibleDesign.ink),
+            borderSide: BorderSide(color: _colors.foreground),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AnsibleDesign.ink),
+            borderSide: BorderSide(color: _colors.foreground),
           ),
         ),
       ),
@@ -559,16 +565,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 32),
       child: Column(
         children: [
-          const Icon(Icons.cloud_off, size: 28, color: AnsibleDesign.inkFaint),
+          Icon(Icons.cloud_off, size: 28, color: _colors.faint),
           const SizedBox(height: 12),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 12.5,
-              height: 1.6,
-              color: AnsibleDesign.inkMuted,
-            ),
+            style: TextStyle(fontSize: 12.5, height: 1.6, color: _colors.muted),
           ),
           const SizedBox(height: 14),
           OutlinedButton.icon(
@@ -583,10 +585,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   Widget _empty(BuildContext context, String label) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-    child: Text(
-      label,
-      style: const TextStyle(fontSize: 12.5, color: AnsibleDesign.inkMuted),
-    ),
+    child: Text(label, style: TextStyle(fontSize: 12.5, color: _colors.muted)),
   );
 
   Widget _actorRow(BuildContext context, DiscoveredActor actor) {
@@ -605,10 +604,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       onTap: () => _openActor(actor.did),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-        decoration: const BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
-          ),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: _colors.rule, width: 0.5)),
         ),
         child: Row(
           children: [
@@ -623,10 +620,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                           actor.label,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w600,
-                            color: AnsibleDesign.ink,
+                            color: _colors.foreground,
                           ),
                         ),
                       ),
@@ -648,20 +645,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AnsibleDesign.inkMuted,
-                      ),
+                      style: TextStyle(fontSize: 11, color: _colors.muted),
                     ),
                   ],
                 ],
               ),
             ),
-            const Icon(
-              Icons.chevron_right,
-              size: 18,
-              color: AnsibleDesign.inkFaint,
-            ),
+            Icon(Icons.chevron_right, size: 18, color: _colors.faint),
           ],
         ),
       ),
@@ -671,10 +661,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   Widget _boardRow(BuildContext context, BoardSearchResult board) {
     final subscribed = _subscribedBoardIds.contains(board.hostedBoardId);
     return Container(
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
-        ),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: _colors.rule, width: 0.5)),
       ),
       child: Row(
         children: [
@@ -694,10 +682,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                             board.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13.5,
                               fontWeight: FontWeight.w600,
-                              color: AnsibleDesign.ink,
+                              color: _colors.foreground,
                             ),
                           ),
                         ),
@@ -714,10 +702,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                         board.description!,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AnsibleDesign.inkMuted,
-                        ),
+                        style: TextStyle(fontSize: 12, color: _colors.muted),
                       ),
                     ],
                   ],
@@ -736,9 +721,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   Icon(
                     subscribed ? Icons.check_circle : Icons.add_circle_outline,
                     size: 18,
-                    color: subscribed
-                        ? AnsibleDesign.inkMuted
-                        : AnsibleDesign.accent,
+                    color: subscribed ? _colors.muted : AnsibleDesign.accent,
                   ),
                   const SizedBox(height: 3),
                   Text(
@@ -748,9 +731,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
-                      color: subscribed
-                          ? AnsibleDesign.inkMuted
-                          : AnsibleDesign.accent,
+                      color: subscribed ? _colors.muted : AnsibleDesign.accent,
                     ),
                   ),
                 ],
@@ -769,10 +750,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       onTap: () => _openPost(post),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
-        decoration: const BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
-          ),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: _colors.rule, width: 0.5)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -781,21 +760,21 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               children: [
                 Text(
                   post.entityType.toUpperCase(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: AnsibleDesign.mono,
                     fontSize: 8.5,
                     letterSpacing: 1.4,
-                    color: AnsibleDesign.inkFaint,
+                    color: _colors.faint,
                   ),
                 ),
                 const SizedBox(width: 6),
                 Flexible(
                   child: AuthorLabel(
                     did: post.authorDid,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: AnsibleDesign.inkMuted,
+                      color: _colors.muted,
                     ),
                   ),
                 ),
@@ -806,10 +785,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               post.body,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12.5,
                 height: 1.6,
-                color: AnsibleDesign.inkMuted,
+                color: _colors.muted,
               ),
             ),
           ],
