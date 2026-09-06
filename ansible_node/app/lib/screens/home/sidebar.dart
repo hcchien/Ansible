@@ -11,12 +11,14 @@ class HomeSidebar extends StatelessWidget {
     required this.selectedBoardId,
     required this.onSelectBoard,
     required this.onManageBoards,
+    this.onDiscover,
   });
 
   final List<Board> boards;
   final String? selectedBoardId;
   final ValueChanged<String?> onSelectBoard;
   final VoidCallback onManageBoards;
+  final VoidCallback? onDiscover;
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +38,20 @@ class HomeSidebar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (onDiscover != null) ...[
+            OutlinedButton.icon(
+              key: const Key('sidebar_discover'),
+              onPressed: onDiscover,
+              icon: const Icon(Icons.explore_outlined),
+              label: Text(
+                context.uiCopy(
+                  zh: '探索人物、看板與貼文',
+                  en: 'Discover people & boards',
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           Row(
             children: [
               Text(

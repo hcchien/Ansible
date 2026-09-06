@@ -93,7 +93,7 @@ export 'home/post_card.dart' show PostCard, PostCardData;
 /// swipe pager; notifications + me are sibling in-shell panels so the bottom
 /// nav stays mounted across all of them (Threads-style), instead of pushing a
 /// route that covers the bar.
-enum _ShellDest { board, notifications, me }
+enum _ShellDest { board, discover, notifications, me }
 
 class HomeShell extends StatefulWidget {
   const HomeShell({
@@ -214,6 +214,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   FeedFilter _feedFilter = FeedFilter.all;
   PersonalFilter _personalFilter = PersonalFilter.all;
   TimelineSort _timelineSort = TimelineSort.newest;
+  late final _shellDiscoveryClient = DiscoveryClient(
+    appViewBaseUrl: AppEnvironment.appViewBaseUrl,
+    relayBaseUrl: AppEnvironment.defaultRelayBaseUrl,
+  );
   ElixTab _selectedTab = ElixTab.feed;
   late HomeBoard _selectedBoard;
   // Active compact bottom-nav destination (boards pager / notifications / me).
@@ -407,6 +411,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _shellDiscoveryClient.close();
     _apnsPushTokenProvider.dispose();
     widget.globalSyncController?.detach(_runGlobalSync);
     WidgetsBinding.instance.removeObserver(this);
@@ -2545,15 +2550,19 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// (same deps, no onOpenBoard → board rows use DiscoverScreen's built-in
   /// subscribe flow). Reloads on return so newly-followed boards show up.
   Future<void> _openDiscover() async {
+    if (MediaQuery.sizeOf(context).width < 720) {
+      setState(() {
+        _mobileNavigationVisible = true;
+        _dest = _ShellDest.discover;
+      });
+      return;
+    }
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => DiscoverScreen(
           db: widget.db,
           localDid: widget.did,
-          client: DiscoveryClient(
-            appViewBaseUrl: AppEnvironment.appViewBaseUrl,
-            relayBaseUrl: AppEnvironment.defaultRelayBaseUrl,
-          ),
+          client: _shellDiscoveryClient,
           onFollowCreated: () => _runHeaderSync(),
         ),
       ),
@@ -2774,7 +2783,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   bool _handleCompactScroll(ScrollNotification notification) {
-    if (notification.metrics.axis != Axis.vertical) return false;
+    if (_dest == _ShellDest.discover ||
+        notification.metrics.axis != Axis.vertical) {
+      return false;
+    }
 
     bool? shouldShow;
     if (notification.metrics.pixels <= 8) {
@@ -2817,6 +2829,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 boardActive: _dest == _ShellDest.board,
                 notificationsActive: _dest == _ShellDest.notifications,
                 meActive: _dest == _ShellDest.me,
+                discoverActive: _dest == _ShellDest.discover,
+                onDiscover: _openDiscover,
                 onSelectBoard: (board) {
                   setState(() {
                     _mobileNavigationVisible = true;
@@ -2933,6 +2947,17 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               if (compact) {
                 // In-shell destinations keep the bottom nav mounted.
                 final destination = switch (_dest) {
+                  _ShellDest.discover => DiscoverScreen(
+                    db: widget.db,
+                    localDid: widget.did,
+                    client: _shellDiscoveryClient,
+                    embedded: true,
+                    onOpenSubscriptions: () {
+                      setState(() => _dest = _ShellDest.board);
+                      _selectBoardSwipe(HomeBoard.forum);
+                    },
+                    onFollowCreated: () => _runHeaderSync(),
+                  ),
                   _ShellDest.notifications => _buildNotifications(
                     embedded: true,
                   ),
@@ -2950,6 +2975,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                   SizedBox(
                     width: 280,
                     child: HomeSidebar(
+                      onDiscover: _openDiscover,
                       boards: _boards,
                       selectedBoardId: _selectedBoardId,
                       onSelectBoard: (boardId) {
@@ -3003,6 +3029,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           child: SizedBox(
             height: MediaQuery.sizeOf(sheetContext).height * 0.72,
             child: HomeSidebar(
+              onDiscover: () {
+                Navigator.of(sheetContext).pop();
+                _openDiscover();
+              },
               boards: _boards,
               selectedBoardId: _selectedBoardId,
               onSelectBoard: (boardId) {

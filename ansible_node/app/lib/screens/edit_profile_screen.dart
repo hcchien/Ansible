@@ -35,6 +35,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String _canonicalHandle = '';
   bool _loading = true;
   bool _saving = false;
+  bool _publicationConsent = false;
 
   @override
   void initState() {
@@ -80,47 +81,94 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _save() async {
+    if (!_publicationConsent || _saving) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          context.uiCopy(zh: '確認公開這份檔案', en: 'Confirm public profile'),
+        ),
+        content: Text(
+          context.uiCopy(
+            zh: '確認後會儲存這次設定，並在下次授權同步時與其他待同步內容一起送出。你可以在下一頁選擇同步節點並完成裝置驗證。',
+            en: 'Confirm to save these settings for the next authorized sync, together with other pending content. Choose a sync node and verify on your device on the next screen.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              context.uiCopy(zh: '確認並繼續', en: 'Confirm and continue'),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     setState(() => _saving = true);
-    final now = DateTime.now();
-    final displayName = _displayNameController.text.trim();
-    // The handle is identity-anchor data, not an editable profile attribute.
-    // Keep publishing the canonical value so a display-profile edit can never
-    // silently fork the DID/Relay binding.
-    final canonical = await const SecureCanonicalIdentityStore().load();
-    final canonicalHandle = canonical?.did == widget.did
-        ? canonical!.handle.trim()
-        : '';
-    // A missing/empty canonical handle is a legacy or incomplete identity,
-    // not proof that a local profile value must be discarded. Keep that
-    // onboarding path editable; once anchored, the canonical value wins.
-    final handle = canonicalHandle.isNotEmpty
-        ? canonicalHandle
-        : _handleController.text.trim();
+    try {
+      final now = DateTime.now();
+      final displayName = _displayNameController.text.trim();
+      // The handle is identity-anchor data, not an editable profile attribute.
+      // Keep publishing the canonical value so a display-profile edit can never
+      // silently fork the DID/Relay binding.
+      final canonical = await const SecureCanonicalIdentityStore().load();
+      final canonicalHandle = canonical?.did == widget.did
+          ? canonical!.handle.trim()
+          : '';
+      // A missing/empty canonical handle is a legacy or incomplete identity,
+      // not proof that a local profile value must be discarded. Keep that
+      // onboarding path editable; once anchored, the canonical value wins.
+      final handle = canonicalHandle.isNotEmpty
+          ? canonicalHandle
+          : _handleController.text.trim();
 
-    await _contacts.upsertContact(
-      ContactRecord(
-        subjectDid: widget.did,
-        handle: handle.isEmpty ? null : handle,
-        displayName: displayName.isEmpty ? null : displayName,
-        avatarUrl: _existing?.avatarUrl,
-        relationship: _existing?.relationship ?? ContactRelationship.manual,
-        source: 'self',
-        trustState: _existing?.trustState ?? ContactTrustState.known,
-        createdAt: _existing?.createdAt ?? now,
-        updatedAt: now,
-      ),
-    );
+      await _contacts.upsertContact(
+        ContactRecord(
+          subjectDid: widget.did,
+          handle: handle.isEmpty ? null : handle,
+          displayName: displayName.isEmpty ? null : displayName,
+          avatarUrl: _existing?.avatarUrl,
+          relationship: _existing?.relationship ?? ContactRelationship.manual,
+          source: 'self',
+          trustState: _existing?.trustState ?? ContactTrustState.known,
+          createdAt: _existing?.createdAt ?? now,
+          updatedAt: now,
+        ),
+      );
 
-    if (!mounted) return;
-    setState(() => _saving = false);
-    // Publication needs a fresh, user-authorized signature. Go straight to
-    // the sync surface rather than implying that a local save was published.
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => SyncSettingsScreen(db: widget.db, localDid: widget.did),
-      ),
-    );
-    if (mounted) Navigator.of(context).pop(true);
+      if (!mounted) return;
+      setState(() => _saving = false);
+      // Publication needs a fresh, user-authorized signature. Go straight to
+      // the sync surface rather than implying that a local save was published.
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => SyncSettingsScreen(
+            db: widget.db,
+            localDid: widget.did,
+            profilePublication: true,
+          ),
+        ),
+      );
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.uiCopy(
+              zh: '無法儲存，請重試。尚未確認公開成功。',
+              en: 'Could not save. Please try again. Publication has not been confirmed.',
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -140,8 +188,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               children: [
                 Text(
                   context.uiCopy(
-                    zh: '這些是公開資訊，會發布到網路讓他人搜尋與追蹤。',
-                    en: 'This is public — it is published so others can find and follow you.',
+                    zh: '選擇別人搜尋與追蹤你時看到的名稱。下一步會引導你發布，儲存不代表已公開成功。',
+                    en: 'Choose the name people see when finding and following you. Next, review publication. Saving does not confirm that your profile is online.',
                   ),
                   style: const TextStyle(
                     fontSize: 12.5,
@@ -161,7 +209,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 _label(context, context.uiCopy(zh: '顯示名稱', en: 'DISPLAY NAME')),
                 _field(
                   controller: _displayNameController,
-                  hint: context.uiCopy(zh: '你的名字', en: 'Your name'),
+                  hint: context.uiCopy(
+                    zh: '你想讓大家看到的暱稱',
+                    en: 'Your public nickname',
+                  ),
                 ),
                 const SizedBox(height: 16),
                 _label(context, context.uiCopy(zh: 'HANDLE', en: 'HANDLE')),
@@ -185,12 +236,75 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                 ],
                 const SizedBox(height: 24),
+                AnimatedBuilder(
+                  animation: Listenable.merge([
+                    _displayNameController,
+                    _handleController,
+                  ]),
+                  builder: (context, _) => Card(
+                    key: const Key('public_profile_preview'),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.uiCopy(
+                              zh: '公開檔案預覽',
+                              en: 'Public profile preview',
+                            ),
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            _displayNameController.text.trim().isEmpty
+                                ? context.uiCopy(
+                                    zh: '尚未填寫暱稱',
+                                    en: 'No nickname yet',
+                                  )
+                                : _displayNameController.text.trim(),
+                          ),
+                          Text(_handleController.text.trim()),
+                          const SizedBox(height: 12),
+                          Text(
+                            context.uiCopy(
+                              zh: '將公開上方名稱、帳號與已設定的頭像。既有的公開徽章由錢包設定管理；這裡不會新增公開證件資料。',
+                              en: 'Your name, handle and existing avatar will be public. Existing public badges are managed in Wallet; this does not add credential disclosures.',
+                            ),
+                            style: const TextStyle(fontSize: 12, height: 1.5),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                CheckboxListTile(
+                  key: const Key('public_profile_consent'),
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  value: _publicationConsent,
+                  onChanged: _saving
+                      ? null
+                      : (value) => setState(
+                          () => _publicationConsent = value ?? false,
+                        ),
+                  title: Text(
+                    context.uiCopy(
+                      zh: '我同意公開預覽中的檔案，讓別人搜尋與追蹤我。',
+                      en: 'I agree to publish the previewed profile so people can find and follow me.',
+                    ),
+                  ),
+                ),
                 FilledButton(
-                  onPressed: _saving ? null : _save,
+                  onPressed: _saving || !_publicationConsent ? null : _save,
                   child: Text(
                     _saving
                         ? context.uiCopy(zh: '儲存中…', en: 'Saving…')
-                        : context.uiCopy(zh: '儲存', en: 'Save'),
+                        : context.uiCopy(
+                            zh: '同意並前往發布',
+                            en: 'Agree and continue to publication',
+                          ),
                   ),
                 ),
               ],

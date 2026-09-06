@@ -2,6 +2,7 @@ import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_node/services/canonical_identity_store.dart';
 import 'package:ansible_node/main.dart';
 import 'package:ansible_node/screens/home_shell.dart';
+import 'package:ansible_node/screens/discover_screen.dart';
 import 'package:ansible_node/theme/ansible_design.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
@@ -15,6 +16,26 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });
+
+  testWidgets(
+    'Discover is a phone destination with navigation still available',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await _pumpHomeShell(tester, coachmarkSeen: true);
+      await tester.tap(find.byKey(const Key('home_discover_tab')));
+      await tester.pumpAndSettle();
+      expect(find.byType(DiscoverScreen), findsOneWidget);
+      expect(find.byKey(const Key('settings_button')), findsOneWidget);
+      expect(find.byKey(const Key('board_switch_timeline')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('board_switch_timeline')));
+      await tester.pumpAndSettle();
+      expect(find.byType(DiscoverScreen), findsNothing);
+      expect(find.byKey(const Key('board_swipe_page_view')), findsOneWidget);
+    },
+  );
 
   testWidgets('home shell pages can be changed by horizontal swipe', (
     tester,
@@ -40,7 +61,7 @@ void main() {
     expect(_screenStyleColor(tester, 'circle'), AnsibleDesign.paper);
   });
 
-  testWidgets('settings icon does not overlap the Forum tab on phone width', (
+  testWidgets('settings icon does not overlap Discover on phone width', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -50,9 +71,7 @@ void main() {
 
     await _pumpHomeShell(tester, coachmarkSeen: true);
 
-    final forumTab = tester.getRect(
-      find.byKey(const Key('board_switch_forum')),
-    );
+    final forumTab = tester.getRect(find.byKey(const Key('home_discover_tab')));
     final settingsBtn = tester.getRect(
       find.byKey(const Key('settings_button')),
     );
@@ -219,7 +238,11 @@ void main() {
     // before using the Forum tab, as a user would.
     await tester.drag(find.byType(Scrollable).first, const Offset(0, 120));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('board_switch_forum')));
+    await tester.tap(find.byKey(const Key('home_discover_tab')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('discover_tab_boards')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('discover_open_subscriptions')));
     await tester.pumpAndSettle();
 
     expect(_screenStyleColor(tester, 'circle'), AnsibleDesign.paper);
@@ -237,7 +260,11 @@ void main() {
     // Returning toward the top reveals the auto-hidden navigation.
     await tester.drag(find.byType(Scrollable).first, const Offset(0, 120));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('board_switch_forum')));
+    await tester.tap(find.byKey(const Key('home_discover_tab')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('discover_tab_boards')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('discover_open_subscriptions')));
     await tester.pumpAndSettle();
 
     expect(_screenStyleColor(tester, 'circle'), AnsibleDesign.darkPaper);

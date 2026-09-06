@@ -243,7 +243,7 @@ class ForumBoardView extends StatelessWidget {
   Widget _noBoardsEmptyState(BuildContext context) {
     final l10n = context.l10n;
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(28),
         child: Column(
           mainAxisSize: MainAxisSize.min,

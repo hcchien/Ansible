@@ -4,6 +4,43 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets(
+    'narrow phone exposes labelled Discover without losing other destinations',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      var discoveries = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            bottomNavigationBar: HomeBottomBar(
+              selectedBoard: HomeBoard.timeline,
+              onSelectBoard: (_) {},
+              onCompose: () {},
+              onNotifications: () {},
+              onProfile: () {},
+              onDiscover: () => discoveries++,
+            ),
+          ),
+        ),
+      );
+      expect(find.text('探索'), findsOneWidget);
+      expect(find.text('時間軸'), findsOneWidget);
+      expect(find.text('討論區'), findsNothing);
+      expect(
+        find.byKey(const Key('home_bottom_compose_button')),
+        findsOneWidget,
+      );
+      expect(find.text('通知'), findsOneWidget);
+      expect(find.text('我'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('home_discover_tab')));
+      expect(discoveries, 1);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('unread notifications use a filled bell and unread dot', (
     tester,
   ) async {

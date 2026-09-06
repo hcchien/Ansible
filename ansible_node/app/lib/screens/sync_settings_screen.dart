@@ -1,3 +1,4 @@
+import '../widgets/public_profile_status_card.dart';
 import 'dart:async';
 
 import 'package:ansible_did/ansible_did.dart';
@@ -50,6 +51,7 @@ class SyncSettingsScreen extends StatefulWidget {
   final AppDatabase db;
   final String localDid;
   final String? initialForumHostUrl;
+  final bool profilePublication;
 
   /// Test seam for fetching a host's self-declared constitution compliance
   /// at add time. Defaults to [RelayDiscoveryClient] against the host URL.
@@ -63,6 +65,7 @@ class SyncSettingsScreen extends StatefulWidget {
     required this.db,
     required this.localDid,
     this.initialForumHostUrl,
+    this.profilePublication = false,
     this.complianceFetcher,
     this.userPresenceVerifier,
     this.platformCapabilities,
@@ -100,6 +103,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
   late final SecureStorageNostrRelaySettingsStore _nostrRelaySettingsStore;
 
   List<RemoteNode> _remoteNodes = [];
+  SyncResult? _profileSyncResult;
   List<Board> _boards = [];
   List<NostrRelayPreference> _nostrRelays = [];
   List<PublicationTarget> _failedNostrTargets = [];
@@ -664,6 +668,11 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
     );
   }
 
+  Future<void> _publishProfile(RemoteNode node) async {
+    final result = await _performSync(node);
+    if (mounted) setState(() => _profileSyncResult = result);
+  }
+
   Future<SyncResult> _performSync(
     RemoteNode node, {
     bool showSnackBar = true,
@@ -1062,7 +1071,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
         _remoteNodes.isNotEmpty || _nostrRelays.any((relay) => relay.write);
 
     return AnsibleScreenScaffold(
-      title: context.uiCopy(zh: '同步', en: 'Sync'),
+      title: widget.profilePublication
+          ? context.uiCopy(zh: '發布公開檔案', en: 'Publish profile')
+          : context.uiCopy(zh: '同步', en: 'Sync'),
       leadingLabel: text.t('backSettings'),
       trailing: IconButton(
         onPressed: !hasSyncTargets || _syncingNodes.values.any((v) => v)
@@ -1075,6 +1086,83 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               children: [
+                if (widget.profilePublication) ...[
+                  Padding(
+                    padding: const EdgeInsets.all(22),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.uiCopy(
+                            zh: '檔案已儲存，下一步是發布',
+                            en: 'Profile saved. Next, publish it.',
+                          ),
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          context.uiCopy(
+                            zh: '選擇下方已連線的節點同步，並完成裝置驗證。這也會同步其他待傳送資料。完成後，按「重新確認」檢查公開檔案是否已上線。',
+                            en: 'Sync with a connected node below and approve on your device. This also syncs other pending data. Then use Check again to see whether your public profile is online.',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (!_remoteNodes.any((node) => node.isActive))
+                          Text(
+                            context.uiCopy(
+                              zh: '尚未連線到同步節點。請先在下方新增或啟用節點，再回來確認公開狀態。',
+                              en: 'No active sync node. Add or enable a node below, then check your public profile.',
+                            ),
+                          ),
+                        for (final node in _remoteNodes.where(
+                          (node) => node.isActive,
+                        ))
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: OutlinedButton.icon(
+                              onPressed:
+                                  _syncingNodes.values.any((value) => value)
+                                  ? null
+                                  : () => _publishProfile(node),
+                              icon: const Icon(Icons.sync),
+                              label: Text(
+                                context.uiCopy(
+                                  zh: '同步至 ${node.name}',
+                                  en: 'Sync with ${node.name}',
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (_profileSyncResult != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 22,
+                        vertical: 8,
+                      ),
+                      child: Text(
+                        _profileSyncResult!.success
+                            ? context.uiCopy(
+                                zh: '同步已完成。公開檔案可能仍在更新，請查詢目前狀態。',
+                                en: 'Sync finished. Your public profile may still be updating. Check its current status.',
+                              )
+                            : context.uiCopy(
+                                zh: '同步未完成，請重試。公開狀態仍需另外查詢。',
+                                en: 'Sync did not finish. Try again and check public status separately.',
+                              ),
+                      ),
+                    ),
+                  PublicProfileStatusCard(
+                    db: widget.db,
+                    did: widget.localDid,
+                    allowEdit: false,
+                  ),
+                ],
                 if (!_capabilities.webAuthn)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(22, 0, 22, 14),

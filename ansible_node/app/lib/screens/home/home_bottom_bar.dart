@@ -50,8 +50,7 @@ class AutoHidingHomeBottomBar extends StatelessWidget {
   }
 }
 
-/// Elix Screens bottom tabbar: icon-only cells — home (時間軸) · circle
-/// (討論區) · green center ＋ · bell (通知) · eye (我).
+/// Main destinations with a separate center compose action.
 class HomeBottomBar extends StatelessWidget {
   const HomeBottomBar({
     super.key,
@@ -60,6 +59,8 @@ class HomeBottomBar extends StatelessWidget {
     required this.onCompose,
     required this.onNotifications,
     required this.onProfile,
+    this.onDiscover,
+    this.discoverActive = false,
     this.boardActive = true,
     this.notificationsActive = false,
     this.meActive = false,
@@ -71,6 +72,8 @@ class HomeBottomBar extends StatelessWidget {
   final VoidCallback onCompose;
   final VoidCallback onNotifications;
   final VoidCallback onProfile;
+  final VoidCallback? onDiscover;
+  final bool discoverActive;
 
   /// Which destination is active. When a board is active, the matching board
   /// cell highlights; otherwise 通知 or 我 highlights.
@@ -102,12 +105,24 @@ class HomeBottomBar extends StatelessWidget {
                 Icons.home_outlined,
                 context.uiCopy(zh: '時間軸', en: 'Timeline'),
               ),
-              _board(
-                context,
-                HomeBoard.forum,
-                Icons.radio_button_checked,
-                context.uiCopy(zh: '討論區', en: 'Forum'),
-              ),
+              if (onDiscover != null)
+                _action(
+                  context,
+                  Icons.explore_outlined,
+                  context.uiCopy(zh: '探索', en: 'Discover'),
+                  onDiscover!,
+                  cellKey: const Key('home_discover_tab'),
+                  active:
+                      discoverActive ||
+                      (boardActive && selectedBoard == HomeBoard.forum),
+                )
+              else
+                _board(
+                  context,
+                  HomeBoard.forum,
+                  Icons.radio_button_checked,
+                  context.uiCopy(zh: '討論區', en: 'Forum'),
+                ),
               _compose(context),
               _action(
                 context,
@@ -150,7 +165,7 @@ class HomeBottomBar extends StatelessWidget {
           key: Key('board_switch_${board.name}'),
           onTap: () => onSelectBoard(board),
           customBorder: const StadiumBorder(),
-          child: _cell(context, icon, active),
+          child: _cell(context, icon, active, label: label),
         ),
       ),
     );
@@ -174,7 +189,7 @@ class HomeBottomBar extends StatelessWidget {
           key: cellKey,
           onTap: onTap,
           customBorder: const StadiumBorder(),
-          child: _cell(context, icon, active, showDot: showDot),
+          child: _cell(context, icon, active, label: label, showDot: showDot),
         ),
       ),
     );
@@ -185,6 +200,7 @@ class HomeBottomBar extends StatelessWidget {
     IconData icon,
     bool active, {
     bool showDot = false,
+    required String label,
   }) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final color = active
@@ -192,12 +208,26 @@ class HomeBottomBar extends StatelessWidget {
         : (dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint);
     final background = dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
     return SizedBox(
-      height: 46,
+      height: 56,
       child: Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.center,
         children: [
-          Icon(icon, size: 26, color: color),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 24, color: color),
+              const SizedBox(height: 3),
+              ExcludeSemantics(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 10, color: color),
+                ),
+              ),
+            ],
+          ),
           if (showDot)
             Positioned(
               top: 6,

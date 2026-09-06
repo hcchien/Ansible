@@ -19,7 +19,7 @@ import 'posts_view_screen.dart';
 import 'threads_list_screen.dart';
 import 'user_profile_screen.dart';
 import 'follow_qr_screen.dart';
-import 'edit_profile_screen.dart';
+import '../widgets/public_profile_status_card.dart';
 
 /// The three Discover categories, each shown as a tab so users / boards / posts
 /// are always cleanly separated (both while browsing and while searching).
@@ -31,16 +31,20 @@ enum _DiscoverTab { people, boards, posts }
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({
     super.key,
+    this.embedded = false,
     required this.db,
     required this.localDid,
     required this.client,
     this.onOpenBoard,
+    this.onOpenSubscriptions,
     this.onFollowCreated,
     this.startOnBoards = false,
   });
 
+  final VoidCallback? onOpenSubscriptions;
   final AppDatabase db;
   final String localDid;
+  final bool embedded;
   final DiscoveryClient client;
   final void Function(BoardSearchResult board)? onOpenBoard;
   final Future<void> Function()? onFollowCreated;
@@ -62,6 +66,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   Set<String> _subscribedBoardIds = const {};
   SearchResults _results = const SearchResults();
   bool _loadingFeed = true;
+  bool _profileInvitationDismissed = false;
   bool _searching = false;
   String _query = '';
   String? _feedError;
@@ -297,106 +302,77 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final content = Column(
+      children: [
+        if (widget.embedded)
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                context.uiCopy(zh: '探索', en: 'Discover'),
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              key: const Key('discover_follow_qr'),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => FollowQrScreen(
+                    db: widget.db,
+                    localDid: widget.localDid,
+                    onFollowCreated: widget.onFollowCreated,
+                  ),
+                ),
+              ),
+              icon: const Icon(Icons.qr_code_2, size: 18),
+              label: Text(
+                context.uiCopy(zh: 'Follow QR Code', en: 'Follow QR Code'),
+              ),
+            ),
+          ),
+        ),
+        _searchField(context),
+        _tabBar(context),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.only(bottom: 24),
+            children: [
+              if (_tab == _DiscoverTab.boards &&
+                  widget.onOpenSubscriptions != null)
+                ListTile(
+                  key: const Key('discover_open_subscriptions'),
+                  leading: const Icon(Icons.forum_outlined),
+                  title: Text(context.uiCopy(zh: '我訂閱的看板', en: 'My boards')),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: widget.onOpenSubscriptions,
+                ),
+              ..._tabContent(context),
+              if (_tab == _DiscoverTab.people && !_profileInvitationDismissed)
+                _publicProfileStatus(context),
+            ],
+          ),
+        ),
+      ],
+    );
+    if (widget.embedded) return Material(child: content);
     return AnsibleScreenScaffold(
       title: context.uiCopy(zh: '探索', en: 'DISCOVER'),
       leadingLabel: context.uiCopy(zh: '← 返回', en: '← Back'),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: OutlinedButton.icon(
-                key: const Key('discover_follow_qr'),
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => FollowQrScreen(
-                      db: widget.db,
-                      localDid: widget.localDid,
-                      onFollowCreated: widget.onFollowCreated,
-                    ),
-                  ),
-                ),
-                icon: const Icon(Icons.qr_code_2, size: 18),
-                label: Text(
-                  context.uiCopy(zh: 'Follow QR Code', en: 'Follow QR Code'),
-                ),
-              ),
-            ),
-          ),
-          _searchField(context),
-          _tabBar(context),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.only(bottom: 24),
-              children: [
-                _publicProfileStatus(context),
-                ..._tabContent(context),
-              ],
-            ),
-          ),
-        ],
-      ),
+      child: content,
     );
   }
 
-  Widget _publicProfileStatus(
-    BuildContext context,
-  ) => FutureBuilder<ContactRecord?>(
-    future: DriftContactRepository(widget.db).contactForDid(widget.localDid),
-    builder: (context, snapshot) {
-      final profile = snapshot.data;
-      final isPublic =
-          (profile?.handle?.trim().isNotEmpty ?? false) ||
-          (profile?.displayName?.trim().isNotEmpty ?? false);
-      return Container(
-        margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isPublic
-              ? AnsibleDesign.paperDeep
-              : AnsibleDesign.ochre.withValues(alpha: .12),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AnsibleDesign.ruleSoft),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              isPublic ? Icons.public : Icons.visibility_off_outlined,
-              color: AnsibleDesign.inkMuted,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                isPublic
-                    ? context.uiCopy(
-                        zh: '公開 profile 將在同步後出現在使用者搜尋。',
-                        en: 'Your public profile appears in people search after sync.',
-                      )
-                    : context.uiCopy(
-                        zh: '你目前不會出現在使用者搜尋中。公開 profile 是可選的。',
-                        en: 'You are not currently in people search. A public profile is optional.',
-                      ),
-                style: const TextStyle(fontSize: 12.5, height: 1.45),
-              ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) =>
-                      EditProfileScreen(db: widget.db, did: widget.localDid),
-                ),
-              ),
-              child: Text(
-                isPublic
-                    ? context.uiCopy(zh: '管理', en: 'Manage')
-                    : context.uiCopy(zh: '設定', en: 'Set up'),
-              ),
-            ),
-          ],
-        ),
-      );
-    },
+  Widget _publicProfileStatus(BuildContext context) => PublicProfileStatusCard(
+    db: widget.db,
+    did: widget.localDid,
+    client: widget.client,
+    onDismiss: () => setState(() => _profileInvitationDismissed = true),
   );
 
   Widget _tabBar(BuildContext context) {
@@ -409,7 +385,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 22),
       child: Row(
         children: [
-          _tabChip(context, _DiscoverTab.people, zh: '使用者', en: 'PEOPLE'),
+          _tabChip(context, _DiscoverTab.people, zh: '人物', en: 'PEOPLE'),
           _tabChip(context, _DiscoverTab.boards, zh: '看板', en: 'BOARDS'),
           _tabChip(context, _DiscoverTab.posts, zh: '貼文', en: 'POSTS'),
         ],
@@ -425,28 +401,32 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }) {
     final active = _tab == tab;
     return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => setState(() => _tab = tab),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 11),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: active ? AnsibleDesign.ink : Colors.transparent,
-                width: 2,
+      child: Semantics(
+        button: true,
+        selected: active,
+        child: InkWell(
+          key: Key('discover_tab_${tab.name}'),
+          onTap: () => setState(() => _tab = tab),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 11),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: active ? AnsibleDesign.ink : Colors.transparent,
+                  width: 2,
+                ),
               ),
             ),
-          ),
-          child: Center(
-            child: Text(
-              context.uiCopy(zh: zh, en: en),
-              style: TextStyle(
-                fontFamily: AnsibleDesign.mono,
-                fontSize: 11,
-                letterSpacing: 1.2,
-                color: active ? AnsibleDesign.ink : AnsibleDesign.inkFaint,
-                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+            child: Center(
+              child: Text(
+                context.uiCopy(zh: zh, en: en),
+                style: TextStyle(
+                  fontFamily: AnsibleDesign.mono,
+                  fontSize: 11,
+                  letterSpacing: 1.2,
+                  color: active ? AnsibleDesign.ink : AnsibleDesign.inkFaint,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                ),
               ),
             ),
           ),

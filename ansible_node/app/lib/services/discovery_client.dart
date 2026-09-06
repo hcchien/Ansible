@@ -200,6 +200,22 @@ class DiscoveryClient {
 
   bool get appViewEnabled => appViewBaseUrl.trim().isNotEmpty;
 
+  /// A successful save or sync does not prove the public index is up to date.
+  /// Look up this DID directly; recommendations intentionally exclude self.
+  Future<DiscoveredActor?> publicProfile(String did) async {
+    if (!appViewEnabled) throw StateError('Public profile lookup unavailable');
+    final res = await _client
+        .get(
+          _appView('/api/v1/profiles/${Uri.encodeComponent(did)}'),
+          headers: AnsibleProtocol.headers,
+        )
+        .timeout(const Duration(seconds: 8));
+    if (res.statusCode == 404) return null;
+    final actor = DiscoveredActor.fromJson(_decode(res, 'profile'));
+    if (actor.did != did) throw StateError('Public profile identity mismatch');
+    return actor;
+  }
+
   Uri _appView(String path, [Map<String, String>? query]) => Uri.parse(
     '${_trim(appViewBaseUrl)}$path',
   ).replace(queryParameters: query);
