@@ -2,7 +2,9 @@ import { buildAppViewModel, initialAppState, PAGE_IDS } from './state_model.mjs'
 import { DEFAULT_SESSION_VIEW_MODEL } from './session_lifecycle.mjs';
 
 export function parseRoute(hash) {
-  const path = normalizeHashPath(hash);
+  const normalized = normalizeHashPath(hash);
+  const [path, queryString = ''] = normalized.split('?');
+  if (path === '/discover') return { pageId: PAGE_IDS.discover, params: { query: new URLSearchParams(queryString).get('q') ?? '' } };
   const segments = path.split('/').filter(Boolean).map(decodeURIComponent);
 
   if (segments.length === 0) {
@@ -64,6 +66,8 @@ export function parseRoute(hash) {
 
 export function routeToHash(route) {
   switch (route.pageId) {
+    case PAGE_IDS.discover:
+      return `#/discover${route.params?.query ? `?q=${encodeURIComponent(route.params.query)}` : ''}`;
     case PAGE_IDS.home:
       return '#/';
 
@@ -130,6 +134,11 @@ export function createPageController({
         sessionViewModel: session,
         includePublicFeed: route.pageId === PAGE_IDS.home,
       });
+      return setStateWithNotifications(route, session, forum);
+    }
+
+    if (route.pageId === PAGE_IDS.discover) {
+      const forum = await forumDataAdapter.loadDiscoveryPage({ query: route.params.query, sessionViewModel: session });
       return setStateWithNotifications(route, session, forum);
     }
 

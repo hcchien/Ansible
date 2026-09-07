@@ -35,7 +35,7 @@ defmodule AnsibleAppview.DeletePropagationTest do
       :crypto.sign(:eddsa, :none, SigningPayload.build(op), [priv, :ed25519])
       |> Base.encode16(case: :lower)
 
-    Map.put(op, "signature", signature)
+    Map.put(op, "signature", signature) |> AnsibleAppview.TestIdentity.attach()
   end
 
   defp ids(%{items: items}), do: Enum.map(items, & &1.entity_id)
@@ -47,7 +47,7 @@ defmodule AnsibleAppview.DeletePropagationTest do
       signed_op(
         log_id: 1,
         op_id: "dp-op1",
-        author_did: "did:key:dp-alice",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:dp-alice"),
         entity_type: "murmur",
         entity_id: "dp-m1",
         pub: pub,
@@ -56,13 +56,16 @@ defmodule AnsibleAppview.DeletePropagationTest do
       )
 
     assert {1, 1} = Folder.apply_ops([create])
-    assert "dp-m1" in ids(Timeline.for_authors(["did:key:dp-alice"], nil, 20))
+
+    assert "dp-m1" in ids(
+             Timeline.for_authors([AnsibleAppview.TestIdentity.did("did:key:dp-alice")], nil, 20)
+           )
 
     # The delete op has its own log_id but the same entity_id.
     delete =
       signed_op(
         log_id: 2,
-        author_did: "did:key:dp-alice",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:dp-alice"),
         entity_type: "murmur",
         entity_id: "dp-m1",
         op_type: "delete",
@@ -73,7 +76,10 @@ defmodule AnsibleAppview.DeletePropagationTest do
     Folder.apply_ops([delete])
 
     # Author feed, board-independent timeline, and object cache all exclude it.
-    refute "dp-m1" in ids(Timeline.for_authors(["did:key:dp-alice"], nil, 20))
+    refute "dp-m1" in ids(
+             Timeline.for_authors([AnsibleAppview.TestIdentity.did("did:key:dp-alice")], nil, 20)
+           )
+
     assert {:ok, :deleted} = Cache.get("item:dp-op1")
   end
 
@@ -83,7 +89,7 @@ defmodule AnsibleAppview.DeletePropagationTest do
     create =
       signed_op(
         log_id: 10,
-        author_did: "did:key:dp-bob",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:dp-bob"),
         entity_type: "comment",
         entity_id: "dp-c1",
         op_type: "insert",
@@ -98,7 +104,7 @@ defmodule AnsibleAppview.DeletePropagationTest do
     delete =
       signed_op(
         log_id: 11,
-        author_did: "did:key:dp-bob",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:dp-bob"),
         entity_type: "comment",
         entity_id: "dp-c1",
         op_type: "delete",
@@ -117,7 +123,7 @@ defmodule AnsibleAppview.DeletePropagationTest do
     create =
       signed_op(
         log_id: 20,
-        author_did: "did:key:dp-carol",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:dp-carol"),
         entity_type: "note",
         entity_id: "dp-n1",
         pub: pub,
@@ -126,13 +132,16 @@ defmodule AnsibleAppview.DeletePropagationTest do
       )
 
     Folder.apply_ops([create])
-    assert "dp-n1" in ids(Timeline.for_authors(["did:key:dp-carol"], nil, 20))
+
+    assert "dp-n1" in ids(
+             Timeline.for_authors([AnsibleAppview.TestIdentity.did("did:key:dp-carol")], nil, 20)
+           )
 
     # The relay's moderation overlay strips payload + signature and sets removed.
     removal = %{
       "log_id" => 21,
       "op_id" => "dp-op20",
-      "author_did" => "did:key:dp-carol",
+      "author_did" => AnsibleAppview.TestIdentity.did("did:key:dp-carol"),
       "entity_type" => "note",
       "entity_id" => "dp-n1",
       "op_type" => "insert",
@@ -145,7 +154,10 @@ defmodule AnsibleAppview.DeletePropagationTest do
     before = rejection_count("bad_signature")
     Folder.apply_ops([removal])
 
-    refute "dp-n1" in ids(Timeline.for_authors(["did:key:dp-carol"], nil, 20))
+    refute "dp-n1" in ids(
+             Timeline.for_authors([AnsibleAppview.TestIdentity.did("did:key:dp-carol")], nil, 20)
+           )
+
     # An unsigned removal must NOT inflate the bad-signature rejection metric.
     assert rejection_count("bad_signature") == before
   end

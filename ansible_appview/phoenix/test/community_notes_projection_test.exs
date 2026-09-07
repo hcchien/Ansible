@@ -207,7 +207,7 @@ defmodule AnsibleAppview.CommunityNotesProjectionTest do
     op = %{
       "log_id" => log_id,
       "op_id" => "op-#{log_id}",
-      "author_did" => "did:key:community-author",
+      "author_did" => AnsibleAppview.TestIdentity.did("did:key:community-author"),
       "entity_type" => "context_note",
       "entity_id" => entity_id,
       "op_type" => op_type,
@@ -221,7 +221,7 @@ defmodule AnsibleAppview.CommunityNotesProjectionTest do
       :crypto.sign(:eddsa, :none, SigningPayload.build(op), [private_key, :ed25519])
       |> Base.encode16(case: :lower)
 
-    Map.put(op, "signature", signature)
+    Map.put(op, "signature", signature) |> AnsibleAppview.TestIdentity.attach()
   end
 
   defp signed_target_op(log_id, public_key, private_key, entity_id) do
@@ -230,7 +230,7 @@ defmodule AnsibleAppview.CommunityNotesProjectionTest do
     op = %{
       "log_id" => log_id,
       "op_id" => "target-op-#{log_id}",
-      "author_did" => "did:key:target-author",
+      "author_did" => AnsibleAppview.TestIdentity.did("did:key:target-author"),
       "entity_type" => "murmur",
       "entity_id" => entity_id,
       "op_type" => "insert",
@@ -244,7 +244,7 @@ defmodule AnsibleAppview.CommunityNotesProjectionTest do
       :crypto.sign(:eddsa, :none, SigningPayload.build(op), [private_key, :ed25519])
       |> Base.encode16(case: :lower)
 
-    Map.put(op, "signature", signature)
+    Map.put(op, "signature", signature) |> AnsibleAppview.TestIdentity.attach()
   end
 
   defp note_payload(target_ref, target) do

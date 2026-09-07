@@ -4,6 +4,11 @@ import 'package:ansible_node/services/oid4vp_request.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('rejects a recipient different from the displayed verifier origin', () {
+    expect(() => Oid4vpAuthorizationRequest.parse(_requestUri(clientId:'https://verifier.example', responseUri:'https://evil.example/direct_post', nonce:'nonce')),
+      throwsA(isA<Oid4vpRequestException>()));
+  });
+
   test('parses an embedded openid4vp verifier request', () {
     final request = Oid4vpAuthorizationRequest.parse(
       _requestUri(

@@ -42,7 +42,7 @@ defmodule AnsibleAppview.MetricsTest do
     ops = [
       signed_op(
         log_id: 1,
-        author_did: "did:key:alice",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:alice"),
         entity_type: "murmur",
         pub: pub,
         priv: priv,
@@ -90,6 +90,6 @@ defmodule AnsibleAppview.MetricsTest do
       :crypto.sign(:eddsa, :none, SigningPayload.build(op), [priv, :ed25519])
       |> Base.encode16(case: :lower)
 
-    Map.put(op, "signature", signature)
+    Map.put(op, "signature", signature) |> AnsibleAppview.TestIdentity.attach()
   end
 end

@@ -19,6 +19,11 @@ class VcPresentationEnvelope {
   });
 }
 
+abstract interface class ConfiguredVpProofSigner {
+  Future<String> identityBinding(String holderDid);
+  Future<Map<String, Object?>> proofOptions(String holderDid);
+}
+
 abstract class VpProofSigner {
   Future<String> signPresentation({
     required Map<String, Object?> unsignedPresentation,
@@ -58,6 +63,7 @@ class VcPresentationService {
   final ProofVerifier proofVerifier;
   final CredentialStatusResolver statusResolver;
   final VpProofSigner proofSigner;
+  final Future<bool> Function(TrisAuraCredential)? cryptographicVerifier;
   final NostrEventSigner? nostrBindingSigner;
   final JsonCredentialPayloadDecoder payloadDecoder;
   final PresentationIdFactory presentationIdFactory;
@@ -68,6 +74,7 @@ class VcPresentationService {
     required this.proofVerifier,
     required this.statusResolver,
     required this.proofSigner,
+    this.cryptographicVerifier,
     this.nostrBindingSigner,
     JsonCredentialPayloadDecoder? payloadDecoder,
     PresentationIdFactory? presentationIdFactory,
@@ -102,6 +109,7 @@ class VcPresentationService {
     Map<String, Object?> requiredClaimValues = const {},
     required DateTime now,
     bool recordPresentation = true,
+    bool sign = true,
     String? credentialId,
     Set<String> holderDidAliases = const {},
   }) async {
@@ -112,7 +120,8 @@ class VcPresentationService {
       now: now,
       credentialType: credentialType,
       requiredClaimValues: requiredClaimValues,
-      allowStoredIssuer: true,
+      allowStoredIssuer: cryptographicVerifier == null,
+      sign: sign,
       recordPresentation: recordPresentation,
       result: WalletPresentationResult.approved,
       credentialId: credentialId,
@@ -149,6 +158,7 @@ class VcPresentationService {
     String credentialType = 'TrisAuraHumanityCredential',
     Map<String, Object?> requiredClaimValues = const {},
     bool allowStoredIssuer = false,
+    bool sign = true,
     String? nostrPubkey,
     String? credentialId,
     Set<String>? acceptedCredentialHolderDids,
@@ -201,7 +211,9 @@ class VcPresentationService {
         now: now,
         requiredCredentialType: credentialType,
       );
-      if (!verification.isValid) {
+      if (!verification.isValid ||
+          (cryptographicVerifier != null &&
+              !await cryptographicVerifier!(credential))) {
         continue;
       }
 
@@ -213,15 +225,18 @@ class VcPresentationService {
         createdAt: now,
         acceptedCredentialHolderDids: acceptedHolders,
       );
-      final canonicalPayload = VpBuilder.canonicalPayload(unsignedVp);
-      final proofValue = await proofSigner.signPresentation(
-        unsignedPresentation: unsignedVp,
-        canonicalPayload: canonicalPayload,
-      );
-      final vp = VpBuilder.addProof(
-        unsignedPresentation: unsignedVp,
-        proofValue: proofValue,
-      );
+      if (proofSigner is ConfiguredVpProofSigner) {
+        final options = await (proofSigner as ConfiguredVpProofSigner)
+            .proofOptions(holderDid);
+        unsignedVp['proof'] = {...(unsignedVp['proof'] as Map), ...options};
+      }
+      if (!sign) {
+        return VcPresentationEnvelope(
+          credentialId: metadata.credentialId,
+          verifiablePresentation: unsignedVp,
+        );
+      }
+      final vp = await signPrepared(unsignedVp);
       final nostrBinding = await _buildNostrBinding(
         vp: vp,
         holderDid: holderDid,
@@ -249,6 +264,24 @@ class VcPresentationService {
     }
 
     return null;
+  }
+
+  Future<String?> identityBinding(String holderDid) async =>
+      proofSigner is ConfiguredVpProofSigner
+      ? (proofSigner as ConfiguredVpProofSigner).identityBinding(holderDid)
+      : null;
+
+  Future<Map<String, Object?>> signPrepared(
+    Map<String, Object?> unsignedVp,
+  ) async {
+    final proofValue = await proofSigner.signPresentation(
+      unsignedPresentation: unsignedVp,
+      canonicalPayload: VpBuilder.canonicalPayload(unsignedVp),
+    );
+    return VpBuilder.addProof(
+      unsignedPresentation: unsignedVp,
+      proofValue: proofValue,
+    );
   }
 
   Future<Map<String, Object?>?> _buildNostrBinding({

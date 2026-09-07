@@ -31,11 +31,13 @@ defmodule AnsibleAppview.IngestVerificationTest do
 
   defp keypair do
     {pub, priv} = :crypto.generate_key(:eddsa, :ed25519)
+    Process.put({:identity_private, Base.encode16(pub, case: :lower)}, priv)
     {Base.encode16(pub, case: :lower), priv}
   end
 
   defp p256_keypair do
     {pub, priv} = :crypto.generate_key(:ecdh, :secp256r1)
+    Process.put({:identity_private, Base.encode16(pub, case: :lower)}, priv)
     {Base.encode16(pub, case: :lower), priv}
   end
 
@@ -57,9 +59,11 @@ defmodule AnsibleAppview.IngestVerificationTest do
 
     op =
       case Keyword.get(opts, :anchor_expires_at) do
-        nil -> base
+        nil -> Map.put(base, "anchor_expires_at", "2099-01-01T00:00:00Z")
         value -> Map.put(base, "anchor_expires_at", value)
       end
+
+    op = with_identity(op)
 
     signature =
       :crypto.sign(:eddsa, :none, SigningPayload.build(op), [priv, :ed25519])
@@ -85,11 +89,46 @@ defmodule AnsibleAppview.IngestVerificationTest do
       "received_at" => "2026-07-25T00:00:00Z"
     }
 
+    base = base |> Map.put("anchor_expires_at", "2099-01-01T00:00:00Z") |> with_identity()
+
     signature =
       :crypto.sign(:ecdsa, :sha256, SigningPayload.build(base), [priv, :secp256r1])
       |> Base.encode16(case: :lower)
 
     Map.put(base, "signature", signature)
+  end
+
+  defp with_identity(op) do
+    alias AnsibleAppview.Identity.AnchorEncoding
+    algorithm = op["signing_algorithm"] || "ed25519"
+    pub = op["public_key_hex"]
+    did = AnsibleAppview.DidElix.derive(pub, "fixture.elix.cool", "software", algorithm)
+
+    anchor = %{
+      "schema_version" => 3,
+      "did" => did,
+      "handle" => "fixture.elix.cool",
+      "identity_key" => pub,
+      "identity_key_algorithm" => algorithm,
+      "custody_class" => "software",
+      "devices" => [],
+      "also_known_as" => [],
+      "prev_anchor_cid" => nil,
+      "reason" => "initial",
+      "created_at" => "2026-01-01T00:00:00Z"
+    }
+
+    private = Process.get({:identity_private, pub})
+    bytes = AnchorEncoding.canonical_body(anchor)
+
+    signature =
+      if algorithm == "ed25519",
+        do: :crypto.sign(:eddsa, :none, bytes, [private, :ed25519]),
+        else: :crypto.sign(:ecdsa, :sha256, bytes, [private, :secp256r1])
+
+    anchor = Map.put(anchor, "sig", Base.encode16(signature, case: :lower))
+    {:ok, _} = AnsibleAppview.Authority.Witness.checkpoint(did, [anchor])
+    op |> Map.put("author_did", did) |> Map.put("identity_chain", [anchor])
   end
 
   defp rejection_count(reason) do
@@ -129,10 +168,10 @@ defmodule AnsibleAppview.IngestVerificationTest do
     assert %DateTime{} = row.verified_at
     assert row.signature == op["signature"]
     # No anchor expiry was carried, so it is left nil (see Folder TODO).
-    assert is_nil(row.anchor_expires_at)
+    assert %DateTime{} = row.anchor_expires_at
 
     # Surfaces in author timeline and the global explore feed.
-    timeline = Timeline.for_authors(["did:key:valid"], nil, 50)
+    timeline = Timeline.for_authors([op["author_did"]], nil, 50)
     assert Enum.map(timeline.items, & &1.op_id) == ["op-100"]
 
     explore = Discovery.explore(nil, 50)
@@ -186,7 +225,7 @@ defmodule AnsibleAppview.IngestVerificationTest do
     assert Repo.one(from(f in FeedItem, where: f.log_id == 101)) == nil
 
     # Excluded from every public read.
-    assert Timeline.for_authors(["did:key:mallory"], nil, 50).items == []
+    assert Timeline.for_authors([forged["author_did"]], nil, 50).items == []
     assert "op-101" not in Enum.map(Discovery.explore(nil, 50).items, & &1.op_id)
 
     # Counted under reason=bad_signature.

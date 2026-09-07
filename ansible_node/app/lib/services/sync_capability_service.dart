@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'dart:math';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'authority_witness_client.dart';
 
 import 'package:ansible_did/ansible_did.dart';
 import 'package:crypto/crypto.dart';
@@ -68,6 +71,7 @@ class SyncCapabilityService {
     WebAuthnPlatform? platform,
     DidSigner? didSigner,
     http.Client? client,
+    AuthorityWitnessClient? authorityWitness,
     DateTime Function()? now,
     PlatformCapabilities? platformCapabilities,
   }) : _baseUri = Uri.parse(baseUrl),
@@ -75,6 +79,7 @@ class SyncCapabilityService {
        _platform = platform ?? NativeWebAuthnPlatform(),
        _didSigner = didSigner ?? DidSignerImpl(),
        _client = client ?? http.Client(),
+       _witness = authorityWitness ?? AuthorityWitnessClient(client: client),
        _now = now ?? DateTime.now,
        _platformCapabilities =
            platformCapabilities ?? PlatformCapabilities.current;
@@ -84,11 +89,21 @@ class SyncCapabilityService {
   final WebAuthnPlatform _platform;
   final DidSigner _didSigner;
   final http.Client _client;
+  final AuthorityWitnessClient _witness;
   final DateTime Function() _now;
   final PlatformCapabilities _platformCapabilities;
 
   SyncCapability? _cached;
   Future<SyncCapability>? _authorizationInFlight;
+
+  /// Explicit user action for legacy or expired web publication delegation.
+  Future<void> renewWebPublicationAuthorization() async {
+    if (!_platformCapabilities.webAuthn) {
+      throw const SyncCapabilityException(409, 'webauthn_unavailable');
+    }
+    await _enroll();
+    _cached = null;
+  }
 
   Future<SyncCapability> authorize({bool allowEnrollment = true}) {
     if (!_platformCapabilities.webAuthn) {
@@ -160,7 +175,51 @@ class SyncCapabilityService {
     return capability;
   }
 
+  String get _credentialIdsKey =>
+      'elix.web.credentials.${sha256.convert(utf8.encode('$_holderDid\u0000$_baseUri'))}';
+
+  /// Explicitly revoke every web credential this installation registered.
+  /// The independent observer must acknowledge before Relay is contacted.
+  Future<void> revokeSavedWebCredentials() async {
+    if (!_witness.enabled) {
+      throw StateError('authority_witness_not_configured');
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final ids = prefs.getStringList(_credentialIdsKey) ?? [];
+    if (ids.isEmpty) {
+      throw const SyncCapabilityException(409, 'no_local_web_credentials');
+    }
+    for (final id in ids.toList()) {
+      final body = <String, Object?>{
+        'type': 'io.trisaura.identity.webCredentialRevocation',
+        'version': 1,
+        'subject_did': _holderDid,
+        'credential_id': id,
+        'revoked_at': _now().toUtc().toIso8601String(),
+        'nonce': base64Url
+            .encode(List.generate(24, (_) => Random.secure().nextInt(256)))
+            .replaceAll('=', ''),
+      };
+      final signature = await _didSigner.sign(
+        utf8.encode(_canonicalJson(body)),
+      );
+      await _witness.revoke(body, signature.hex);
+      _cached = null;
+      await _post(
+        '/api/v2/webauthn/credentials/${Uri.encodeComponent(id)}/revoke',
+        {'did': _holderDid, 'revocation': body, 'did_signature': signature.hex},
+      );
+      ids.remove(id);
+      await prefs.setStringList(_credentialIdsKey, ids);
+    }
+    _cached = null;
+  }
+
   Future<void> _enroll() async {
+    await _witness.checkpointFromRelay(
+      relayBaseUrl: _baseUri.toString(),
+      did: _holderDid,
+    );
     final challenge = await _post('/api/v2/webauthn/register/options', {
       'did': _holderDid,
     });
@@ -179,6 +238,16 @@ class SyncCapabilityService {
       'challenge_id': challengeId,
       'subject_did': _holderDid,
       'credential_id_hash': credentialIdHash,
+      'origin': challenge['origin'] as String,
+      'attestation_sha256': sha256
+          .convert(
+            base64Url.decode(
+              base64Url.normalize(
+                (credential['response'] as Map)['attestationObject'] as String,
+              ),
+            ),
+          )
+          .toString(),
       'rp_id': (challenge['publicKey'] as Map)['rp']['id'] as String,
       'issued_at': issuedAt.toIso8601String(),
       'expires_at': issuedAt.add(const Duration(days: 90)).toIso8601String(),
@@ -201,6 +270,11 @@ class SyncCapabilityService {
       'did_signature': didProof.hex,
       'delegation': delegation,
     });
+    final prefs = await SharedPreferences.getInstance();
+    final ids = prefs.getStringList(_credentialIdsKey) ?? [];
+    if (!ids.contains(rawId)) {
+      await prefs.setStringList(_credentialIdsKey, [...ids, rawId]);
+    }
   }
 
   String _canonicalJson(Object? value) {

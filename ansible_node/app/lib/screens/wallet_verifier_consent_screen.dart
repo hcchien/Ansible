@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../theme/ansible_design.dart';
@@ -30,6 +31,43 @@ class WalletVerifierConsentScreen extends StatefulWidget {
 class _WalletVerifierConsentScreenState
     extends State<WalletVerifierConsentScreen> {
   var _submitting = false;
+  var _preparing = false;
+  PreparedOid4vpPresentation? _prepared;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.presentationService is Oid4vpPresentationService) {
+      _preparing = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _prepare());
+    }
+  }
+
+  Future<void> _prepare() async {
+    try {
+      final prepared =
+          await (widget.presentationService as Oid4vpPresentationService)
+              .prepare(
+                holderDid: widget.holderDid,
+                request: widget.request,
+                now: widget.now().toUtc(),
+              );
+      if (mounted) {
+        setState(() {
+          _prepared = prepared;
+          _preparing = false;
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _preparing = false;
+          _errorMessage = _formatError(error);
+        });
+      }
+    }
+  }
+
   Oid4vpSubmissionResult? _result;
   String? _errorMessage;
 
@@ -40,11 +78,14 @@ class _WalletVerifierConsentScreenState
     });
 
     try {
-      final result = await widget.presentationService.approve(
-        holderDid: widget.holderDid,
-        request: widget.request,
-        now: widget.now().toUtc(),
-      );
+      final result = _prepared != null
+          ? await (widget.presentationService as Oid4vpPresentationService)
+                .approvePrepared(_prepared!, now: widget.now().toUtc())
+          : await widget.presentationService.approve(
+              holderDid: widget.holderDid,
+              request: widget.request,
+              now: widget.now().toUtc(),
+            );
       if (!mounted) return;
       setState(() {
         _result = result;
@@ -132,12 +173,20 @@ class _WalletVerifierConsentScreenState
             ),
             const SizedBox(height: 12),
             _Section(
-              title: context.uiCopy(zh: '不會揭露', en: 'Not disclosed'),
+              title: context.uiCopy(zh: '實際會傳送的資料', en: 'Actual disclosure'),
               body: context.uiCopy(
-                zh: '身分證字號、姓名、憑證序號、MobileMoica response、duplicate commitment。',
-                en: 'National ID number, legal name, credential serial number, MobileMoica response, duplicate commitment.',
+                zh: '此格式會傳送完整憑證，包含持有人識別碼、發行者、有效期限、狀態查詢位置與全部屬性。接收方可能據此連結多次出示。請檢查以下內容再同意。',
+                en: 'This format sends the complete credential: holder identifier, issuer, validity, status endpoint and all claims. The recipient may correlate presentations. Review the contents before consenting.',
               ),
             ),
+            if (_preparing) const LinearProgressIndicator(),
+            if (_prepared != null)
+              SelectableText(
+                const JsonEncoder.withIndent(
+                  '  ',
+                ).convert(_prepared!.presentation),
+                key: const Key('actual_disclosure'),
+              ),
             if (_errorMessage != null) ...[
               const SizedBox(height: 16),
               Text(
@@ -148,7 +197,14 @@ class _WalletVerifierConsentScreenState
             const SizedBox(height: 24),
             if (result == null)
               FilledButton.icon(
-                onPressed: _submitting ? null : _approve,
+                onPressed:
+                    _submitting ||
+                        _preparing ||
+                        (widget.presentationService
+                                is Oid4vpPresentationService &&
+                            _prepared == null)
+                    ? null
+                    : _approve,
                 icon: _submitting
                     ? const SizedBox(
                         height: 18,

@@ -153,7 +153,7 @@ defmodule AnsibleAppview.ExternalIngestTest do
       :crypto.sign(:eddsa, :none, SigningPayload.build(op), [priv, :ed25519])
       |> Base.encode16(case: :lower)
 
-    Map.put(op, "signature", sig)
+    Map.put(op, "signature", sig) |> AnsibleAppview.TestIdentity.attach()
   end
 
   defp keypair do
@@ -177,7 +177,7 @@ defmodule AnsibleAppview.ExternalIngestTest do
 
   test "external content NEVER appears on any verified read path; native verified item unaffected" do
     # A native verified item exists and is visible.
-    native = native_verified_op(500, "did:key:native")
+    native = native_verified_op(500, AnsibleAppview.TestIdentity.did("native"))
     {1, _} = Folder.apply_ops([native])
 
     # Ingest an external item from a curated source.
@@ -196,7 +196,7 @@ defmodule AnsibleAppview.ExternalIngestTest do
 
     # Verified timeline read paths: external excluded, native present.
     assert "op-500" in Enum.map(
-             Timeline.for_authors(["did:key:native"], nil, 50).items,
+             Timeline.for_authors([AnsibleAppview.TestIdentity.did("native")], nil, 50).items,
              & &1.op_id
            )
 
@@ -281,7 +281,7 @@ defmodule AnsibleAppview.ExternalIngestTest do
 
   test "external items remain absent from timeline and discovery even when board-mapped" do
     # Native verified item is present everywhere it should be.
-    native = native_verified_op(700, "did:key:native3")
+    native = native_verified_op(700, AnsibleAppview.TestIdentity.did("native3"))
     {1, _} = Folder.apply_ops([native])
 
     source = add_source(%{board_id: "board-mixed"})
@@ -414,7 +414,7 @@ defmodule AnsibleAppview.ExternalIngestTest do
 
   test "a source fetch error is tolerated: no crash, error counted, native ingest unaffected" do
     # Native item still folds fine.
-    native = native_verified_op(600, "did:key:native2")
+    native = native_verified_op(600, AnsibleAppview.TestIdentity.did("native2"))
     {1, _} = Folder.apply_ops([native])
 
     source = add_source()

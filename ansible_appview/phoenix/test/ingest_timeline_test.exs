@@ -43,6 +43,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
         canonical -> Map.put(signed, "canonical_author_did", canonical)
       end
     end)
+    |> AnsibleAppview.TestIdentity.attach()
   end
 
   defp approved_follow_grant(request_op_id, follower, author) do
@@ -70,7 +71,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
       signed_op(
         log_id: 0,
         op_id: "profile-alice",
-        author_did: "did:key:alice",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:alice"),
         entity_type: "profile",
         pub: pub,
         priv: priv,
@@ -82,7 +83,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
       ),
       signed_op(
         log_id: 1,
-        author_did: "did:key:alice",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:alice"),
         entity_type: "murmur",
         pub: pub,
         priv: priv,
@@ -92,7 +93,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
       # private note -> skipped
       signed_op(
         log_id: 2,
-        author_did: "did:key:alice",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:alice"),
         entity_type: "note",
         pub: pub,
         priv: priv,
@@ -101,7 +102,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
       # invalid signature: signed with a different key than public_key_hex
       signed_op(
         log_id: 3,
-        author_did: "did:key:mallory",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:mallory"),
         entity_type: "murmur",
         pub: pub,
         priv: otherpriv,
@@ -110,7 +111,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
       # a post in a board (no visibility) -> indexed
       signed_op(
         log_id: 4,
-        author_did: "did:key:bob",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:bob"),
         entity_type: "post",
         pub: pub,
         priv: priv,
@@ -119,7 +120,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
       # a comment on content -> indexed, but kept OUT of top-level feeds
       signed_op(
         log_id: 5,
-        author_did: "did:key:bob",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:bob"),
         entity_type: "comment",
         pub: pub,
         priv: priv,
@@ -132,12 +133,15 @@ defmodule AnsibleAppview.IngestTimelineTest do
     assert max_log == 5
 
     # Timeline for alice returns only her public murmur.
-    alice = Timeline.for_authors(["did:key:alice"], nil, 50)
+    alice = Timeline.for_authors([AnsibleAppview.TestIdentity.did("did:key:alice")], nil, 50)
     assert length(alice.items) == 1
-    assert hd(alice.items).author_did == "did:key:alice"
+    assert hd(alice.items).author_did == AnsibleAppview.TestIdentity.did("did:key:alice")
     assert hd(alice.items).author_handle == "alice.elix.cool"
     assert hd(alice.items).author_display_name == "Alice"
-    assert hd(alice.items).public_key_hex == pub
+
+    assert hd(alice.items).public_key_hex ==
+             AnsibleAppview.TestIdentity.public_key(hd(alice.items).author_did)
+
     assert hd(alice.items).reputation_tier == "verified_human"
 
     # Board feed returns bob's post — the comment is NOT a top-level feed item.
@@ -145,7 +149,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
     assert Enum.map(board.items, & &1.entity_id) == ["e-4"]
 
     # The comment never leaks into a followed user's timeline either.
-    bob = Timeline.for_authors(["did:key:bob"], nil, 50)
+    bob = Timeline.for_authors([AnsibleAppview.TestIdentity.did("did:key:bob")], nil, 50)
     assert Enum.map(bob.items, & &1.entity_id) == ["e-4"]
 
     # Thread feed DOES include the comment (it is the comments read path), plus
@@ -158,7 +162,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
     # Re-folding the same ops is idempotent.
     {reindexed, _} = Folder.apply_ops(ops)
     assert reindexed == 3
-    again = Timeline.for_authors(["did:key:alice"], nil, 50)
+    again = Timeline.for_authors([AnsibleAppview.TestIdentity.did("did:key:alice")], nil, 50)
     assert length(again.items) == 1
   end
 
@@ -168,7 +172,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
     ops = [
       signed_op(
         log_id: 1,
-        author_did: "did:key:author",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:author"),
         entity_type: "thread",
         entity_id: "e-election-current",
         pub: pub,
@@ -177,7 +181,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
       ),
       signed_op(
         log_id: 2,
-        author_did: "did:key:author",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:author"),
         entity_type: "thread",
         entity_id: "e-election-legacy",
         pub: pub,
@@ -186,7 +190,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
       ),
       signed_op(
         log_id: 3,
-        author_did: "did:key:author",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:author"),
         entity_type: "thread",
         entity_id: "e-fifa-legacy",
         pub: pub,
@@ -195,7 +199,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
       ),
       signed_op(
         log_id: 4,
-        author_did: "did:key:author",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:author"),
         entity_type: "thread",
         entity_id: "e-election-canonical-namespaced",
         pub: pub,
@@ -225,7 +229,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
       signed_op(
         log_id: 101,
         entity_id: "content-engagement",
-        author_did: "did:key:engagement-author",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:engagement-author"),
         entity_type: "murmur",
         pub: pub,
         priv: priv,
@@ -234,7 +238,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
       signed_op(
         log_id: 102,
         entity_id: "comment-engagement",
-        author_did: "did:key:commenter",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:commenter"),
         entity_type: "comment",
         pub: pub,
         priv: priv,
@@ -247,7 +251,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
       signed_op(
         log_id: 103,
         entity_id: "reaction-engagement-1",
-        author_did: "did:key:reactor-1",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:reactor-1"),
         entity_type: "reaction",
         pub: pub,
         priv: priv,
@@ -260,7 +264,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
       signed_op(
         log_id: 104,
         entity_id: "reaction-engagement-2",
-        author_did: "did:key:reactor-2",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:reactor-2"),
         entity_type: "reaction",
         pub: pub,
         priv: priv,
@@ -273,7 +277,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
       signed_op(
         log_id: 105,
         entity_id: "opening-discussion",
-        author_did: "did:key:discussion-author",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:discussion-author"),
         entity_type: "post",
         pub: pub,
         priv: priv,
@@ -286,7 +290,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
       signed_op(
         log_id: 106,
         entity_id: "reply-discussion",
-        author_did: "did:key:discussion-replier",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:discussion-replier"),
         entity_type: "post",
         pub: pub,
         priv: priv,
@@ -299,7 +303,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
       signed_op(
         log_id: 107,
         entity_id: "reaction-discussion",
-        author_did: "did:key:discussion-reactor",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:discussion-reactor"),
         entity_type: "reaction",
         pub: pub,
         priv: priv,
@@ -314,8 +318,8 @@ defmodule AnsibleAppview.IngestTimelineTest do
       signed_op(
         log_id: 108,
         entity_id: "reaction-engagement-migrated-duplicate",
-        author_did: "did:key:reactor-1-legacy",
-        canonical_author_did: "did:key:reactor-1",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:reactor-1-legacy"),
+        canonical_author_did: AnsibleAppview.TestIdentity.did("did:key:reactor-1"),
         entity_type: "reaction",
         pub: pub,
         priv: priv,
@@ -330,7 +334,11 @@ defmodule AnsibleAppview.IngestTimelineTest do
     {8, 108} = Folder.apply_ops(ops)
 
     item =
-      Timeline.for_authors(["did:key:engagement-author"], nil, 50)
+      Timeline.for_authors(
+        [AnsibleAppview.TestIdentity.did("did:key:engagement-author")],
+        nil,
+        50
+      )
       |> Map.fetch!(:items)
       |> List.first()
 
@@ -339,7 +347,11 @@ defmodule AnsibleAppview.IngestTimelineTest do
     assert item.comment_count == 1
 
     discussion =
-      Timeline.for_authors(["did:key:discussion-author"], nil, 50)
+      Timeline.for_authors(
+        [AnsibleAppview.TestIdentity.did("did:key:discussion-author")],
+        nil,
+        50
+      )
       |> Map.fetch!(:items)
       |> List.first()
 
@@ -355,7 +367,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
       signed_op(
         log_id: log_id,
         op_id: "follow-#{log_id}",
-        author_did: "did:key:reader",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:reader"),
         entity_type: "follow",
         op_type: op_type,
         pub: pub,
@@ -365,46 +377,64 @@ defmodule AnsibleAppview.IngestTimelineTest do
     end
 
     AnsibleAppview.Ingest.Folder.apply_ops([
-      follow.(1, "insert", "did:key:alice", "federated"),
-      follow.(2, "insert", "did:key:secret", "localOnly")
+      follow.(1, "insert", AnsibleAppview.TestIdentity.did("did:key:alice"), "federated"),
+      follow.(2, "insert", AnsibleAppview.TestIdentity.did("did:key:secret"), "localOnly")
     ])
 
     # A federated follow op is a request, not an active feed edge.
     assert AnsibleAppview.FollowGraph.requested?(
              "follow-1",
-             "did:key:reader",
-             "did:key:alice"
+             AnsibleAppview.TestIdentity.did("did:key:reader"),
+             AnsibleAppview.TestIdentity.did("did:key:alice")
            )
 
-    assert AnsibleAppview.FollowGraph.followers("did:key:alice") == []
+    assert AnsibleAppview.FollowGraph.followers(AnsibleAppview.TestIdentity.did("did:key:alice")) ==
+             []
 
     AnsibleAppview.Ingest.Folder.apply_ops([
       signed_op(
         log_id: 3,
         op_id: "grant-3",
-        author_did: "did:key:alice",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:alice"),
         entity_type: "follow_grant",
         pub: pub,
         priv: priv,
-        payload: approved_follow_grant("follow-1", "did:key:reader", "did:key:alice")
+        payload:
+          approved_follow_grant(
+            "follow-1",
+            AnsibleAppview.TestIdentity.did("did:key:reader"),
+            AnsibleAppview.TestIdentity.did("did:key:alice")
+          )
       )
     ])
 
-    assert AnsibleAppview.FollowGraph.followers("did:key:alice") == ["did:key:reader"]
+    assert AnsibleAppview.FollowGraph.followers(AnsibleAppview.TestIdentity.did("did:key:alice")) ==
+             [AnsibleAppview.TestIdentity.did("did:key:reader")]
+
     # localOnly follow is never indexed.
-    assert AnsibleAppview.FollowGraph.followers("did:key:secret") == []
-    assert AnsibleAppview.FollowGraph.following("did:key:reader") == ["did:key:alice"]
-    assert AnsibleAppview.FollowGraph.follower_count("did:key:alice") == 1
+    assert AnsibleAppview.FollowGraph.followers(AnsibleAppview.TestIdentity.did("did:key:secret")) ==
+             []
+
+    assert AnsibleAppview.FollowGraph.following(AnsibleAppview.TestIdentity.did("did:key:reader")) ==
+             [AnsibleAppview.TestIdentity.did("did:key:alice")]
+
+    assert AnsibleAppview.FollowGraph.follower_count(
+             AnsibleAppview.TestIdentity.did("did:key:alice")
+           ) == 1
 
     # Unfollow (delete) removes the edge.
-    AnsibleAppview.Ingest.Folder.apply_ops([follow.(4, "delete", "did:key:alice", "federated")])
-    assert AnsibleAppview.FollowGraph.followers("did:key:alice") == []
+    AnsibleAppview.Ingest.Folder.apply_ops([
+      follow.(4, "delete", AnsibleAppview.TestIdentity.did("did:key:alice"), "federated")
+    ])
+
+    assert AnsibleAppview.FollowGraph.followers(AnsibleAppview.TestIdentity.did("did:key:alice")) ==
+             []
   end
 
   test "fan-out on write materializes a reader's home timeline" do
     {pub, priv} = keypair()
-    reader = "did:key:fanreader"
-    author = "did:key:fanauthor"
+    reader = AnsibleAppview.TestIdentity.did("did:key:fanreader")
+    author = AnsibleAppview.TestIdentity.did("did:key:fanauthor")
 
     # The request alone does not subscribe the reader. The author's signed
     # grant creates the edge, then the public murmur fans out.
@@ -446,7 +476,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
     assert hd(home.items).author_did == author
 
     # A reader who follows nobody and was never fanned out gets an empty home.
-    cold = Timeline.home("did:key:nobody-home", nil, 50)
+    cold = Timeline.home(AnsibleAppview.TestIdentity.did("did:key:nobody-home"), nil, 50)
     assert cold.items == []
   end
 end

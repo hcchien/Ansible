@@ -108,6 +108,11 @@ void main() {
     // A blob is shown and the opt-in readiness flag was set.
     expect(find.byKey(const Key('backup_blob_box')), findsOneWidget);
     expect(await store.hasBackup(), isTrue);
+    expect(await store.hasSavedBackup(), isFalse);
+    await tester.ensureVisible(find.byKey(const Key('backup_confirm_saved_button')));
+    await tester.tap(find.byKey(const Key('backup_confirm_saved_button')));
+    await tester.pumpAndSettle();
+    expect(await store.hasSavedBackup(), isTrue);
   });
 
   testWidgets('backup screen rejects mismatched passphrases', (tester) async {
@@ -161,10 +166,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('⚠ 尚未備份'), findsOneWidget);
-    expect(find.text('可復原：已備份'), findsNothing);
+    expect(find.text('復原資料已產生'), findsNothing);
   });
 
-  testWidgets('settings shows 可復原：已備份 when a backup exists', (tester) async {
+  testWidgets('settings shows 復原資料已產生 when a backup exists', (tester) async {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(() => db.close());
 
@@ -189,7 +194,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('可復原：已備份'), findsOneWidget);
+    expect(find.text('復原資料已產生'), findsOneWidget);
     expect(find.text('⚠ 尚未備份'), findsNothing);
   });
 }

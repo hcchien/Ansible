@@ -26,6 +26,7 @@ import '../services/relay_reputation_presentation_service.dart';
 import '../services/relay_identity_bootstrap_service.dart';
 import '../services/user_presence_verifier.dart';
 import '../services/sync_capability_service.dart';
+import '../services/authority_witness_client.dart';
 import '../services/sync_authorization_controller.dart';
 import '../services/platform_capabilities.dart';
 import '../services/public_profile_credential_preferences.dart';
@@ -671,6 +672,196 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
   Future<void> _publishProfile(RemoteNode node) async {
     final result = await _performSync(node);
     if (mounted) setState(() => _profileSyncResult = result);
+  }
+
+  Future<void> _manageWitness(RemoteNode node, {required bool revoke}) async {
+    if (!AuthorityWitnessClient().enabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.uiCopy(
+              zh: '此版本未設定公開索引服務，無法確認撤銷或重新驗證歷史。請使用已設定 AppView 的版本。',
+              en: 'This build has no public index service configured. Use a build with AppView configured to confirm revocations or revalidate history.',
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          revoke
+              ? context.uiCopy(
+                  zh: '撤銷此裝置的網頁授權',
+                  en: 'Revoke this device’s web credentials',
+                )
+              : context.uiCopy(
+                  zh: '重新驗證本機公開歷史',
+                  en: 'Revalidate local public history',
+                ),
+        ),
+        content: Text(
+          revoke
+              ? context.uiCopy(
+                  zh: '將撤銷這台裝置記錄的網頁 Passkey 授權。撤銷會直接送到所設定的 AppView，再送到 Relay；已確認的歷史貼文仍保留。其他不同授權不受影響；若此 Passkey 同步到其他裝置，該授權也會失效。',
+                  en: 'Revoke web credentials recorded on this device. The configured AppView acknowledges before Relay is contacted. Previously witnessed posts remain; other credentials remain active, but copies of these Passkeys on other devices are revoked too.',
+                )
+              : context.uiCopy(
+                  zh: '以目前身分金鑰重新確認此裝置中已送出的公開或不列出紀錄，讓新索引可驗證輪替前的內容。不會從 Relay 下載紀錄來代簽，也不包含私人內容；過程可能需要系統驗證。',
+                  en: 'Use the current identity key to confirm this device’s sent public or unlisted history. Records are never downloaded from Relay for signing. Private content is excluded; system authentication may be required.',
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(context.uiCopy(zh: '確認', en: 'Confirm')),
+          ),
+        ],
+      ),
+    );
+    if (approved != true || !mounted) return;
+    setState(() => _syncingNodes[node.id] = true);
+    try {
+      final signer = DidSignerImpl();
+      if (revoke) {
+        await _syncCapabilityServices
+            .putIfAbsent(
+              '${widget.localDid}\u0000${node.url}',
+              () => SyncCapabilityService(
+                baseUrl: node.url,
+                holderDid: widget.localDid,
+                didSigner: signer,
+                platformCapabilities: _capabilities,
+              ),
+            )
+            .revokeSavedWebCredentials();
+      } else {
+        await _ensureRelayIdentity(node, signer);
+        final entries = await _opsQueueRepo.listAll(limit: 100001);
+        if (entries.length > 100000) {
+          throw StateError('history_requires_paged_migration');
+        }
+        final count = await AuthorityWitnessClient().revalidatePublicHistory(
+          entries,
+          did: widget.localDid,
+          signer: signer,
+        );
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.uiCopy(
+                zh: '已重新確認 $count 筆本機公開紀錄。已收到的索引操作會立即重試，其餘於後續同步載入。',
+                en: 'Revalidated $count local public records. Received operations are retried now; remaining records load on later sync.',
+              ),
+            ),
+          ),
+        );
+      }
+      if (revoke && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.uiCopy(
+                zh: '此裝置記錄的網頁授權已撤銷。',
+                en: 'Web credentials recorded on this device have been revoked.',
+              ),
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.uiCopy(
+              zh: '尚未全部完成。請確認 AppView 與 Relay 連線後重試；已確認的撤銷不會取消。若此裝置沒有登記紀錄，請由原登記裝置撤銷。',
+              en: 'Not fully completed. Check AppView and Relay connections and retry; acknowledged revocations remain effective. If no enrollment is recorded here, use the device that registered it.',
+            ),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _syncingNodes[node.id] = false);
+    }
+  }
+
+  Future<void> _renewWebAuthorization(RemoteNode node) async {
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          context.uiCopy(
+            zh: '更新網頁 Passkey 授權',
+            en: 'Update web Passkey authorization',
+          ),
+        ),
+        content: Text(
+          context.uiCopy(
+            zh: '將建立新的 Passkey，允許你在網頁發文、回覆、編輯或刪除自己的內容、表達反應，以及在已有板務權限的看板執行管理。授權 90 天有效，可撤銷。身分私鑰不會匯出。',
+            en: 'Create a Passkey for web posting, replies, editing or deleting your content, reactions, and moderation where you already have permission. Authorization lasts 90 days and can be revoked. Your identity private key is not exported.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(
+              context.uiCopy(zh: '建立並授權', en: 'Create and authorize'),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (approved != true || !mounted) return;
+    try {
+      final signer = DidSignerImpl();
+      await _ensureRelayIdentity(node, signer);
+      await _syncCapabilityServices
+          .putIfAbsent(
+            '${widget.localDid}\u0000${node.url}',
+            () => SyncCapabilityService(
+              baseUrl: node.url,
+              holderDid: widget.localDid,
+              platformCapabilities: _capabilities,
+              didSigner: signer,
+            ),
+          )
+          .renewWebPublicationAuthorization();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.uiCopy(
+              zh: '網頁授權已更新，請回到瀏覽器重試。',
+              en: 'Web authorization updated. Return to your browser and retry.',
+            ),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.uiCopy(
+              zh: '授權未完成，請檢查連線或重新嘗試。',
+              en: 'Authorization was not completed. Check the connection and try again.',
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   Future<SyncResult> _performSync(
@@ -1497,6 +1688,43 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
           // Expanded content
           if (isExpanded) ...[
             const Divider(height: 1, color: AnsibleDesign.ruleSoft),
+            if (_capabilities.webAuthn)
+              TextButton.icon(
+                onPressed: anyNodeSyncing
+                    ? null
+                    : () => _renewWebAuthorization(node),
+                icon: const Icon(Icons.key),
+                label: Text(
+                  context.uiCopy(
+                    zh: '更新網頁 Passkey 授權',
+                    en: 'Update web Passkey authorization',
+                  ),
+                ),
+              ),
+            TextButton.icon(
+              onPressed: anyNodeSyncing
+                  ? null
+                  : () => _manageWitness(node, revoke: true),
+              icon: const Icon(Icons.block),
+              label: Text(
+                context.uiCopy(
+                  zh: '撤銷此裝置的網頁授權',
+                  en: 'Revoke this device’s web credentials',
+                ),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: anyNodeSyncing
+                  ? null
+                  : () => _manageWitness(node, revoke: false),
+              icon: const Icon(Icons.history),
+              label: Text(
+                context.uiCopy(
+                  zh: '重新驗證本機公開歷史',
+                  en: 'Revalidate local public history',
+                ),
+              ),
+            ),
             // Board selection
             Padding(
               padding: const EdgeInsets.all(16),

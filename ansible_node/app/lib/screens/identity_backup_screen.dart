@@ -82,6 +82,8 @@ class _IdentityBackupScreenState extends State<IdentityBackupScreen> {
   bool _working = false;
   String? _blob;
   String? _error;
+  bool _saved = false;
+  CanonicalIdentity? _generatedIdentity;
 
   @override
   void dispose() {
@@ -114,12 +116,15 @@ class _IdentityBackupScreenState extends State<IdentityBackupScreen> {
       _working = true;
       _error = null;
       _blob = null;
+      _saved = false;
     });
     try {
       final identity = await widget.canonicalIdentityStore.load();
       if (identity?.did == widget.did && identity?.custody == 'hardware') {
         throw StateError('hardware_key_not_exportable');
       }
+      if (identity != null && identity.did != widget.did) { throw StateError('identity_changed'); }
+      _generatedIdentity = identity;
       final keyHex = await widget.identityPrivateKeyHex();
       if (keyHex == null) {
         throw StateError('No identity key available to back up.');
@@ -130,7 +135,7 @@ class _IdentityBackupScreenState extends State<IdentityBackupScreen> {
         did: widget.did,
         handle: widget.handle,
       );
-      await widget.readinessStore.markBackupCreated();
+      await widget.readinessStore.markBackupCreated(identity: identity);
       widget.onBackupCreated?.call();
       if (!mounted) return;
       setState(() {
@@ -143,8 +148,8 @@ class _IdentityBackupScreenState extends State<IdentityBackupScreen> {
         _working = false;
         _error = error.toString().contains('hardware_key_not_exportable')
             ? context.uiCopy(
-                zh: '此帳號使用不可匯出的裝置硬體金鑰；請使用平台的 passkey 同步或帳號復原流程。',
-                en: 'This account uses a non-exportable hardware key. Use your platform passkey sync or account recovery flow.',
+                zh: '此帳號使用不可匯出的裝置硬體金鑰；請使用帳號復原流程。Passkey 同步不等於身分金鑰備份。',
+                en: 'This account uses a non-exportable hardware key. Use account recovery. Passkey sync does not back up the identity key.',
               )
             : context.uiCopy(
                 zh: '建立備份時發生錯誤，請再試一次。',
@@ -212,6 +217,40 @@ class _IdentityBackupScreenState extends State<IdentityBackupScreen> {
             onPressed: _working ? null : _create,
           ),
           if (_blob != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              context.uiCopy(
+                zh: _saved
+                    ? '已確認保存；尚未完成復原演練。此備份不包含筆記與附件。'
+                    : '復原資料已產生，尚未確認保存。此備份不包含筆記與附件。',
+                en: _saved
+                    ? 'Saved by your confirmation; recovery has not been rehearsed. Notes and attachments are separate.'
+                    : 'Recovery material generated, not yet confirmed saved. Notes and attachments are separate.',
+              ),
+            ),
+            TextButton(
+              key: const Key('backup_confirm_saved_button'),
+              onPressed: _saved
+                  ? null
+                  : () async {
+                      try {
+                        await widget.readinessStore.markBackupSaved(identity: _generatedIdentity);
+                        if (mounted) setState(() => _saved = true);
+                        widget.onBackupCreated?.call();
+                      } catch (_) {
+                        if (!mounted) return;
+                        setState(() => _error = context.uiCopy(
+                          zh: '無法確認保存狀態，身分可能已變更。請重新建立備份。',
+                          en: 'Could not confirm saving. The identity may have changed; create the backup again.'));
+                      }
+                    },
+              child: Text(
+                context.uiCopy(
+                  zh: '我已將備份另存到安全位置',
+                  en: 'I saved the backup in a safe place',
+                ),
+              ),
+            ),
             const SizedBox(height: 24),
             AnsibleMonoLabel(
               context.uiCopy(zh: '你的加密備份', en: 'YOUR ENCRYPTED BACKUP'),

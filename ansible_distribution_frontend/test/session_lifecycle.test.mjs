@@ -145,6 +145,7 @@ test('starts app login and exposes pending challenge state for the future UI', a
   ]);
   assert.deepEqual(state.viewModel.challenge, {
     challengeId: 'wsc_123',
+    expectedRelayOrigin: 'http://localhost:4001',
     expiresAt: '2026-05-11T13:00:00Z',
     deepLink: 'trisaura://web-session/approve?challenge_id=wsc_123',
     qrPayload: 'trisaura://web-session/approve?challenge_id=wsc_123',

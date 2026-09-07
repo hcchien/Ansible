@@ -10,7 +10,8 @@ defmodule AnsibleAppview.Ingest.Rebuilder do
 
   @doc "Truncates the projection, resets the cursor, then drains from the relay."
   def run do
-    # All three tables are disposable projections of the public Relay stream.
+    # These four tables are disposable projections of the public Relay stream.
+    # authority_* tables are durable security evidence and MUST survive rebuild.
     # Rebuilding only feed_items previously left stale profile rows behind.
     Repo.query!(
       "TRUNCATE TABLE feed_items, appview_profiles, appview_follows, appview_context_notes"

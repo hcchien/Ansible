@@ -34,8 +34,10 @@ POSTGRES_USER="$USER" POSTGRES_PASSWORD=postgres MIX_ENV=test mix test
 
 | Var | Purpose |
 |---|---|
-| `DATABASE_URL` | Projection database (required) |
+| `DATABASE_URL` | Database for projections and durable authority evidence (required) |
 | `RELAY_BASE_URL` | Relay to ingest the op delta from (required) |
+| `APPVIEW_PUBLIC_ORIGIN` | This observer’s HTTPS origin, matching the native AppView URL (required) |
+| `START_INGEST` | Set `false` while enrolling authority checkpoints during migration; default `true` |
 | `PORT` | HTTP port (default `8080`) |
 | `POOL_SIZE` | Primary DB pool size |
 | `INGEST_INTERVAL_MS` | Relay poll interval |
@@ -90,3 +92,19 @@ docker build -t ansible-appview ansible_appview/phoenix
 Cloud Run runbook (optional, load-triggered):
 [`../../docs/deployment/cloud_run_deploy.md`](../../docs/deployment/cloud_run_deploy.md) (§8a).
 Design: [`../../docs/superpowers/specs/2026-06-04-scalable-following-feed-appview-design.md`](../../docs/superpowers/specs/2026-06-04-scalable-following-feed-appview-design.md).
+
+## Independent authority witness
+
+`POST /api/v1/authority/checkpoint`, `/revoke`, `/veto`, and `/revalidate` verify
+public identity chains and current-owner signatures. Clients contact their
+configured AppView directly. The Relay cannot provide an acknowledgement on its
+behalf. See [the witness rollout and threat model](../../docs/reviews/2026-09-07-elix-authority-witness-results.md).
+
+`authority_frontiers`, `authority_revocations`, and `authority_observations` are
+**durable security state**. Back them up and retain them across projection
+rebuilds. A lost or rolled-back witness database must be recovered from trusted
+state, never silently re-enrolled from an untrusted Relay. `authority_pending`
+contains operation identifiers and digests for owner-authorized retry, not raw
+content. Before migrating an existing index, pause ingest, enroll checkpoints
+through clients, and explicitly revalidate local historical bytes. Do not
+blanket-trust legacy firehose content or invent historical observation times.

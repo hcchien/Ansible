@@ -11,6 +11,8 @@ substitutions:
   _VPC_CONNECTOR: ansible-conn
   _MIGRATE_JOB_NAME: __AUTO__
   _DATABASE_URL_SECRET: __AUTO__
+  _APPVIEW_PUBLIC_ORIGIN: __AUTO__
+  _START_INGEST: "true"
 
 steps:
   - id: verify-identity-contract
@@ -101,6 +103,15 @@ steps:
         service="${_SERVICE_NAME}"
         job="${_MIGRATE_JOB_NAME}"
         database_secret="${_DATABASE_URL_SECRET}"
+        observer_origin="${_APPVIEW_PUBLIC_ORIGIN}"
+        case "$$service" in
+          *-prod) relay_origin="https://relay.elix.cool"; default_observer="https://appview.elix.cool" ;;
+          *-dev) relay_origin="https://relay-dev.elix.cool"; default_observer="https://appview-dev.elix.cool" ;;
+          *) echo "configure an explicit supported AppView deployment target" >&2; exit 1 ;;
+        esac
+        [ "$$observer_origin" != "__AUTO__" ] || observer_origin="$$default_observer"
+        printf '%s' "$$observer_origin" > /workspace/appview-public-origin.txt
+        witness_env="^;^APPVIEW_PUBLIC_ORIGIN=$$observer_origin;RELAY_BASE_URL=$$relay_origin;START_INGEST=false"
 
         if [ "$$job" = "__AUTO__" ]; then
           job="$${service}-migrate"
@@ -128,12 +139,14 @@ steps:
 
         if gcloud run jobs describe "$$job" --region="${_REGION}" --project="$PROJECT_ID" >/dev/null 2>&1; then
           gcloud run jobs update "$$job" \
+            --update-env-vars="$$witness_env" \
             --image="$$image" \
             --region="${_REGION}" \
             --project="$PROJECT_ID" \
             --quiet
         else
           gcloud run jobs create "$$job" \
+            --set-env-vars="$$witness_env" \
             --image="$$image" \
             --region="${_REGION}" \
             --project="$PROJECT_ID" \
@@ -149,17 +162,18 @@ steps:
 
   - id: deploy-dev
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
-    entrypoint: gcloud
+    entrypoint: sh
     args:
-      - run
-      - services
-      - update
-      - ${_SERVICE_NAME}
-      - --platform=managed
-      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
-      - --labels=managed-by=gcp-cloud-build-deploy-cloud-run,commit-sha=$COMMIT_SHA,gcb-build-id=$BUILD_ID
-      - --region=${_REGION}
-      - --quiet
+      - -c
+      - |
+        set -eu
+        observer_origin="$$(cat /workspace/appview-public-origin.txt)"
+        gcloud run services update "${_SERVICE_NAME}" \
+          --platform=managed \
+          --image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA" \
+          --update-env-vars="^;^APPVIEW_PUBLIC_ORIGIN=$$observer_origin;START_INGEST=${_START_INGEST}" \
+          --labels="managed-by=gcp-cloud-build-deploy-cloud-run,commit-sha=$COMMIT_SHA,gcb-build-id=$BUILD_ID" \
+          --region="${_REGION}" --quiet
     waitFor: ["migrate"]
 
 images:

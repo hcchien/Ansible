@@ -69,7 +69,7 @@ export function createSessionLifecycle({
   }
 
   async function startAppLogin() {
-    const challenge = await webSessionClient.createWebSessionChallenge({
+    const receivedChallenge = await webSessionClient.createWebSessionChallenge({
       relayBaseUrl,
       relayOrigin,
       webOrigin,
@@ -77,6 +77,8 @@ export function createSessionLifecycle({
       fetchImpl,
     });
 
+    // Bind links to the configured relay, not an origin supplied inside a QR.
+    const challenge = { ...receivedChallenge, expected_relay_origin: relayOrigin };
     state = {
       status: 'login_pending',
       challenge: normalizeChallenge(challenge),
@@ -239,6 +241,7 @@ function normalizeChallenge(challenge) {
   return {
     challengeId: challenge.challenge_id,
     expiresAt: challenge.expires_at,
+    expectedRelayOrigin: challenge.expected_relay_origin,
     deepLink: challenge.deep_link,
     qrPayload: challenge.qr_payload,
   };

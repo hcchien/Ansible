@@ -14,7 +14,7 @@
 #              APP_LINK_ANDROID_SHA256_CERTS ANSIBLE_RELAY_ZKP_VERIFICATION_KEYS
 #              APNS_ENABLED APNS_KEY_ID APNS_TEAM_ID APNS_TOPIC
 #              APNS_ENVIRONMENT APNS_KEY_P8_SECRET]
-#   appview:  RELAY_HOST
+#   appview:  RELAY_HOST APPVIEW_HOST [START_INGEST]
 #   issuer:   ISSUER_HOST TW_PROVIDER_AUTH_URL [TW_PROVIDER_AUDIENCE
 #              PASSPORT_VERIFIER_URL PASSPORT_DID_RESOLVER_URL]
 #   verifier: no additional variables
@@ -88,6 +88,12 @@ gcloud builds submit "$REPO_ROOT" \
 # the same service at once.
 run_migration_job() {
   local job="$1" binary="$2" secret="$3"
+  local -a migration_create_env=() migration_update_env=()
+  if [ "$SERVICE" = appview ]; then
+    local witness_env="^;^RELAY_BASE_URL=https://${RELAY_HOST};APPVIEW_PUBLIC_ORIGIN=https://${APPVIEW_HOST};START_INGEST=false"
+    migration_create_env=("--set-env-vars=$witness_env")
+    migration_update_env=("--update-env-vars=$witness_env")
+  fi
 
   local unfinished
   unfinished="$(gcloud run jobs executions list \
@@ -101,7 +107,8 @@ run_migration_job() {
   if gcloud run jobs describe "$job" --region "$REGION" --project "$PROJECT_ID" >/dev/null 2>&1; then
     log "updating migration job $job to $IMAGE"
     gcloud run jobs update "$job" \
-      --image="$IMAGE" --region "$REGION" --project "$PROJECT_ID"
+      --image="$IMAGE" --region "$REGION" --project "$PROJECT_ID" \
+      ${migration_update_env[@]+"${migration_update_env[@]}"}
   else
     log "creating migration job $job"
     gcloud run jobs create "$job" \
@@ -112,7 +119,8 @@ run_migration_job() {
       --vpc-egress=private-ranges-only \
       --set-secrets="DATABASE_URL=${secret}:latest" \
       --command="$binary" \
-      --args="eval,${4}"
+      --args="eval,${4}" \
+      ${migration_create_env[@]+"${migration_create_env[@]}"}
   fi
 
   log "executing migration job $job"
@@ -179,7 +187,7 @@ case "$SERVICE" in
     ;;
 
   appview)
-    require_env RELAY_HOST
+    require_env RELAY_HOST APPVIEW_HOST
     run_migration_job ansible-appview-migrate /app/bin/ansible_appview \
       appview-database-url "AnsibleAppview.Release.migrate()"
 
@@ -196,7 +204,7 @@ case "$SERVICE" in
       --vpc-connector="$VPC_CONNECTOR" \
       --vpc-egress=private-ranges-only \
       --min-instances=1 --max-instances=1 \
-      --set-env-vars="^;^RELAY_BASE_URL=https://${RELAY_HOST};INGEST_INTERVAL_MS=${INGEST_INTERVAL_MS:-5000};EXTERNAL_INGEST_INTERVAL_MS=${EXTERNAL_INGEST_INTERVAL_MS:-15000}" \
+      --set-env-vars="^;^RELAY_BASE_URL=https://${RELAY_HOST};APPVIEW_PUBLIC_ORIGIN=https://${APPVIEW_HOST};START_INGEST=${START_INGEST:-true};INGEST_INTERVAL_MS=${INGEST_INTERVAL_MS:-5000};EXTERNAL_INGEST_INTERVAL_MS=${EXTERNAL_INGEST_INTERVAL_MS:-15000}" \
       --set-secrets="DATABASE_URL=appview-database-url:latest" \
       --allow-unauthenticated
     ;;

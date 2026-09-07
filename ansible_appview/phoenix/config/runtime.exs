@@ -1,6 +1,16 @@
 import Config
 
 if config_env() == :prod do
+  authority_origin = System.fetch_env!("APPVIEW_PUBLIC_ORIGIN")
+  uri = URI.parse(authority_origin)
+
+  unless uri.scheme == "https" and is_binary(uri.host) and is_nil(uri.userinfo) and
+           uri.path in [nil, ""] and is_nil(uri.query) and is_nil(uri.fragment),
+         do: raise("APPVIEW_PUBLIC_ORIGIN must be an HTTPS origin")
+
+  config :ansible_appview, :authority_origin, authority_origin
+  config :ansible_appview, :start_ingest, System.get_env("START_INGEST", "true") == "true"
+
   config :ansible_appview, :port, String.to_integer(System.get_env("PORT") || "8080")
 
   database_url =

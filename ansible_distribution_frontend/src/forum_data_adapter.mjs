@@ -24,6 +24,7 @@ import {
   fetchBoardFeed,
   fetchPublicProfile,
   searchActors,
+  searchPublicContent,
   fetchThreadFeed,
   fetchCommunityNotes,
 } from './appview_client.mjs';
@@ -105,6 +106,7 @@ export function createForumDataAdapter({
     fetchBoardFeed,
     fetchPublicProfile,
     searchActors,
+    searchPublicContent,
     fetchThreadFeed,
     fetchCommunityNotes,
   },
@@ -194,6 +196,21 @@ export function createForumDataAdapter({
         unavailable: feedResults.some((result) => result.unavailable),
       },
     };
+  }
+
+  async function loadDiscoveryPage({query = '', sessionViewModel} = {}) {
+    query = String(query).trim().slice(0, 200);
+    const home = await loadForumHome({sessionViewModel});
+    const results = await Promise.allSettled([
+      appViewClient.searchActors({appViewBaseUrl, fetchImpl, query, limit: 30}),
+      appViewClient.searchPublicContent({appViewBaseUrl, fetchImpl, query, limit: 30}),
+    ]);
+    return {...home, discovery: {
+      actors: results[0].status === 'fulfilled' ? results[0].value.items ?? [] : [],
+      posts: results[1].status === 'fulfilled' ? results[1].value.items ?? [] : [],
+      boards: home.boards.filter(board => !query || `${board.title} ${board.description ?? ''}`.toLocaleLowerCase().includes(query.toLocaleLowerCase())),
+      unavailable: results.some(result => result.status === 'rejected'),
+    }};
   }
 
   async function loadProfilePage({ did, sessionViewModel } = {}) {
@@ -1023,6 +1040,7 @@ export function createForumDataAdapter({
 
   return {
     loadForumHome,
+    loadDiscoveryPage,
     loadProfilePage,
     loadBoardPage,
     loadDeliberationPage,

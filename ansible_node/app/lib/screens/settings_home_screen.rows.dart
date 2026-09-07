@@ -540,12 +540,14 @@ class _RecoveryReadinessRow extends StatefulWidget {
 }
 
 class _RecoveryReadinessRowState extends State<_RecoveryReadinessRow> {
-  late Future<bool> _hasBackup;
+  late Future<(bool, bool)> _hasBackup;
+
+  Future<(bool, bool)> _loadReadiness() async => (await widget.store.hasBackup(), await widget.store.hasSavedBackup());
 
   @override
   void initState() {
     super.initState();
-    _hasBackup = widget.store.hasBackup();
+    _hasBackup = _loadReadiness();
   }
 
   Future<void> _openBackup() async {
@@ -559,23 +561,26 @@ class _RecoveryReadinessRowState extends State<_RecoveryReadinessRow> {
       ),
     );
     if (!mounted) return;
-    setState(() => _hasBackup = widget.store.hasBackup());
+    setState(() => _hasBackup = _loadReadiness());
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<bool>(
+    return FutureBuilder<(bool, bool)>(
       future: _hasBackup,
       builder: (context, snapshot) {
-        final hasBackup = snapshot.data ?? false;
+        final hasBackup = snapshot.data?.$1 ?? false;
+        final saved = snapshot.data?.$2 ?? false;
         return AnsibleSettingsRow(
           key: const Key('settings_recovery_row'),
           glyph: '⌷',
           label: widget.text.backupRestore,
           en: 'RECOVERY',
-          sub: widget.text.backupRestoreSubtitle,
-          value: hasBackup
-              ? context.uiCopy(zh: '可復原：已備份', en: 'Recoverable: backed up')
+          sub: context.uiCopy(zh: '保存狀態與復原步驟；筆記、附件需另外備份', en: 'Saving status and recovery steps; notes and attachments need a separate backup'),
+          value: saved
+              ? context.uiCopy(zh: '已確認保存，尚未演練', en: 'Saved, recovery untested')
+              : hasBackup
+              ? context.uiCopy(zh: '復原資料已產生', en: 'Recovery material generated')
               : context.uiCopy(zh: '⚠ 尚未備份', en: '⚠ No backup'),
           valueColor: hasBackup ? AnsibleDesign.spore : AnsibleDesign.ember,
           onTap: _openBackup,

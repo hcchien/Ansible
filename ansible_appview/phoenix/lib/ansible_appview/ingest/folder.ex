@@ -9,8 +9,9 @@ defmodule AnsibleAppview.Ingest.Folder do
   `OpsController.signing_payload/1` — the six sorted keys `author_did`,
   `entity_id`, `entity_type`, `op_id`, `op_type`, `payload`, with
   `schema_version`/`signature` excluded so signatures stay valid), and requires
-  a non-expired author DID anchor, before folding an op into a public
-  projection. Ops that fail either check are dropped (never written) and counted
+  an independent authority checkpoint and current authority on first observation.
+  Exact witnessed history retains its verified authority on replay. Failures
+  are excluded from projections and counted
   in `appview_ingest_rejections_total{reason}`.
 
   Only verified, public/unlisted content reaches `feed_items`; folded rows carry
@@ -18,11 +19,9 @@ defmodule AnsibleAppview.Ingest.Folder do
   original signature, and the anchor expiry when known). Idempotent by `log_id`,
   so re-folding an overlapping range is safe.
 
-  Anchor-expiry status: the relay op delta does not yet carry the author's DID
-  anchor expiry (`OpsController.attach_public_key/1` adds only `public_key_hex`
-  and `reputation_tier`). The expiry check is fully plumbed here — if/when the
-  firehose carries `anchor_expires_at` it is enforced and persisted — but until
-  then no op can be rejected for an expired anchor (see `anchor_ok?/1` TODO).
+  The firehose must carry a finite current anchor expiry and self-certifying
+  identity chain. Missing authority evidence fails closed. Web content requires
+  the DID-signed key delegation and the actual content-bound WebAuthn assertion.
   """
 
   @source "relay_firehose"
@@ -33,9 +32,7 @@ defmodule AnsibleAppview.Ingest.Folder do
     FollowGraph,
     HomeTimeline,
     Profiles,
-    Repo,
-    SigVerifier,
-    SigningPayload
+    Repo
   }
 
   alias AnsibleAppview.Db.FeedItem
@@ -46,8 +43,8 @@ defmodule AnsibleAppview.Ingest.Folder do
   @doc "Folds a list of relay op maps. Returns {indexed_count, max_log_id}."
   @spec apply_ops([map()]) :: {non_neg_integer(), integer() | nil}
   def apply_ops(ops) when is_list(ops) do
-    # Ed25519 verification is CPU-bound and independent per op, so verify the
-    # whole page in parallel across schedulers before the sequential DB upserts.
+    # Verify the page before sequential projection upserts. Witness transactions
+    # serialize authority changes and first observations for each DID.
     # Each entry is {op, decoded_payload, verification}, where verification is
     # {:ok, anchor_expires_at} | {:error, :bad_signature | :expired_anchor}.
     prepared =
@@ -248,7 +245,23 @@ defmodule AnsibleAppview.Ingest.Folder do
   # is dead-lettered and skipped rather than crashing the whole page fold. A
   # timeout is handled separately (the task is killed and surfaces as {:exit,_}).
   defp prepare_op(op) do
-    {op, decode_payload(op["payload"]), verify(op)}
+    payload = decode_payload(op["payload"])
+
+    result =
+      if op["removed"] == true do
+        {:error, :moderation_removed}
+      else
+        AnsibleAppview.Authority.Witness.observe(op, payload)
+      end
+
+    case result do
+      {:ok, verified_op} ->
+        {:ok, expires, _} = DateTime.from_iso8601(verified_op["anchor_expires_at"])
+        {verified_op, payload, {:ok, expires}}
+
+      {:error, _} = error ->
+        {op, payload, error}
+    end
   rescue
     e ->
       dead_letter(op, {:error, e})
@@ -270,102 +283,6 @@ defmodule AnsibleAppview.Ingest.Folder do
     )
 
     AnsibleAppview.Metrics.inc("appview_ingest_rejections_total", %{reason: "poison_op"})
-  end
-
-  # Independent verification of one op. Returns {:ok, anchor_expires_at} when the
-  # signature verifies over the canonical bytes AND the author's DID anchor is
-  # non-expired; otherwise {:error, :bad_signature} | {:error, :expired_anchor}.
-  # Signature is checked first so an unverifiable op never has its anchor probed.
-  defp verify(op) do
-    pk = op["public_key_hex"]
-    sig = op["signature"]
-    payload = decode_payload(op["payload"])
-
-    cond do
-      op["removed"] == true ->
-        # Host moderation tombstone from our own relay firehose: the relay strips
-        # payload + signature, so it cannot (and must not) be verified by author
-        # signature. It is honored as a delete-by-entity_id in apply_deletions,
-        # never folded as content. Safe within the existing trust boundary: the
-        # relay is already this consumer's sole firehose and can withhold any op,
-        # so honoring a removal only exercises hide-power it already has — it
-        # still cannot forge content (that requires a valid signature below).
-        {:error, :moderation_removed}
-
-      web_publication_proof_valid?(op, payload) ->
-        case anchor_ok?(op) do
-          {:ok, expires_at} -> {:ok, expires_at}
-          :expired -> {:error, :expired_anchor}
-        end
-
-      not (is_binary(pk) and is_binary(sig) and
-               SigVerifier.verify_identity(
-                 op["signing_algorithm"] || "ed25519",
-                 pk,
-                 SigningPayload.build(op),
-                 sig
-               )) ->
-        {:error, :bad_signature}
-
-      true ->
-        case anchor_ok?(op) do
-          {:ok, expires_at} -> {:ok, expires_at}
-          :expired -> {:error, :expired_anchor}
-        end
-    end
-  end
-
-  defp web_publication_proof_valid?(op, payload) when is_map(payload) do
-    proof = payload["web_author_proof"]
-    operation = payload["web_operation"]
-    operation_hash = payload["web_operation_hash"]
-    receipt = payload["web_host_receipt"]
-
-    with true <- is_map(proof) and is_map(operation) and is_map(receipt),
-         true <- proof["scheme"] == "webauthn-p256-sha256",
-         true <- proof["user_present"] == true and proof["user_verified"] == true,
-         true <- operation["operation_id"] == op["op_id"],
-         true <- operation["author_did"] == op["author_did"],
-         true <- operation["entity_type"] == op["entity_type"],
-         true <- operation["entity_id"] == op["entity_id"],
-         true <- operation_hash == proof["operation_hash"],
-         true <- operation_hash == receipt["operation_hash"],
-         true <- operation_hash == sha256(canonical_json(operation)),
-         true <-
-           SigVerifier.verify_ed25519(
-             receipt["public_key_hex"],
-             operation_hash,
-             receipt["signature"]
-           ) do
-      true
-    else
-      _ -> false
-    end
-  end
-
-  defp web_publication_proof_valid?(_op, _payload), do: false
-
-  # DID-anchor expiry gate. The relay op delta does not yet carry the author's
-  # anchor expiry, so when no expiry is supplied we accept the op (the signature
-  # already proves authorship) and leave anchor_expires_at nil.
-  #
-  # TODO(Phase 2): once the relay's delta carries the author DID anchor expiry
-  # (e.g. `anchor_expires_at` alongside `public_key_hex` in
-  # OpsController.attach_public_key/1), this check becomes load-bearing and
-  # expired-anchor ops will be rejected. The enforcement path below is already
-  # wired — only the relay-side field is missing.
-  defp anchor_ok?(op) do
-    case parse_dt(op["anchor_expires_at"]) do
-      nil ->
-        {:ok, nil}
-
-      %DateTime{} = expires_at ->
-        if DateTime.compare(DateTime.utc_now(), expires_at) == :lt do
-          {:ok, expires_at}
-        else
-          :expired
-        end
-    end
   end
 
   defp record_rejections(prepared) do
@@ -613,7 +530,7 @@ defmodule AnsibleAppview.Ingest.Folder do
       # independently re-verified here, not trusted from the relay.
       source:
         if(get_in(payload, ["web_author_proof", "scheme"]) == "webauthn-p256-sha256",
-          do: "forum_host_webauthn_receipt",
+          do: "independent_webauthn_author_proof",
           else: @source
         ),
       verified_at: now,
@@ -625,24 +542,6 @@ defmodule AnsibleAppview.Ingest.Folder do
       updated_at: now
     }
   end
-
-  defp canonical_json(value) when is_map(value) do
-    entries =
-      value
-      |> Enum.map(fn {key, entry_value} -> {to_string(key), entry_value} end)
-      |> Enum.sort_by(fn {key, _entry_value} -> key end)
-      |> Enum.map(fn {key, entry_value} ->
-        Jason.encode!(key) <> ":" <> canonical_json(entry_value)
-      end)
-
-    "{" <> Enum.join(entries, ",") <> "}"
-  end
-
-  defp canonical_json(value) when is_list(value),
-    do: "[" <> Enum.map_join(value, ",", &canonical_json/1) <> "]"
-
-  defp canonical_json(value), do: Jason.encode!(value)
-  defp sha256(value), do: :crypto.hash(:sha256, value) |> Base.encode16(case: :lower)
 
   defp decode_payload(payload) when is_map(payload), do: payload
 

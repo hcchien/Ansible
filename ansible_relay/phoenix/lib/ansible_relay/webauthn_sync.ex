@@ -20,6 +20,7 @@ defmodule AnsibleRelay.WebauthnSync do
       {:ok,
        %{
          "challenge_id" => row.challenge_id,
+         "origin" => origin(),
          "publicKey" => %{
            "challenge" => b64(challenge.bytes),
            "rp" => %{"id" => rp_id(), "name" => "Elix"},
@@ -53,6 +54,7 @@ defmodule AnsibleRelay.WebauthnSync do
              did_signature,
              delegation
            ),
+         true <- attestation_bound?(delegation, credential),
          {:ok, client_data} <- decode64(get_in(credential, ["response", "clientDataJSON"])),
          {:ok, attestation} <- decode64(get_in(credential, ["response", "attestationObject"])),
          {:ok, {auth_data, _attestation_result}} <-
@@ -142,7 +144,10 @@ defmodule AnsibleRelay.WebauthnSync do
       allow =
         Enum.map(credentials, &{Base.encode64(&1.credential_id), decode_term(&1.cose_key)})
 
-      challenge = new_challenge(:authentication, allow)
+      challenge = %{
+        new_challenge(:authentication, allow)
+        | bytes: publication_challenge(operation_hash)
+      }
 
       row =
         persist_challenge(did, "web_publication", challenge,
@@ -214,11 +219,15 @@ defmodule AnsibleRelay.WebauthnSync do
              [{Base.encode64(credential_id), decode_term(stored.cose_key)}]
            ),
          :ok <- validate_sign_count(stored.sign_count, verified.sign_count),
-         {:ok, _} <- update_sign_count(stored, verified.sign_count) do
+         %WebauthnCredential{} <- update_sign_count(stored, verified.sign_count) do
       {:ok,
        %{
          "scheme" => "webauthn-p256-sha256",
          "delegation_id" => stored.delegation_id,
+         "delegation" => stored.delegation,
+         "delegation_signature" => stored.delegation_signature,
+         "registration_attestation" => stored.registration_attestation,
+         "credential_id" => b64(stored.credential_id),
          "credential_public_key_thumbprint" => stored.credential_thumbprint,
          "challenge_id" => challenge_id,
          "operation_hash" => operation_hash,
@@ -303,6 +312,22 @@ defmodule AnsibleRelay.WebauthnSync do
 
   def revoke_credential(_did, _encoded_id, _revocation, _signature),
     do: {:error, :invalid_did_proof}
+
+  # The content hash is independently reconstructible by every verifier. The
+  # signed operation contains a per-operation nonce to avoid challenge reuse.
+  def publication_challenge(operation_hash),
+    do: :crypto.hash(:sha256, "elix.web-publication.v1\0" <> operation_hash)
+
+  defp attestation_bound?(nil, _credential), do: true
+
+  defp attestation_bound?(delegation, credential) do
+    with {:ok, bytes} <- decode64(get_in(credential, ["response", "attestationObject"])) do
+      delegation["attestation_sha256"] ==
+        Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
+    else
+      _ -> false
+    end
+  end
 
   defp new_challenge(kind, allow) do
     options = [
@@ -430,6 +455,8 @@ defmodule AnsibleRelay.WebauthnSync do
       rp_id: delegation_attrs[:rp_id],
       allowed_actions: delegation_attrs[:allowed_actions],
       delegation_signature: delegation_signature,
+      delegation: delegation_attrs[:delegation],
+      registration_attestation: get_in(response, ["response", "attestationObject"]),
       delegation_expires_at: delegation_attrs[:delegation_expires_at]
     }
 
@@ -474,12 +501,16 @@ defmodule AnsibleRelay.WebauthnSync do
             (is_nil(c.delegation_expires_at) or c.delegation_expires_at > ^now)
       )
     )
-    |> Enum.filter(&(action in &1.allowed_actions))
+    |> Enum.filter(
+      &(action in &1.allowed_actions and is_map(&1.delegation) and
+          is_binary(&1.registration_attestation))
+    )
   end
 
   defp authorize_publication_credential(stored, action) do
     cond do
       not is_nil(stored.revoked_at) -> {:error, :credential_revoked}
+      not is_map(stored.delegation) -> {:error, :credential_reenrollment_required}
       is_nil(stored.delegation_id) -> {:error, :credential_not_authorized}
       stored.rp_id != rp_id() -> {:error, :credential_not_authorized}
       action not in stored.allowed_actions -> {:error, :credential_not_authorized}
@@ -519,22 +550,24 @@ defmodule AnsibleRelay.WebauthnSync do
          {:ok, expires_at, _} <- DateTime.from_iso8601(delegation["expires_at"] || "") do
       valid? =
         delegation["type"] == "io.trisaura.identity.webCredentialDelegation" and
-        delegation["version"] == 1 and
-        delegation["challenge_id"] == challenge_id and
-        delegation["subject_did"] == did and
-        delegation["credential_id_hash"] == credential_id_hash and
-        delegation["rp_id"] == rp_id() and
-        is_binary(delegation["delegation_id"]) and
-        is_list(allowed_actions) and allowed_actions != [] and
-        MapSet.subset?(MapSet.new(allowed_actions), MapSet.new(@publication_actions)) and
-        DateTime.compare(expires_at, issued_at) == :gt and
-        DateTime.compare(expires_at, DateTime.utc_now()) == :gt and
-        DateTime.diff(expires_at, issued_at, :second) <= 365 * 24 * 60 * 60 and
-        IdentityCache.verify_signature(did, canonical_json(delegation), signature)
+          delegation["version"] == 1 and
+          delegation["challenge_id"] == challenge_id and
+          delegation["subject_did"] == did and
+          delegation["credential_id_hash"] == credential_id_hash and
+          delegation["rp_id"] == rp_id() and
+          delegation["origin"] == origin() and
+          is_binary(delegation["delegation_id"]) and
+          is_list(allowed_actions) and allowed_actions != [] and
+          MapSet.subset?(MapSet.new(allowed_actions), MapSet.new(@publication_actions)) and
+          DateTime.compare(expires_at, issued_at) == :gt and
+          DateTime.compare(expires_at, DateTime.utc_now()) == :gt and
+          DateTime.diff(expires_at, issued_at, :second) <= 365 * 24 * 60 * 60 and
+          IdentityCache.verify_signature(did, canonical_json(delegation), signature)
 
       if valid? do
         {:ok,
          %{
+           delegation: delegation,
            delegation_id: delegation["delegation_id"],
            rp_id: delegation["rp_id"],
            allowed_actions: allowed_actions,

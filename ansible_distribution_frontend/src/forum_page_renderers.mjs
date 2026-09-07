@@ -33,6 +33,9 @@ export function renderPageBody(viewModel, uiState = {}) {
     case PAGE_IDS.home:
       bodyHtml = renderHome(viewModel, uiState);
       break;
+    case PAGE_IDS.discover:
+      bodyHtml = renderDiscovery(viewModel);
+      break;
     case PAGE_IDS.boards:
       bodyHtml = renderBoards(viewModel);
       break;
@@ -1510,8 +1513,8 @@ function renderLeftRail(viewModel, active) {
   const authenticated = Boolean(viewModel.session?.authenticated);
   const navItems = [
     { id: 'feed', label: t('common.feed'), href: '#/', glyph: 'home' },
-    { id: 'discover', label: t('home.discover'), glyph: 'search', upcoming: true },
-    { id: 'notifications', label: t('home.notifications'), glyph: 'bell', upcoming: true },
+    { id: 'discover', label: t('home.discover'), glyph: 'search', href: '#/discover' },
+    { id: 'notifications', label: t('home.notifications'), glyph: 'bell', href: '#/notifications' },
     { id: 'boards', label: t('common.boards'), href: '#/boards', glyph: 'board' },
     {
       id: authenticated ? 'sessions' : 'login',
@@ -1539,7 +1542,7 @@ function renderLeftRail(viewModel, active) {
         ${navItems.map((item) => renderRailNavItem(item, active)).join('')}
       </nav>
       <div class="rail-block rail-boards">
-        <p class="rail-label">${escapeHtml(t('home.subscribedBoards'))} · ${escapeHtml(String(boards.length))}</p>
+        <p class="rail-label">${escapeHtml(t('home.publicBoards'))} · ${escapeHtml(String(boards.length))}</p>
         ${
           boards.length
             ? boards.slice(0, 6).map((board) => renderRailBoardRow(board)).join('')
@@ -1573,8 +1576,8 @@ function renderRailBoardRow(board) {
       <span class="meta">
         <span class="n">${escapeHtml(title)}</span>
         ${board.description ? `<span class="h">${escapeHtml(board.description)}</span>` : ''}
+        <span class="board-policy">${escapeHtml(permission)}</span>
       </span>
-      <span class="ago">${escapeHtml(permission)}</span>
     </a>
   `;
 }
@@ -1585,7 +1588,7 @@ function renderRightRail(viewModel, boards) {
   return `
     <aside class="right-rail" aria-label="${escapeAttribute(t('common.feedContextAria'))}">
       <section class="side-panel card">
-        <p class="section-label">${escapeHtml(t('home.subscribedBoards'))}</p>
+        <p class="section-label">${escapeHtml(t('home.publicBoards'))}</p>
         ${
           boards.length
             ? boards
@@ -1647,7 +1650,7 @@ function renderRelayFeed(boards, viewModel) {
       <article class="post empty-state-card">
         <div class="lane"><span class="av" aria-hidden="true">#</span></div>
         <div class="body">
-          <div class="src">${escapeHtml(t('home.subscribedBoards'))}</div>
+          <div class="src">${escapeHtml(t('home.publicBoards'))}</div>
           <div class="text"><p>${escapeHtml(t('home.emptyBoardsBody'))}</p></div>
         </div>
       </article>
@@ -2101,6 +2104,8 @@ function renderChallengePayloadPreview(challenge) {
   return `
     <div class="challenge-payload-preview" aria-label="${escapeAttribute(t('login.activeQrAria'))}">
       ${renderQrCodeSvg(challenge.qrPayload || challenge.deepLink || '', { ariaLabel: t('login.qrAria') })}
+      ${safeApprovalLink(challenge) ? `<a class="primary-action open-elix-app" href="${escapeAttribute(safeApprovalLink(challenge))}">${escapeHtml(t('login.openApp'))}</a>` : ''}
+      <a href="/support">${escapeHtml(t('login.needApp'))}</a>
       <strong>${escapeHtml(challenge.challengeId)}</strong>
       <span>${escapeHtml(t('login.scanInstruction'))}</span>
     </div>
@@ -2225,4 +2230,40 @@ function safeHref(value) {
   }
 
   return '#';
+}
+
+export function safeApprovalLink(challenge) {
+  try {
+    const url = new URL(challenge?.deepLink || challenge?.qrPayload || '');
+    if (url.protocol !== 'trisaura:' || url.hostname !== 'web-session' || url.pathname !== '/approve') return null;
+    const id = url.searchParams.get('challenge_id');
+    const relay = new URL(url.searchParams.get('relay_origin'));
+    const expected = new URL(challenge.expectedRelayOrigin);
+    if (!id || id !== challenge.challengeId || relay.protocol !== 'https:' ||
+        relay.origin !== expected.origin || relay.username || relay.password ||
+        relay.pathname !== '/' || relay.search || relay.hash || url.hash ||
+        [...url.searchParams.keys()].some(key => !['challenge_id', 'relay_origin'].includes(key)) ||
+        url.searchParams.getAll('challenge_id').length !== 1 || url.searchParams.getAll('relay_origin').length !== 1) return null;
+    return url.href;
+  } catch { return null; }
+}
+
+function renderDiscovery(viewModel) {
+  const discovery = viewModel.discovery ?? { actors: [], posts: [], boards: [] };
+  const query = viewModel.route?.params?.query ?? '';
+  const actors = (discovery.actors ?? []).map(actor => `<li><a href="#/profiles/${encodeURIComponent(actor.did)}">${escapeHtml(actor.display_name || actor.displayName || actor.handle || shortIdentity(actor.did))}</a></li>`).join('');
+  const boards = (discovery.boards ?? []).map(board => `<li><a href="#/boards/${encodeURIComponent(board.slug || board.id)}">${escapeHtml(board.title || board.name || board.id)}</a></li>`).join('');
+  const posts = (discovery.posts ?? []).map(post => {
+    const payload = typeof post.payload === 'object' && post.payload ? post.payload : {};
+    const board = post.board_id || payload.boardId;
+    const thread = post.thread_id || payload.threadId || (post.entity_type === 'thread' ? post.entity_id : null);
+    const href = board && thread ? `#/boards/${encodeURIComponent(board)}/threads/${encodeURIComponent(thread)}` : `#/profiles/${encodeURIComponent(post.author_did || '')}`;
+    return `<li><a href="${escapeAttribute(href)}">${escapeHtml(payload.title || payload.body || post.title || post.content || t('common.threadFallback'))}</a></li>`;
+  }).join('');
+  return `<section class="cols"><section class="feed discovery-page"><h1>${escapeHtml(t('home.discover'))}</h1>
+    <form data-public-search role="search"><label>${escapeHtml(t('common.searchAria'))}<input name="q" type="search" maxlength="200" value="${escapeAttribute(query)}" /></label><button type="submit">${escapeHtml(t('discover.search'))}</button></form>
+    <p>${escapeHtml(t('discover.publicOnly'))}</p>
+    ${discovery.unavailable ? `<p role="status">${escapeHtml(t('discover.unavailable'))}</p>` : ''}
+    ${[['discover.people',actors],['common.boards',boards],['discover.posts',posts]].map(([title,items]) => `<section><h2>${escapeHtml(t(title))}</h2>${items ? `<ul>${items}</ul>` : `<p>${escapeHtml(t('discover.empty'))}</p>`}</section>`).join('')}
+    </section></section>`;
 }

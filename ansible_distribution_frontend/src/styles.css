@@ -4959,3 +4959,32 @@ h4 {
 .reaction-people-list ul { list-style:none; margin:0; padding:0; }
 .reaction-people-list li { padding:6px 0; overflow-wrap:anywhere; }
 .reaction-person { color:inherit; }
+
+/* Search, discovery, and navigation share usable keyboard/touch targets. */
+.searchbox input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text); font: inherit; }
+.searchbox button, .discovery-page button { min-height: 44px; padding: 8px 14px; }
+.discovery-page { max-width: 760px; margin: 0 auto; padding: 24px; }
+.discovery-page input { min-height: 44px; width: 100%; box-sizing: border-box; }
+.discovery-page li { padding: 10px 0; overflow-wrap: anywhere; }
+.discovery-page a { display: inline-block; padding: 8px 0; }
+.open-elix-app { display: inline-flex; min-height: 44px; align-items: center; padding: 10px 18px; }
+.pk-pill, .signed-pill { width: fit-content; max-width: 100%; justify-self: start; align-self: start; }
+.mobile-compose-fab { color: #17200b; }
+.mobile-tabbar { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.mobile-tabbar a, .mobile-tabbar .mobile-tab { min-height: 48px; font-size: 11px; }
+@media (max-width: 767px) {
+  .mobile-tabbar .label, .mobile-tabbar .mlabel { font-size: 11px; }
+  .app-footer { font-size: 12px; }
+  .app-footer a { display: inline-flex; align-items: center; min-height: 24px; padding: 6px 3px; font-size: 12px; }
+}
+
+@media (max-width: 767px) {
+  .command-context { min-width: 0; flex: 1; }
+  .session-chip { min-width: 0; max-width: 100%; }
+  .session-chip .who { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .session-chip .tier { flex-shrink: 0; }
+}
+.discovery-page input { padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); font: inherit; }
+.discovery-page button { margin-top: 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); font: inherit; cursor: pointer; }
+
+.rail-board-row .board-policy { display: block; white-space: normal; overflow-wrap: anywhere; font-size: 12px; line-height: 1.5; color: var(--muted); }

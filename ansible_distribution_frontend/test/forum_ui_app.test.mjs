@@ -247,12 +247,13 @@ assert.match(root.innerHTML, /用 Elix app 登入/);
 assert.match(root.innerHTML, /wsc_fixture/);
 assert.match(root.innerHTML, /class="challenge-payload-preview"/);
 assert.match(root.innerHTML, /class="qr-code"/);
-assert.match(root.innerHTML, /用 Elix app 掃描/);
+assert.match(root.innerHTML, /用 Elix app 核准/);
 assert.match(root.innerHTML, /我已在 app 核准/);
 assert.doesNotMatch(root.innerHTML, /data-action="start-login"/);
 assert.doesNotMatch(root.innerHTML, /登入挑戰|建立挑戰|有效挑戰|Start app login|App login challenge|Scan with Elix app/);
 assert.doesNotMatch(root.innerHTML, /Deep link|QR payload|Open in app/);
-assert.doesNotMatch(root.innerHTML, /trisaura:\/\/web-session\/approve/);
+// This legacy test harness omits the bound Relay origin, so no app link is offered.
+assert.doesNotMatch(root.innerHTML, /class="primary-action open-elix-app"/);
 
 await app.pollLoginOnce();
 assert.match(root.innerHTML, /自持有 DID/);

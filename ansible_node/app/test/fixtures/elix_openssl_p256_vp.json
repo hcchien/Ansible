@@ -1,0 +1,23 @@
+{
+  "presentation": {
+    "@context": [
+      "https://www.w3.org/ns/credentials/v2"
+    ],
+    "holder": "did:elix:hardware",
+    "type": [
+      "VerifiablePresentation"
+    ],
+    "proof": {
+      "cryptosuite": "ecdsa-jcs-2019",
+      "verificationMethod": "did:elix:hardware#identity",
+      "type": "DataIntegrityProof",
+      "proofPurpose": "authentication",
+      "challenge": "random-nonce",
+      "domain": "https://verifier.example"
+    }
+  },
+  "hash_data_hex": "7c0088efa2f78fb02fe81ba5fc353037f4a4628c9425003e40421c3f13fcd059c76038c99e37cc8ad67e8c836ea222d575c003167f27f7c49e95342c6c7dc94b",
+  "signature_der_hex": "3045022073189a7f6f7c7c8fc127ebd31475503f3c330f3a4712c34ad5db7fd785940c2a022100beac6126437f1ce8d885e3c229b37f0342d7fc12c8613cb162e019e70cc91dca",
+  "public_key_hex": "040f460dab60159099e72c02ec6f30e2b8eb3abd1f6100471bb8d33eab9ff588853e61f53e32dc85151634189c0f5e67516b07c975c745e1aca47b34844e4bab7f",
+  "proof_value": "z3JU2zkMtkzjuYKeG9ZWFj74pFQHvE5nja2jbwdvLbE7obQcpHuKQV8aHhduohCHYuXy7mtRYyadNX4XXHJH7hCV7"
+}

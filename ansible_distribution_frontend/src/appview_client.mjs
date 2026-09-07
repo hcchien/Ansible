@@ -140,3 +140,10 @@ export async function fetchAuthorTimeline({
     },
   );
 }
+
+export async function searchPublicContent({ appViewBaseUrl, fetchImpl = globalThis.fetch, query = '', limit = 30 }) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (query) params.set('q', query);
+  const result = await createRelayApiClient({relayBaseUrl: appViewBaseUrl, fetchImpl}).getJson(`/api/v1/${query ? 'search' : 'explore'}?${params}`);
+  return { ...result, items: query ? result.posts ?? [] : result.items ?? [] };
+}

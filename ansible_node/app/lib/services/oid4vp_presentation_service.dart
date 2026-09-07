@@ -1,13 +1,14 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
-import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:ansible_vc/ansible_vc.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import 'package:http/http.dart' as http;
 
-import '../config/app_environment.dart';
+import 'canonical_identity_store.dart';
+import 'identity_anchor_service.dart';
+import 'p256_jose.dart';
+import 'wallet_credential_verifier.dart';
 import 'oid4vp_request.dart';
 import 'vc_presentation_service.dart';
 
@@ -56,19 +57,18 @@ class Oid4vpDirectPostClient {
     required Oid4vpAuthorizationRequest request,
     required Map<String, Object?> verifiablePresentation,
   }) async {
-    final response = await _client
-        .post(
-          request.responseUri,
-          headers: const {'content-type': 'application/x-www-form-urlencoded'},
-          body: {
-            'vp_token': jsonEncode(verifiablePresentation),
-            'presentation_submission': jsonEncode(
-              request.presentationSubmission(),
-            ),
-            if (request.state != null) 'state': request.state!,
-          },
-        )
-        .timeout(timeout);
+    request.validateRecipient();
+    // Consent names one recipient; never follow a redirect with the VP.
+    final outbound = http.Request('POST', request.responseUri)
+      ..followRedirects = false
+      ..headers['content-type'] = 'application/x-www-form-urlencoded'
+      ..bodyFields = {
+        'vp_token': jsonEncode(verifiablePresentation),
+        'presentation_submission': jsonEncode(request.presentationSubmission()),
+        if (request.state != null) 'state': request.state!,
+      };
+    final response = await _client.send(outbound).timeout(timeout);
+    await response.stream.drain<void>().timeout(timeout);
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Oid4vpSubmissionException(
@@ -91,12 +91,17 @@ class Oid4vpPresentationService implements Oid4vpPresentationApprover {
     http.Client? httpClient,
     Set<String> trustedIssuers = const {'did:web:issuer.elix.cool'},
   }) {
+    final verifier = WalletCredentialVerifier(
+      client: httpClient,
+      trustedIssuers: trustedIssuers,
+    );
     return Oid4vpPresentationService(
       presentationService: VcPresentationService(
         walletRepository: walletRepository,
         trustedIssuers: trustedIssuers,
         proofVerifier: const SyntacticDataIntegrityProofVerifier(),
-        statusResolver: (_) async => CredentialStatus.active,
+        statusResolver: verifier.status,
+        cryptographicVerifier: verifier.verify,
         proofSigner: LocalVpProofSigner(),
       ),
       directPostClient: Oid4vpDirectPostClient(client: httpClient),
@@ -112,6 +117,21 @@ class Oid4vpPresentationService implements Oid4vpPresentationApprover {
     required Oid4vpAuthorizationRequest request,
     required DateTime now,
   }) async {
+    final prepared = await prepare(
+      holderDid: holderDid,
+      request: request,
+      now: now,
+    );
+    return approvePrepared(prepared, now: now);
+  }
+
+  Future<PreparedOid4vpPresentation> prepare({
+    required String holderDid,
+    required Oid4vpAuthorizationRequest request,
+    required DateTime now,
+  }) async {
+    request.validateRecipient();
+    final binding = await presentationService.identityBinding(holderDid);
     final envelope = await presentationService.createForVerifierRequest(
       holderDid: holderDid,
       audience: request.audience,
@@ -120,14 +140,85 @@ class Oid4vpPresentationService implements Oid4vpPresentationApprover {
       requiredClaimValues: request.requiredClaimValues,
       now: now,
       recordPresentation: false,
+      sign: false,
     );
     if (envelope == null) {
       throw const Oid4vpSubmissionException(
         'no_matching_credential',
-        'No active matching credential is available in this Wallet.',
+        'No verified, active matching credential is available.',
       );
     }
+    return PreparedOid4vpPresentation._(
+      this,
+      holderDid,
+      request,
+      envelope.credentialId,
+      jsonEncode(envelope.verifiablePresentation),
+      now,
+      binding,
+    );
+  }
 
+  Future<Oid4vpSubmissionResult> approvePrepared(
+    PreparedOid4vpPresentation prepared, {
+    required DateTime now,
+  }) async {
+    if (prepared._owner != this ||
+        prepared._used ||
+        now.isBefore(prepared._created) ||
+        now.difference(prepared._created) > const Duration(minutes: 5)) {
+      throw const Oid4vpSubmissionException(
+        'consent_expired',
+        'Scan and review the request again.',
+      );
+    }
+    prepared._used = true;
+    final request = prepared.request;
+    // Revalidate status and the exact selected credential; never silently select
+    // a different credential after the user has reviewed the disclosure.
+    final current = await presentationService.createForVerifierRequest(
+      holderDid: prepared.holderDid,
+      audience: request.audience,
+      nonce: request.nonce,
+      credentialType: request.requiredCredentialType,
+      requiredClaimValues: request.requiredClaimValues,
+      credentialId: prepared.credentialId,
+      now: now,
+      recordPresentation: false,
+      sign: false,
+    );
+    final unsigned = prepared.presentation;
+    if (prepared._binding !=
+        await presentationService.identityBinding(prepared.holderDid)) {
+      throw const Oid4vpSubmissionException(
+        'holder_key_changed',
+        'Review the request again.',
+      );
+    }
+    if (current == null ||
+        credentialCanonicalJson(
+              current.verifiablePresentation['verifiableCredential'],
+            ) !=
+            credentialCanonicalJson(unsigned['verifiableCredential']) ||
+        (current.verifiablePresentation['proof'] as Map)['cryptosuite'] !=
+            (unsigned['proof'] as Map)['cryptosuite']) {
+      throw const Oid4vpSubmissionException(
+        'credential_changed',
+        'Credential changed. Review the request again.',
+      );
+    }
+    final envelope = VcPresentationEnvelope(
+      credentialId: prepared.credentialId,
+      verifiablePresentation: await presentationService.signPrepared(unsigned),
+    );
+
+    if (prepared._binding !=
+        await presentationService.identityBinding(prepared.holderDid)) {
+      throw const Oid4vpSubmissionException(
+        'holder_key_changed',
+        'Review the request again.',
+      );
+    }
     try {
       await directPostClient.submit(
         request: request,
@@ -141,7 +232,7 @@ class Oid4vpPresentationService implements Oid4vpPresentationApprover {
         now: now,
       );
       rethrow;
-    } on Object catch (error) {
+    } on Object {
       await _recordResult(
         envelope: envelope,
         request: request,
@@ -150,7 +241,7 @@ class Oid4vpPresentationService implements Oid4vpPresentationApprover {
       );
       throw Oid4vpSubmissionException(
         'direct_post_failed',
-        'Verifier direct_post failed: $error',
+        'Verifier direct_post failed.',
       );
     }
 
@@ -197,42 +288,98 @@ class SyntacticDataIntegrityProofVerifier implements ProofVerifier {
   }
 }
 
-class LocalVpProofSigner implements VpProofSigner {
-  LocalVpProofSigner({FlutterSecureStorage? secureStorage})
-    : _secureStorage = secureStorage ?? const FlutterSecureStorage();
+class PreparedOid4vpPresentation {
+  PreparedOid4vpPresentation._(
+    this._owner,
+    this.holderDid,
+    this.request,
+    this.credentialId,
+    this._json,
+    this._created,
+    this._binding,
+  );
+  final Oid4vpPresentationService _owner;
+  final String holderDid;
+  final Oid4vpAuthorizationRequest request;
+  final String credentialId;
+  final String _json;
+  final DateTime _created;
+  final String? _binding;
+  bool _used = false;
+  Map<String, Object?> get presentation =>
+      (jsonDecode(_json) as Map).cast<String, Object?>();
+}
 
-  static const _plcPrivateKey = 'ansible_plc_private_key';
-  static const _legacyPrivateKey = 'ansible_did_private_key';
+class LocalVpProofSigner implements VpProofSigner, ConfiguredVpProofSigner {
+  LocalVpProofSigner({
+    IdentityKey? identityKey,
+    CanonicalIdentityStore? identityStore,
+  }) : _identityStore = identityStore ?? const SecureCanonicalIdentityStore(),
+       _key = identityKey ?? const ActiveIdentityKey();
+  final IdentityKey _key;
+  final CanonicalIdentityStore _identityStore;
 
-  final FlutterSecureStorage _secureStorage;
+  Future<CanonicalIdentity> _identity(String holderDid) async {
+    final identity = await _identityStore.load();
+    if (identity == null ||
+        identity.did != holderDid ||
+        identity.publicKeyHex != await _key.publicKeyHex() ||
+        identity.signingAlgorithm != await _key.algorithm()) {
+      throw const Oid4vpSubmissionException(
+        'missing_holder_key',
+        'Active Wallet identity does not match the presentation holder.',
+      );
+    }
+    return identity;
+  }
+
+  @override
+  Future<String> identityBinding(String holderDid) async {
+    final identity = await _identity(holderDid);
+    return '${identity.did}:${identity.signingAlgorithm}:${identity.publicKeyHex}';
+  }
+
+  @override
+  Future<Map<String, Object?>> proofOptions(String holderDid) async {
+    final identity = await _identity(holderDid);
+    final suite = switch (identity.signingAlgorithm) {
+      'p256-sha256' => 'ecdsa-jcs-2019',
+      'ed25519' => 'eddsa-jcs-2022',
+      _ => throw const Oid4vpSubmissionException(
+        'unsupported_holder_key',
+        'Unsupported signing algorithm.',
+      ),
+    };
+    return {'cryptosuite': suite, 'verificationMethod': '$holderDid#identity'};
+  }
 
   @override
   Future<String> signPresentation({
     required Map<String, Object?> unsignedPresentation,
     required String canonicalPayload,
   }) async {
-    final privateKeyHex =
-        await _secureStorage.read(key: _plcPrivateKey) ??
-        await _secureStorage.read(key: _legacyPrivateKey);
-    if (privateKeyHex == null || privateKeyHex.isEmpty) {
+    final holder = unsignedPresentation['holder'] as String;
+    final identity = await _identity(holder);
+    final options = await proofOptions(holder);
+    if ((unsignedPresentation['proof'] as Map)['cryptosuite'] !=
+        options['cryptosuite']) {
       throw const Oid4vpSubmissionException(
-        'missing_holder_key',
-        'No local Wallet signing key is available.',
+        'holder_key_changed',
+        'Review the request again.',
       );
     }
-
-    try {
-      final signatureHex = await apiSignCommit(
-        cborBytes: Uint8List.fromList(utf8.encode(canonicalPayload)),
-        privateKeyHex: privateKeyHex,
-      );
-      return dataIntegrityProofValueFromEd25519SignatureHex(signatureHex);
-    } on UnimplementedError {
-      if (!AppEnvironment.allowInsecureSigningFallback) {
-        rethrow;
-      }
-      return 'zinsecuredevvpsig${canonicalPayload.length}';
+    final signature = _hexToBytes(
+      await _key.sign(dataIntegrityHashData(unsignedPresentation)),
+    );
+    // Native P-256 signs SHA-256(hashData), returning ASN.1 DER; Data Integrity
+    // uses the fixed-width r||s signature encoding.
+    final bytes = identity.signingAlgorithm == 'p256-sha256'
+        ? ecdsaDerSignatureToJose(signature)
+        : signature;
+    if (bytes.length != 64) {
+      throw const FormatException('invalid_signature_length');
     }
+    return 'z${_base58BtcEncode(bytes)}';
   }
 }
 

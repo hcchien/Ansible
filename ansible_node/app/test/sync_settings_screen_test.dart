@@ -130,6 +130,8 @@ void main() {
       expect(tester.widget<SwitchListTile>(syncSwitch).value, isTrue);
       expect(find.text('同步中 · 關閉後仍保留本機資料'), findsOneWidget);
 
+      await tester.ensureVisible(syncSwitch);
+      await tester.pumpAndSettle();
       await tester.tap(syncSwitch);
       await tester.pumpAndSettle();
 
@@ -142,6 +144,40 @@ void main() {
         isNotNull,
       );
       expect(find.text('已暫停同步 · 本機資料已保留'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'authority actions explain missing observer without claiming success',
+    (tester) async {
+      FlutterSecureStorage.setMockInitialValues({});
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final now = DateTime.utc(2026, 9, 7);
+      await DriftRemoteNodeRepository(db).create(
+        RemoteNode(
+          id: 'observer-test',
+          name: 'Observer Relay',
+          url: 'https://relay.example',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SyncSettingsScreen(db: db, localDid: 'did:elix:test'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Observer Relay'));
+      await tester.pumpAndSettle();
+      final button = find.text('撤銷此裝置的網頁授權');
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('此版本未設定公開索引服務'), findsOneWidget);
+      expect(find.text('此裝置記錄的網頁授權已撤銷。'), findsNothing);
+      expect(find.byType(AlertDialog), findsNothing);
     },
   );
 

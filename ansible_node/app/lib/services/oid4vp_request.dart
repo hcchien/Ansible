@@ -60,6 +60,16 @@ class Oid4vpAuthorizationRequest {
     return clientId;
   }
 
+  void validateRecipient() {
+    final client = Uri.tryParse(clientId);
+    if (client == null || client.scheme != 'https' || !client.hasAuthority ||
+        responseUri.scheme != 'https' || !responseUri.hasAuthority ||
+        responseUri.origin != client.origin || client.userInfo.isNotEmpty ||
+        responseUri.userInfo.isNotEmpty || responseUri.hasFragment || audience != clientId) {
+      throw const Oid4vpRequestException('verifier_origin_mismatch', 'Invalid verifier recipient.');
+    }
+  }
+
   Map<String, Object?> presentationSubmission() {
     return {
       'id': 'submission-$presentationDefinitionId',
@@ -127,11 +137,25 @@ class Oid4vpAuthorizationRequest {
     }
     _validateResponseUri(responseUri, allowLocalHttp: allowLocalHttp);
 
+    final clientUri = Uri.tryParse(clientId);
+    if (clientUri == null ||
+        !clientUri.hasAuthority ||
+        clientUri.userInfo.isNotEmpty ||
+        responseUri.userInfo.isNotEmpty ||
+        responseUri.hasFragment ||
+        clientUri.origin != responseUri.origin) {
+      throw const Oid4vpRequestException(
+        'verifier_origin_mismatch',
+        'The recipient must share the displayed verifier HTTPS origin.',
+      );
+    }
+    _validateResponseUri(clientUri, allowLocalHttp: allowLocalHttp);
+
     final definitionRaw = _requiredParam(params, 'presentation_definition');
     final definition = _decodePresentationDefinition(definitionRaw);
     final definitionId = _requiredString(definition, 'id');
     final descriptors = definition['input_descriptors'];
-    if (descriptors is! List || descriptors.isEmpty) {
+    if (descriptors is! List || descriptors.length != 1) {
       throw const Oid4vpRequestException(
         'invalid_presentation_definition',
         'presentation_definition must contain at least one input descriptor.',

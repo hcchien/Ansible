@@ -1,8 +1,11 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'canonical_identity_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Tracks whether the user has created an encrypted identity-key backup
 /// (recovery design D5-b) so the UI can show recovery readiness
-/// (「可復原：已備份 / ⚠ 尚未備份」 — Constitution must-have: readiness is
+/// (「資料已產生 / 已確認保存 / ⚠ 尚未設定」 — Constitution must-have: readiness is
 /// user-visible).
 ///
 /// IMPORTANT (Constitution item 2): we record only a *flag and timestamp* that
@@ -16,9 +19,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// tracks the backup flag only.
 abstract class RecoveryReadinessStore {
   Future<bool> hasBackup();
+  Future<void> markBackupSaved({CanonicalIdentity? identity});
+  Future<bool> hasSavedBackup();
 
   /// Records that a backup was created at [at] (defaults to now, UTC).
-  Future<void> markBackupCreated({DateTime? at});
+  Future<void> markBackupCreated({DateTime? at, CanonicalIdentity? identity});
 
   /// The UTC time the backup was last created, or null.
   Future<DateTime?> lastBackupAt();
@@ -43,7 +48,45 @@ abstract class RecoveryReadinessStore {
 
 class SharedPreferencesRecoveryReadinessStore
     implements RecoveryReadinessStore {
-  const SharedPreferencesRecoveryReadinessStore();
+  const SharedPreferencesRecoveryReadinessStore({
+    this.identityStore = const SecureCanonicalIdentityStore(),
+  });
+  final CanonicalIdentityStore identityStore;
+
+  String _scope(CanonicalIdentity identity) => sha256.convert(utf8.encode(
+    '${identity.did}\u0000${identity.signingAlgorithm}\u0000${identity.publicKeyHex}')).toString();
+
+  Future<String?> _identityScope([CanonicalIdentity? expected]) async {
+    final current = await identityStore.load();
+    if (expected != null && (current == null || _scope(expected) != _scope(current))) {
+      throw StateError('recovery_identity_changed');
+    }
+    return current == null ? null : _scope(current);
+  }
+
+  Future<String?> _scoped(String key) async {
+    final scope = await _identityScope();
+    return scope == null ? null : '$key.$scope';
+  }
+
+  @override
+  Future<void> markBackupSaved({CanonicalIdentity? identity}) async {
+    final scope = await _identityScope(identity);
+    if (scope == null) { throw StateError('recovery_identity_unavailable'); }
+    final prefs = await SharedPreferences.getInstance();
+    final generated = prefs.getString('$backupCreatedAtKey.$scope');
+    if (generated == null) { throw StateError('backup_not_generated'); }
+    await prefs.setString('elix-recovery-backup-saved.$scope', generated);
+  }
+
+  @override
+  Future<bool> hasSavedBackup() async {
+    final scope = await _identityScope();
+    if (scope == null) return false;
+    final prefs = await SharedPreferences.getInstance();
+    final generated = prefs.getString('$backupCreatedAtKey.$scope');
+    return generated != null && prefs.getString('elix-recovery-backup-saved.$scope') == generated;
+  }
 
   static const String backupCreatedAtKey = 'elix-recovery-backup-created-at';
   static const String backupSkippedKey = 'elix-recovery-backup-skipped';
@@ -55,10 +98,14 @@ class SharedPreferencesRecoveryReadinessStore
   }
 
   @override
-  Future<void> markBackupCreated({DateTime? at}) async {
+  Future<void> markBackupCreated({DateTime? at, CanonicalIdentity? identity}) async {
     final prefs = await SharedPreferences.getInstance();
+    final scope = await _identityScope(identity);
+    if (scope == null) { throw StateError('recovery_identity_unavailable'); }
+    final key = '$backupCreatedAtKey.$scope';
+    await prefs.remove('elix-recovery-backup-saved.$scope');
     await prefs.setString(
-      backupCreatedAtKey,
+      key,
       (at ?? DateTime.now().toUtc()).toUtc().toIso8601String(),
     );
   }
@@ -66,7 +113,8 @@ class SharedPreferencesRecoveryReadinessStore
   @override
   Future<DateTime?> lastBackupAt() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(backupCreatedAtKey);
+    final key = await _scoped(backupCreatedAtKey);
+    final raw = key == null ? null : prefs.getString(key);
     if (raw == null) return null;
     return DateTime.tryParse(raw)?.toUtc();
   }
@@ -74,28 +122,35 @@ class SharedPreferencesRecoveryReadinessStore
   @override
   Future<void> clearBackup() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(backupCreatedAtKey);
+    final key = await _scoped(backupCreatedAtKey);
+    final saved = await _scoped('elix-recovery-backup-saved');
+    if (key != null) await prefs.remove(key);
+    if (saved != null) await prefs.remove(saved);
   }
 
   @override
   Future<void> markBackupSkipped() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(backupSkippedKey, true);
+    final key = await _scoped(backupSkippedKey);
+    if (key != null) await prefs.setBool(key, true);
   }
 
   @override
   Future<bool> shouldNagForBackup() async {
     if (await hasBackup()) return false;
     final prefs = await SharedPreferences.getInstance();
-    final skipped = prefs.getBool(backupSkippedKey) ?? false;
-    final nagged = prefs.getBool(nagShownKey) ?? false;
+    final skipKey = await _scoped(backupSkippedKey);
+    final nagKey = await _scoped(nagShownKey);
+    final skipped = skipKey != null && prefs.getBool(skipKey) == true;
+    final nagged = nagKey != null && prefs.getBool(nagKey) == true;
     return skipped && !nagged;
   }
 
   @override
   Future<void> markNagShown() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(nagShownKey, true);
+    final key = await _scoped(nagShownKey);
+    if (key != null) await prefs.setBool(key, true);
   }
 }
 
@@ -103,6 +158,15 @@ class InMemoryRecoveryReadinessStore implements RecoveryReadinessStore {
   InMemoryRecoveryReadinessStore({DateTime? backupAt}) : _backupAt = backupAt;
 
   DateTime? _backupAt;
+  bool _saved = false;
+  @override
+  Future<void> markBackupSaved({CanonicalIdentity? identity}) async {
+    if (_backupAt == null) throw StateError('backup_not_generated');
+    _saved = true;
+  }
+
+  @override
+  Future<bool> hasSavedBackup() async => _saved;
   bool _skipped = false;
   bool _nagShown = false;
 
@@ -110,7 +174,8 @@ class InMemoryRecoveryReadinessStore implements RecoveryReadinessStore {
   Future<bool> hasBackup() async => _backupAt != null;
 
   @override
-  Future<void> markBackupCreated({DateTime? at}) async {
+  Future<void> markBackupCreated({DateTime? at, CanonicalIdentity? identity}) async {
+    _saved = false;
     _backupAt = (at ?? DateTime.now().toUtc()).toUtc();
   }
 
@@ -119,6 +184,7 @@ class InMemoryRecoveryReadinessStore implements RecoveryReadinessStore {
 
   @override
   Future<void> clearBackup() async {
+    _saved = false;
     _backupAt = null;
   }
 

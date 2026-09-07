@@ -5,6 +5,10 @@ const SCOPE_LABEL_KEYS = Object.freeze({
   'forum:read': 'scope.forum.read',
   'forum:post': 'scope.forum.post',
   'forum:reply': 'scope.forum.reply',
+  'forum:edit': 'scope.forum.edit',
+  'forum:delete': 'scope.forum.delete',
+  'forum:react': 'scope.forum.react',
+  'forum:moderate': 'scope.forum.moderate',
   'identity:display': 'scope.identity.display',
   'session:revoke': 'scope.session.revoke',
 });
@@ -82,6 +86,10 @@ export function formatExpiry(value) {
 
 export function describeError(error) {
   if (!error) return null;
+
+  if (['passkey_not_enrolled', 'credential_reenrollment_required'].includes(error.code)) {
+    return {tone: 'warning', title: t('error.passkeyRenewal.title'), message: t('error.passkeyRenewal.message')};
+  }
 
   if (error.type === ERROR_TYPES.missingScope) {
     const requiredScope = error.detail?.requiredScope;

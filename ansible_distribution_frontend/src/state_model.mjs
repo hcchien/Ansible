@@ -3,6 +3,7 @@ import { t } from './web_i18n.mjs';
 
 export const PAGE_IDS = Object.freeze({
   home: 'home',
+  discover: 'discover',
   boards: 'boards',
   board: 'board',
   thread: 'thread',
@@ -53,6 +54,7 @@ export function buildAppViewModel({
     profilePosts: forum?.profilePosts ?? [],
     profilePostsUnavailable: Boolean(forum?.profilePostsUnavailable),
     publicFeed: forum?.publicFeed ?? null,
+    discovery: forum?.discovery ?? null,
     notifications: forum?.notifications ?? { items: [], unreadCount: 0 },
     externalContent: forum?.externalContent ?? null,
     moderation: forum?.moderation ?? null,
@@ -72,6 +74,7 @@ export function buildAppViewModel({
 export function deriveNavigationItems(session = DEFAULT_SESSION_VIEW_MODEL) {
   const items = [
     { id: PAGE_IDS.home, label: t('common.feed'), href: '#/' },
+    { id: PAGE_IDS.discover, label: t('home.discover'), href: '#/discover' },
     { id: PAGE_IDS.boards, label: t('common.boards'), href: '#/boards' },
     { id: PAGE_IDS.faq, label: t('common.aboutElix'), href: '#/about' },
   ];
@@ -102,6 +105,9 @@ function pageDescriptor(route, forum) {
         id: PAGE_IDS.home,
         title: t('common.feed'),
       };
+
+    case PAGE_IDS.discover:
+      return { id: PAGE_IDS.discover, title: t('home.discover') };
 
     case PAGE_IDS.boards:
       return { id: PAGE_IDS.boards, title: t('common.boards') };

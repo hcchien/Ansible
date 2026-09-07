@@ -34,6 +34,63 @@ defmodule AnsibleAppview.Web.Router do
     })
   end
 
+  # Public, root-signature verified authority evidence. Native clients use their
+  # configured AppView directly; a Relay response cannot acknowledge this state.
+  post "/api/v1/authority/checkpoint" do
+    case AnsibleAppview.Authority.Witness.checkpoint(
+           conn.body_params["did"],
+           conn.body_params["chain"]
+         ) do
+      {:ok, result} ->
+        send_json(conn, 200, result)
+
+      {:error, :recovery_observation_pending} ->
+        send_json(conn, 202, %{state: "pending", error: "recovery_observation_pending"})
+
+      {:error, reason} ->
+        send_json(conn, 409, %{error: reason})
+    end
+  end
+
+  post "/api/v1/authority/revalidate" do
+    case AnsibleAppview.Authority.Witness.revalidate(
+           conn.body_params["operation"],
+           conn.body_params["authorization"],
+           conn.body_params["did_signature"]
+         ) do
+      {:ok, result} ->
+        {indexed, _} =
+          AnsibleAppview.Authority.Witness.retry_pending(conn.body_params["operation"])
+
+        send_json(conn, 200, Map.put(result, :indexed, indexed))
+
+      {:error, reason} ->
+        send_json(conn, 409, %{error: reason})
+    end
+  end
+
+  post "/api/v1/authority/veto" do
+    case AnsibleAppview.Authority.Witness.veto(
+           conn.body_params["did"],
+           conn.body_params["pending_anchor_cid"],
+           conn.body_params["veto_sig"],
+           conn.body_params["canonical_body"]
+         ) do
+      {:ok, result} -> send_json(conn, 200, result)
+      {:error, reason} -> send_json(conn, 409, %{error: reason})
+    end
+  end
+
+  post "/api/v1/authority/revoke" do
+    case AnsibleAppview.Authority.Witness.revoke(
+           conn.body_params["revocation"],
+           conn.body_params["did_signature"]
+         ) do
+      {:ok, result} -> send_json(conn, 200, result)
+      {:error, reason} -> send_json(conn, 409, %{error: reason})
+    end
+  end
+
   post "/api/v1/timeline" do
     AnsibleAppview.Web.Controllers.TimelineController.timeline(conn, conn.body_params)
   end

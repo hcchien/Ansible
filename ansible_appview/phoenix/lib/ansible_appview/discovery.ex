@@ -21,7 +21,7 @@ defmodule AnsibleAppview.Discovery do
   alias AnsibleAppview.Db.{FeedItem, Follow}
 
   @relayable ~w(public unlisted)
-  @explore_types ~w(murmur note post)
+  @explore_types ~w(murmur note post thread)
 
   # A friend-of-friend edge is worth this many global followers when ranking
   # suggestions — strong social proof beats raw popularity.

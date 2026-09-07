@@ -14,6 +14,8 @@ defmodule AnsibleRelay.Db.WebauthnCredential do
     field(:rp_id, :string)
     field(:allowed_actions, {:array, :string}, default: [])
     field(:delegation_signature, :string)
+    field(:delegation, :map)
+    field(:registration_attestation, :string)
     field(:delegation_expires_at, :utc_datetime_usec)
     field(:revoked_at, :utc_datetime_usec)
     timestamps(type: :utc_datetime_usec)
@@ -33,6 +35,8 @@ defmodule AnsibleRelay.Db.WebauthnCredential do
       :rp_id,
       :allowed_actions,
       :delegation_signature,
+      :delegation,
+      :registration_attestation,
       :delegation_expires_at,
       :revoked_at
     ])

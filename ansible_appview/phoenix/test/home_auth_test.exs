@@ -27,11 +27,15 @@ defmodule AnsibleAppview.HomeAuthTest do
       "op_type" => "insert",
       "payload" => Base.encode64(Jason.encode!(%{"body" => "hi", "visibility" => "public"})),
       "public_key_hex" => pub,
+      "anchor_expires_at" => "2099-01-01T00:00:00Z",
       "reputation_tier" => "basic",
       "received_at" => "2026-06-05T00:00:00Z"
     }
 
-    sig = :crypto.sign(:eddsa, :none, SigningPayload.build(op), [priv, :ed25519]) |> Base.encode16(case: :lower)
+    sig =
+      :crypto.sign(:eddsa, :none, SigningPayload.build(op), [priv, :ed25519])
+      |> Base.encode16(case: :lower)
+
     Folder.apply_ops([Map.put(op, "signature", sig)])
   end
 
@@ -48,8 +52,9 @@ defmodule AnsibleAppview.HomeAuthTest do
   end
 
   test "authorizes a correctly-signed request from the DID owner" do
-    did = "did:key:owner#{System.unique_integer([:positive])}"
     {pub, priv} = keypair()
+    {:ok, multibase} = AnsibleAppview.DidElix.ed25519_multibase(pub)
+    did = "did:key:" <> multibase
     seed_binding(did, pub, priv)
 
     headers = signed_headers(did, pub, priv, System.os_time(:second))
@@ -57,8 +62,9 @@ defmodule AnsibleAppview.HomeAuthTest do
   end
 
   test "rejects a request whose reader param != signed did" do
-    did = "did:key:owner#{System.unique_integer([:positive])}"
     {pub, priv} = keypair()
+    {:ok, multibase} = AnsibleAppview.DidElix.ed25519_multibase(pub)
+    did = "did:key:" <> multibase
     seed_binding(did, pub, priv)
 
     headers = signed_headers(did, pub, priv, System.os_time(:second))
@@ -66,8 +72,9 @@ defmodule AnsibleAppview.HomeAuthTest do
   end
 
   test "rejects a self-minted keypair impersonating another DID (key not bound)" do
-    victim = "did:key:victim#{System.unique_integer([:positive])}"
     {vpub, vpriv} = keypair()
+    {:ok, multibase} = AnsibleAppview.DidElix.ed25519_multibase(vpub)
+    victim = "did:key:" <> multibase
     seed_binding(victim, vpub, vpriv)
 
     # Attacker generates their OWN keypair and signs a valid challenge for the
@@ -78,8 +85,9 @@ defmodule AnsibleAppview.HomeAuthTest do
   end
 
   test "rejects a stale timestamp" do
-    did = "did:key:owner#{System.unique_integer([:positive])}"
     {pub, priv} = keypair()
+    {:ok, multibase} = AnsibleAppview.DidElix.ed25519_multibase(pub)
+    did = "did:key:" <> multibase
     seed_binding(did, pub, priv)
 
     stale = System.os_time(:second) - 10_000

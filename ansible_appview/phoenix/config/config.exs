@@ -7,6 +7,7 @@ config :ansible_appview, AnsibleAppview.Repo,
   pool_size: 10
 
 config :ansible_appview, :port, 4000
+config :ansible_appview, :authority_origin, "http://localhost:4000"
 # Timeline reads use this repo; defaults to the primary. runtime.exs points it at
 # AnsibleAppview.ReadRepo when DATABASE_REPLICA_URL is set.
 config :ansible_appview, :read_repo, AnsibleAppview.Repo

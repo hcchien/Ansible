@@ -65,10 +65,11 @@ export function renderCommandHeader(viewModel) {
         ${renderElixWordmark()}
         <span class="brand-host">${escapeHtml(t('common.socialIdentity'))}</span>
       </a>
-      <div class="searchbox" role="search" aria-label="${escapeAttribute(t('common.searchAria'))}">
+      <form class="searchbox" data-public-search role="search" aria-label="${escapeAttribute(t('common.searchAria'))}">
         ${icon('search', 16)}
-        <span>${escapeHtml(t('common.searchPlaceholder'))}</span>
-      </div>
+        <input name="q" type="search" aria-label="${escapeAttribute(t('common.searchAria'))}" placeholder="${escapeAttribute(t('common.searchPlaceholder'))}" value="${escapeAttribute(viewModel.route?.params?.query ?? '')}" maxlength="200" />
+        <button type="submit">${escapeHtml(t('discover.search'))}</button>
+      </form>
       <div class="command-context">
         <nav class="command-nav" aria-label="${escapeAttribute(t('common.navAria'))}">${nav}</nav>
         <span class="route-title">${escapeHtml(hostLabel)}</span>
@@ -188,7 +189,8 @@ function renderMobileTabBar(viewModel) {
   const subjectDid = viewModel.session?.subjectDid || viewModel.session?.subject;
   const items = [
     { id: 'home', label: t('common.feed'), href: '#/', glyph: 'home' },
-    { id: 'boards', label: t('common.boards'), href: '#/boards', glyph: 'search' },
+    { id: 'boards', label: t('common.boards'), href: '#/boards', glyph: 'board' },
+    { id: 'discover', label: t('home.discover'), href: '#/discover', glyph: 'search' },
     {
       id: 'notifications',
       label: t('home.notifications'),

@@ -682,7 +682,34 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
         _ -> "ed25519"
       end
 
+    chain =
+      case AnsibleRelay.Identity.AnchorStore.get_chain(author_did) do
+        {:ok, anchors} -> anchors
+        _ -> []
+      end
+
+    expiry =
+      case IdentityCache.get(author_did) do
+        {:ok, %{expires_at: expiry}} -> DateTime.to_iso8601(expiry)
+        _ -> nil
+      end
+
+    migration =
+      case AnsibleRelay.Identity.MigrationStore.get(author_did) do
+        {:ok, evidence} ->
+          case AnsibleRelay.Identity.AnchorStore.get_chain(evidence["v1_did"]) do
+            {:ok, target_chain} -> Map.put(evidence, "target_chain", target_chain)
+            _ -> nil
+          end
+
+        _ ->
+          nil
+      end
+
     op
+    |> Map.put(:identity_migration, migration)
+    |> Map.put(:identity_chain, chain)
+    |> Map.put(:anchor_expires_at, expiry)
     |> Map.put(:public_key_hex, IdentityCache.public_key_hex(author_did))
     |> Map.put(:signing_algorithm, signing_algorithm)
     # Keep the signed author DID intact, while allowing read-model consumers to

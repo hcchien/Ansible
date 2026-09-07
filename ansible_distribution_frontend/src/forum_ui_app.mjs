@@ -130,6 +130,13 @@ export function createForumUiApp({
     }
   };
 
+  const handleSubmit = async (event) => {
+    if (!isWithinRoot(event.target, root) || !event.target?.matches?.('[data-public-search]')) return;
+    event.preventDefault();
+    const query = String(event.target.querySelector('[name="q"]')?.value ?? '').trim().slice(0, 200);
+    await navigate(`#/discover${query ? `?q=${encodeURIComponent(query)}` : ''}`);
+  };
+
   const handleInput = (event) => {
     const element = event.target;
     if (!root?.contains?.(element) || !replyDraft) return;
@@ -238,6 +245,10 @@ export function createForumUiApp({
 
   async function loadCurrentRoute() {
     try {
+      const routeHash = windowLike?.location?.hash ?? '#/';
+      if (!currentSessionViewModel()?.authenticated && routeHash.startsWith('#/') && !routeHash.startsWith('#/login')) {
+        storage?.setItem?.('elix.login.return_route', routeHash);
+      }
       state = await pageController.loadCurrentRoute();
       if (
         replyDraft &&
@@ -270,6 +281,12 @@ export function createForumUiApp({
   async function pollLoginOnce() {
     try {
       loginState = await sessionLifecycle.pollLoginChallenge();
+      if (loginState?.viewModel?.authenticated || loginState?.status === 'authenticated') {
+        const target = storage?.getItem?.('elix.login.return_route');
+        storage?.removeItem?.('elix.login.return_route');
+        await navigate(typeof target === 'string' && target.startsWith('#/') && !target.startsWith('#/login') ? target : '#/');
+        return loginState;
+      }
       uiError = null;
       render();
       return loginState;
@@ -869,6 +886,7 @@ export function createForumUiApp({
     if (bound) {
       root?.removeEventListener?.('click', handleClick);
       root?.removeEventListener?.('input', handleInput);
+      root?.removeEventListener?.('submit', handleSubmit);
       root?.removeEventListener?.('pointerdown', handlePointerDown);
       root?.removeEventListener?.('pointerup', handlePointerUp);
       windowLike?.removeEventListener?.('hashchange', handleHashChange);
@@ -881,6 +899,7 @@ export function createForumUiApp({
 
     root?.addEventListener?.('click', handleClick);
     root?.addEventListener?.('input', handleInput);
+    root?.addEventListener?.('submit', handleSubmit);
     root?.addEventListener?.('pointerdown', handlePointerDown);
     root?.addEventListener?.('pointerup', handlePointerUp);
     windowLike?.addEventListener?.('hashchange', handleHashChange);

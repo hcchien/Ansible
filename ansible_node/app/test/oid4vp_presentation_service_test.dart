@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:ansible_node/screens/wallet_verifier_consent_screen.dart';
 
 import 'package:ansible_node/services/oid4vp_presentation_service.dart';
 import 'package:ansible_node/services/oid4vp_request.dart';
@@ -10,6 +12,228 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
+  test(
+    'expired consent and holder key changes never reach direct_post',
+    () async {
+      final repo = await _walletWithHumanityCredential();
+      final signer = _BoundSigner();
+      var posts = 0;
+      final service = Oid4vpPresentationService(
+        presentationService: VcPresentationService(
+          walletRepository: repo,
+          trustedIssuers: {'did:web:issuer.elix.cool'},
+          proofVerifier: _FakeProofVerifier.valid(),
+          statusResolver: (_) async => CredentialStatus.active,
+          proofSigner: signer,
+        ),
+        directPostClient: Oid4vpDirectPostClient(
+          client: MockClient((_) async {
+            posts++;
+            return http.Response('{}', 200);
+          }),
+        ),
+      );
+      final now = DateTime.utc(2026, 5, 30, 10);
+      Future<PreparedOid4vpPresentation> prepare() => service.prepare(
+        holderDid: 'did:key:z6Mkholder',
+        request: Oid4vpAuthorizationRequest.parse(_requestUri()),
+        now: now,
+      );
+      await expectLater(
+        service.approvePrepared(
+          await prepare(),
+          now: now.add(const Duration(minutes: 6)),
+        ),
+        throwsA(isA<Oid4vpSubmissionException>()),
+      );
+      final beforeRotation = await prepare();
+      signer.binding = 'rotated-key';
+      await expectLater(
+        service.approvePrepared(beforeRotation, now: now),
+        throwsA(isA<Oid4vpSubmissionException>()),
+      );
+      expect(signer.calls, 0);
+      final duringRotation = await prepare();
+      signer.rotateWhileSigning = true;
+      await expectLater(
+        service.approvePrepared(duringRotation, now: now),
+        throwsA(isA<Oid4vpSubmissionException>()),
+      );
+      expect(signer.calls, 1);
+      expect(posts, 0);
+    },
+  );
+
+  test(
+    'direct_post does not follow redirects beyond reviewed recipient',
+    () async {
+      final client = Oid4vpDirectPostClient(
+        client: MockClient((request) async {
+          expect(request.followRedirects, isFalse);
+          return http.Response(
+            '',
+            307,
+            headers: {'location': 'https://other.example/collect'},
+          );
+        }),
+      );
+      await expectLater(
+        client.submit(
+          request: Oid4vpAuthorizationRequest.parse(_requestUri()),
+          verifiablePresentation: {},
+        ),
+        throwsA(isA<Oid4vpSubmissionException>()),
+      );
+    },
+  );
+
+  testWidgets(
+    'production consent preview includes actual extra claims; cancel never signs or sends',
+    (tester) async {
+      final repo = await _walletWithHumanityCredential();
+      final signer = _FakeVpProofSigner('zholderproof');
+      var posts = 0;
+      final service = Oid4vpPresentationService(
+        presentationService: VcPresentationService(
+          walletRepository: repo,
+          trustedIssuers: {'did:web:issuer.elix.cool'},
+          proofVerifier: _FakeProofVerifier.valid(),
+          statusResolver: (_) async => CredentialStatus.active,
+          proofSigner: signer,
+        ),
+        directPostClient: Oid4vpDirectPostClient(
+          client: MockClient((_) async {
+            posts++;
+            return http.Response('{}', 200);
+          }),
+        ),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: WalletVerifierConsentScreen(
+            holderDid: 'did:key:z6Mkholder',
+            request: Oid4vpAuthorizationRequest.parse(_requestUri()),
+            presentationService: service,
+            now: () => DateTime.utc(2026, 5, 30, 10),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('actual_disclosure')),
+        350,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is SelectableText &&
+              (w.data?.contains('jurisdiction') ?? false),
+        ),
+        findsOneWidget,
+      );
+      expect(signer.calls, 0);
+      expect(posts, 0);
+      await tester.scrollUntilVisible(
+        find.text('取消'),
+        500,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
+      expect(signer.calls, 0);
+      expect(posts, 0);
+    },
+  );
+
+  test(
+    'prepare does not sign or send; approval sends the exact reviewed credential once',
+    () async {
+      final repo = await _walletWithHumanityCredential();
+      final signer = _FakeVpProofSigner('zholderproof');
+      var posts = 0;
+      Map<String, dynamic>? sent;
+      final service = Oid4vpPresentationService(
+        presentationService: VcPresentationService(
+          walletRepository: repo,
+          trustedIssuers: {'did:web:issuer.elix.cool'},
+          proofVerifier: _FakeProofVerifier.valid(),
+          statusResolver: (_) async => CredentialStatus.active,
+          proofSigner: signer,
+        ),
+        directPostClient: Oid4vpDirectPostClient(
+          client: MockClient((request) async {
+            posts++;
+            sent =
+                jsonDecode(Uri.splitQueryString(request.body)['vp_token']!)
+                    as Map<String, dynamic>;
+            return http.Response('{}', 200);
+          }),
+        ),
+      );
+      final now = DateTime.utc(2026, 5, 30, 10);
+      final prepared = await service.prepare(
+        holderDid: 'did:key:z6Mkholder',
+        request: Oid4vpAuthorizationRequest.parse(_requestUri()),
+        now: now,
+      );
+      final reviewed = prepared.presentation;
+      expect(jsonEncode(reviewed), contains('jurisdiction'));
+      expect(posts, 0);
+      expect(signer.calls, 0);
+      final detached = prepared.presentation;
+      (detached['verifiableCredential'] as List).clear();
+      await service.approvePrepared(prepared, now: now);
+      expect(sent!['verifiableCredential'], reviewed['verifiableCredential']);
+      expect(posts, 1);
+      expect(signer.calls, 1);
+      await expectLater(
+        service.approvePrepared(prepared, now: now),
+        throwsA(isA<Oid4vpSubmissionException>()),
+      );
+      expect(posts, 1);
+    },
+  );
+
+  test(
+    'revocation after consent preview prevents signing and disclosure',
+    () async {
+      final repo = await _walletWithHumanityCredential();
+      final signer = _FakeVpProofSigner('zholderproof');
+      var active = true;
+      var posts = 0;
+      final service = Oid4vpPresentationService(
+        presentationService: VcPresentationService(
+          walletRepository: repo,
+          trustedIssuers: {'did:web:issuer.elix.cool'},
+          proofVerifier: _FakeProofVerifier.valid(),
+          statusResolver: (_) async =>
+              active ? CredentialStatus.active : CredentialStatus.revoked,
+          proofSigner: signer,
+        ),
+        directPostClient: Oid4vpDirectPostClient(
+          client: MockClient((request) async {
+            posts++;
+            return http.Response('{}', 200);
+          }),
+        ),
+      );
+      final now = DateTime.utc(2026, 5, 30, 10);
+      final prepared = await service.prepare(
+        holderDid: 'did:key:z6Mkholder',
+        request: Oid4vpAuthorizationRequest.parse(_requestUri()),
+        now: now,
+      );
+      active = false;
+      await expectLater(
+        service.approvePrepared(prepared, now: now),
+        throwsA(isA<Oid4vpSubmissionException>()),
+      );
+      expect(posts, 0);
+      expect(signer.calls, 0);
+    },
+  );
+
   test('encodes Ed25519 signature hex as multibase base58-btc proofValue', () {
     expect(
       dataIntegrityProofValueFromEd25519SignatureHex('00' * 64),
@@ -213,6 +437,7 @@ class _FakeProofVerifier implements ProofVerifier {
 }
 
 class _FakeVpProofSigner implements VpProofSigner {
+  int calls = 0;
   final String proof;
 
   _FakeVpProofSigner(this.proof);
@@ -222,8 +447,32 @@ class _FakeVpProofSigner implements VpProofSigner {
     required Map<String, Object?> unsignedPresentation,
     required String canonicalPayload,
   }) async {
+    calls++;
     expect(canonicalPayload, contains('nonce-123'));
     expect(canonicalPayload, isNot(contains(proof)));
+    return proof;
+  }
+}
+
+class _BoundSigner extends _FakeVpProofSigner
+    implements ConfiguredVpProofSigner {
+  _BoundSigner() : super('zholderproof');
+  String binding = 'initial-key';
+  bool rotateWhileSigning = false;
+  @override
+  Future<String> identityBinding(String holderDid) async => binding;
+  @override
+  Future<Map<String, Object?>> proofOptions(String holderDid) async => {};
+  @override
+  Future<String> signPresentation({
+    required Map<String, Object?> unsignedPresentation,
+    required String canonicalPayload,
+  }) async {
+    final proof = await super.signPresentation(
+      unsignedPresentation: unsignedPresentation,
+      canonicalPayload: canonicalPayload,
+    );
+    if (rotateWhileSigning) binding = 'next-key';
     return proof;
   }
 }

@@ -25,7 +25,8 @@ defmodule AnsibleAppview.MixProject do
       {:jason, "~> 1.4"},
       {:ecto_sql, "~> 3.11"},
       {:postgrex, "~> 0.17"},
-      {:redix, "~> 1.2"}
+      {:redix, "~> 1.2"},
+      {:wax_, "~> 0.7.0"}
     ]
   end
 end

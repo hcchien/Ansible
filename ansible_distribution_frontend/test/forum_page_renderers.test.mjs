@@ -137,7 +137,7 @@ assert.doesNotMatch(homeHtml, /往左滑/);
 // Compose lives in the tab bar's centre key on mobile, so there is no
 // separate floating action button to collide with it.
 assert.doesNotMatch(homeHtml, /class="mobile-compose-fab"/);
-assert.match(homeHtml, /已訂閱看板/);
+assert.match(homeHtml, /公開看板/);
 assert.doesNotMatch(homeHtml, /Mira Lin|FROM A FOLLOW|關於信任的地形|MURMUR · 0:38|AI · 橫向橋/);
 assert.doesNotMatch(homeHtml, /工作階段/);
 assert.doesNotMatch(homeHtml, /RELAY · 來源/);
@@ -413,8 +413,8 @@ assert.match(loginHtml, /class="qr-code"/);
 assert.match(loginHtml, /data-action="poll-login"/);
 assert.doesNotMatch(loginHtml, /data-action="start-login"/);
 assert.match(loginHtml, /身分留在 Elix app/);
-assert.match(loginHtml, /用 Elix app 掃描/);
-assert.match(loginHtml, /用 Elix app 掃描這個 QR code/);
+assert.match(loginHtml, /用 Elix app 核准/);
+assert.match(loginHtml, /另一台裝置掃描這個 QR code/);
 assert.doesNotMatch(loginHtml, /登入挑戰|建立挑戰|有效挑戰|The key stays|Approving the challenge|App login challenge|Create challenge|Start app login/);
 assert.doesNotMatch(loginHtml, /Deep link/);
 assert.doesNotMatch(loginHtml, /QR payload/);

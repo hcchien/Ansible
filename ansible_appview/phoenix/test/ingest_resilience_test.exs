@@ -35,7 +35,7 @@ defmodule AnsibleAppview.IngestResilienceTest do
       :crypto.sign(:eddsa, :none, SigningPayload.build(op), [priv, :ed25519])
       |> Base.encode16(case: :lower)
 
-    Map.put(op, "signature", sig)
+    Map.put(op, "signature", sig) |> AnsibleAppview.TestIdentity.attach()
   end
 
   defp approved_follow_grant(request_op_id, follower, author) do
@@ -61,7 +61,7 @@ defmodule AnsibleAppview.IngestResilienceTest do
     good =
       signed_op(
         log_id: 1,
-        author_did: "did:key:alice-poison",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:alice-poison"),
         entity_type: "murmur",
         pub: pub,
         priv: priv,
@@ -75,7 +75,7 @@ defmodule AnsibleAppview.IngestResilienceTest do
     poison = %{
       "log_id" => 2,
       "op_id" => "op-poison",
-      "author_did" => "did:key:mallory",
+      "author_did" => AnsibleAppview.TestIdentity.did("did:key:mallory"),
       "entity_type" => "murmur",
       "entity_id" => "e-2",
       "op_type" => "insert",
@@ -88,7 +88,7 @@ defmodule AnsibleAppview.IngestResilienceTest do
     good2 =
       signed_op(
         log_id: 3,
-        author_did: "did:key:alice-poison",
+        author_did: AnsibleAppview.TestIdentity.did("did:key:alice-poison"),
         entity_type: "murmur",
         pub: pub,
         priv: priv,
@@ -100,14 +100,19 @@ defmodule AnsibleAppview.IngestResilienceTest do
     assert indexed == 2
     assert max_log == 3
 
-    tl = Timeline.for_authors(["did:key:alice-poison"], nil, 50)
+    tl = Timeline.for_authors([AnsibleAppview.TestIdentity.did("did:key:alice-poison")], nil, 50)
     assert Enum.map(tl.items, & &1.op_id) |> Enum.sort() == ["op-1", "op-3"]
   end
 
   test "batched cold-read returns items for multiple authors in one shot" do
     {pub, priv} = keypair()
 
-    authors = for i <- 1..3, do: "did:key:batch-#{i}-#{System.unique_integer([:positive])}"
+    authors =
+      for i <- 1..3,
+          do:
+            AnsibleAppview.TestIdentity.did(
+              "did:key:batch-#{i}-#{System.unique_integer([:positive])}"
+            )
 
     ops =
       authors
@@ -135,8 +140,16 @@ defmodule AnsibleAppview.IngestResilienceTest do
 
   test "a new follow backfills the follower's materialized home timeline with existing posts" do
     {pub, priv} = keypair()
-    reader = "did:key:backfill-reader-#{System.unique_integer([:positive])}"
-    author = "did:key:backfill-author-#{System.unique_integer([:positive])}"
+
+    reader =
+      AnsibleAppview.TestIdentity.did(
+        "did:key:backfill-reader-#{System.unique_integer([:positive])}"
+      )
+
+    author =
+      AnsibleAppview.TestIdentity.did(
+        "did:key:backfill-author-#{System.unique_integer([:positive])}"
+      )
 
     # Author posts BEFORE the reader follows.
     Folder.apply_ops([

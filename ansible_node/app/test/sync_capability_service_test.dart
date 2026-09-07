@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'package:ansible_node/services/authority_witness_client.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_node/services/sync_capability_service.dart';
@@ -8,6 +11,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   test(
     'enrolls a passkey then exchanges an assertion for a capability',
     () async {
@@ -42,6 +46,7 @@ void main() {
           case '/api/v2/webauthn/register/options':
             return _json({
               'challenge_id': 'register-1',
+              'origin': 'https://elix.cool',
               'publicKey': {
                 'challenge': 'cmVnaXN0ZXI',
                 'rp': {'id': 'elix.cool', 'name': 'Elix'},
@@ -55,6 +60,8 @@ void main() {
             });
           case '/api/v2/webauthn/register/finish':
             return _json({'enrolled': true}, status: 201);
+          case '/api/v2/webauthn/credentials/Y3JlZA/revoke':
+            return _json({'revoked': true});
           case '/api/v2/webauthn/authenticate/exchange':
             return _json({
               'token': 'capability-token',
@@ -65,14 +72,15 @@ void main() {
         return http.Response('not found', 404);
       });
 
-      final capability = await SyncCapabilityService(
+      final service = SyncCapabilityService(
         baseUrl: 'https://relay.example',
         holderDid: 'did:elix:alice',
         platform: platform,
         didSigner: _FakeDidSigner(),
         client: client,
         now: () => DateTime.utc(2026, 7, 21),
-      ).authorize();
+      );
+      final capability = await service.authorize();
 
       expect(capability.token, 'capability-token');
       expect(platform.registerCalls, 1);
@@ -104,6 +112,76 @@ void main() {
           'forum.delete',
           'forum.react',
         ]),
+      );
+      await expectLater(service.revokeSavedWebCredentials(), throwsStateError);
+      expect(
+        paths,
+        isNot(contains('/api/v2/webauthn/credentials/Y3JlZA/revoke')),
+      );
+    },
+  );
+
+  test(
+    'observer failure prevents relay revoke and preserves retry; acknowledgement comes first',
+    () async {
+      final key =
+          'elix.web.credentials.${sha256.convert(utf8.encode('did:elix:alice\u0000https://relay.example'))}';
+      SharedPreferences.setMockInitialValues({
+        key: ['Y3JlZA'],
+      });
+      final hosts = <String>[];
+      var acknowledge = false;
+      var relayAvailable = false;
+      final client = MockClient((request) async {
+        hosts.add(request.url.host);
+        if (request.url.host == 'observer.example') {
+          return http.Response(
+            acknowledge ? '{"revoked":true}' : '{"error":"unavailable"}',
+            acknowledge ? 200 : 503,
+          );
+        }
+        expect(request.url.path, '/api/v2/webauthn/credentials/Y3JlZA/revoke');
+        if (!relayAvailable) {
+          return http.Response('{"error":"unavailable"}', 503);
+        }
+        return _json({'revoked': true});
+      });
+      final service = SyncCapabilityService(
+        baseUrl: 'https://relay.example',
+        holderDid: 'did:elix:alice',
+        didSigner: _FakeDidSigner(),
+        platform: _FakeWebAuthnPlatform(),
+        client: client,
+        authorityWitness: AuthorityWitnessClient(
+          baseUrl: 'https://observer.example',
+          client: client,
+        ),
+      );
+      await expectLater(service.revokeSavedWebCredentials(), throwsStateError);
+      expect(hosts, ['observer.example']);
+      expect((await SharedPreferences.getInstance()).getStringList(key), [
+        'Y3JlZA',
+      ]);
+      acknowledge = true;
+      await expectLater(
+        service.revokeSavedWebCredentials(),
+        throwsA(isA<SyncCapabilityException>()),
+      );
+      expect((await SharedPreferences.getInstance()).getStringList(key), [
+        'Y3JlZA',
+      ]);
+      relayAvailable = true;
+      await service.revokeSavedWebCredentials();
+      expect(hosts, [
+        'observer.example',
+        'observer.example',
+        'relay.example',
+        'observer.example',
+        'relay.example',
+      ]);
+      expect(
+        (await SharedPreferences.getInstance()).getStringList(key),
+        isEmpty,
       );
     },
   );
@@ -272,9 +350,17 @@ class _FakeDidSigner implements DidSigner {
   @override
   Future<Ed25519Signature> sign(List<int> message) async {
     final delegation = jsonDecode(utf8.decode(message)) as Map<String, dynamic>;
-    expect(delegation['type'], 'io.trisaura.identity.webCredentialDelegation');
-    expect(delegation['challenge_id'], 'register-1');
-    expect(delegation['credential_id_hash'], isNotEmpty);
+    if (delegation['type'] == 'io.trisaura.identity.webCredentialRevocation') {
+      expect(delegation['credential_id'], 'Y3JlZA');
+      expect(delegation['nonce'], isNotEmpty);
+    } else {
+      expect(
+        delegation['type'],
+        'io.trisaura.identity.webCredentialDelegation',
+      );
+      expect(delegation['challenge_id'], 'register-1');
+      expect(delegation['credential_id_hash'], isNotEmpty);
+    }
     return Ed25519Signature('aa' * 64);
   }
 }

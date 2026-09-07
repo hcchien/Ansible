@@ -28,8 +28,8 @@ void main() {
     expect(find.text('https://verifier.example'), findsOneWidget);
     expect(find.text('TrisAuraHumanityCredential'), findsOneWidget);
     expect(find.textContaining('humanVerified'), findsOneWidget);
-    expect(find.textContaining('身分證字號'), findsOneWidget);
-    expect(find.textContaining('MobileMoica response'), findsOneWidget);
+    expect(find.textContaining('完整憑證'), findsOneWidget);
+    expect(find.textContaining('連結多次出示'), findsOneWidget);
 
     await tester.drag(find.byType(ListView), const Offset(0, -420));
     await tester.pumpAndSettle();
