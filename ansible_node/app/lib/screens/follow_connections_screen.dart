@@ -211,8 +211,9 @@ class _FollowConnectionsScreenState extends State<FollowConnectionsScreen> {
     title: Text(person.name, maxLines: 1, overflow: TextOverflow.ellipsis),
     subtitle: Text(
       [
-        if (person.handle?.isNotEmpty == true) person.handle!,
-        person.did,
+        if (person.handleLabel != null && person.handleLabel != person.name)
+          person.handleLabel!,
+        if (person.shortDid != person.name) person.shortDid,
         if (person.localOnly)
           context.uiCopy(zh: '只在此裝置追蹤', en: 'Following only on this device'),
       ].join('\n'),

@@ -1,5 +1,6 @@
 import 'package:ansible_node/screens/follow_connections_screen.dart';
 import 'package:ansible_node/services/follow_connections.dart';
+import 'package:ansible_node/services/handle_resolver.dart' show shortenDid;
 import 'package:ansible_node/widgets/follow_connections_links.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
@@ -94,6 +95,57 @@ Future<void> seed(AppDatabase db) async {
   );
 }
 
+const labelPeer = 'did:plc:abcdefghijklmnopqrstuvwx';
+Future<void> seedLabelCase(
+  AppDatabase db, {
+  String? contactName,
+  String? contactHandle,
+  String targetName = '',
+  String? targetHandle,
+}) async {
+  final repo = DriftFollowRepository(db);
+  final now = DateTime.utc(2026, 9, 7);
+  for (final did in [owner, labelPeer]) {
+    await repo.upsertTarget(
+      FollowTarget(
+        targetId: did,
+        targetType: FollowTargetType.user,
+        canonicalUri: did,
+        did: did,
+        displayName: did == labelPeer ? targetName : 'Owner',
+        handle: did == labelPeer ? targetHandle : null,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+  }
+  await DriftContactRepository(db).upsertContact(
+    ContactRecord(
+      subjectDid: labelPeer,
+      displayName: contactName,
+      handle: contactHandle,
+      createdAt: now,
+      updatedAt: now,
+    ),
+  );
+  for (final direction in FollowDirection.values) {
+    final incoming = direction == FollowDirection.inbound;
+    await repo.upsertEdge(
+      FollowEdge(
+        followId: direction.name,
+        followerDid: incoming ? labelPeer : owner,
+        targetId: incoming ? owner : labelPeer,
+        targetType: FollowTargetType.user,
+        direction: direction,
+        status: FollowStatus.accepted,
+        visibility: FollowVisibility.federated,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+  }
+}
+
 void main() {
   test(
     'own list preserves local-only and pending while excluding boards, deleted and inactive edges',
@@ -110,6 +162,91 @@ void main() {
       expect(result.following.last.pending, isTrue);
     },
   );
+  test('both lists prefer display name, handle, then short DID', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final cases = [
+      (
+        contactName: '  Alice  ',
+        targetName: 'Target Alice',
+        contactHandle: 'alice.elix.cool',
+        targetHandle: 'target.elix.cool',
+        expected: 'Alice',
+      ),
+      (
+        contactName: '  ',
+        targetName: 'Target Alice',
+        contactHandle: 'alice.elix.cool',
+        targetHandle: null,
+        expected: 'Target Alice',
+      ),
+      (
+        contactName: labelPeer,
+        targetName: shortenDid(labelPeer),
+        contactHandle: '  @alice.elix.cool  ',
+        targetHandle: null,
+        expected: '@alice.elix.cool',
+      ),
+      (
+        contactName: null,
+        targetName: ' ',
+        contactHandle: '  ',
+        targetHandle: ' target.elix.cool ',
+        expected: '@target.elix.cool',
+      ),
+      (
+        contactName: labelPeer,
+        targetName: labelPeer,
+        contactHandle: null,
+        targetHandle: null,
+        expected: shortenDid(labelPeer),
+      ),
+    ];
+    for (final example in cases) {
+      await seedLabelCase(
+        db,
+        contactName: example.contactName,
+        targetName: example.targetName,
+        contactHandle: example.contactHandle,
+        targetHandle: example.targetHandle,
+      );
+      final result = await loadFollowConnections(db, owner);
+      expect(result.following.single.name, example.expected);
+      expect(result.followers.single.name, example.expected);
+      expect(result.following.single.did, labelPeer);
+      expect(result.followers.single.did, labelPeer);
+    }
+  });
+  testWidgets('rows show short DID and remain searchable by full DID', (
+    tester,
+  ) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await seedLabelCase(
+      db,
+      targetName: labelPeer,
+      targetHandle: 'alice.elix.cool',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: FollowConnectionsScreen(db: db, did: owner),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('@alice.elix.cool'), findsOneWidget);
+    expect(find.text(shortenDid(labelPeer)), findsOneWidget);
+    expect(find.textContaining(labelPeer), findsNothing);
+    await tester.enterText(
+      find.byKey(const Key('connections_search')),
+      labelPeer,
+    );
+    await tester.pump();
+    expect(find.text('@alice.elix.cool'), findsOneWidget);
+    await tester.tap(find.text('追蹤者 1'));
+    await tester.pumpAndSettle();
+    expect(find.text('@alice.elix.cool'), findsOneWidget);
+    expect(find.text(shortenDid(labelPeer)), findsOneWidget);
+  });
   testWidgets(
     'own profile links open correct list with pending separated and searchable',
     (tester) async {

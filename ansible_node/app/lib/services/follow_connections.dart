@@ -1,5 +1,7 @@
 import 'package:ansible_store/ansible_store.dart';
 
+import 'handle_resolver.dart' show shortenDid;
+
 class FollowConnection {
   const FollowConnection({
     required this.did,
@@ -11,6 +13,12 @@ class FollowConnection {
   final String name;
   final String? handle;
   final FollowEdge edge;
+  String get shortDid => shortenDid(did);
+  String? get handleLabel => handle == null
+      ? null
+      : handle!.startsWith('@')
+      ? handle
+      : '@$handle';
   bool get pending => edge.status == FollowStatus.pending;
   bool get localOnly => edge.visibility == FollowVisibility.localOnly;
 }
@@ -58,16 +66,36 @@ Future<FollowConnections> loadFollowConnections(
           : target?.did ?? target?.canonicalUri;
       if (peer == null || peer.isEmpty || peer == did) continue;
       final contact = await contacts.contactForDid(peer);
-      final name = contact?.displayName?.trim();
-      final targetName = target?.displayName.trim();
+      String? nonBlank(String? value) {
+        final trimmed = value?.trim();
+        return trimmed == null || trimmed.isEmpty ? null : trimmed;
+      }
+
+      // Older follow/contact records may store a DID fallback as displayName.
+      // Such placeholders must not outrank an available human-readable handle.
+      String? displayName(String? value) {
+        final name = nonBlank(value);
+        return name == peer ||
+                name == shortenDid(peer) ||
+                name == contact?.shortDid ||
+                name == target?.canonicalUri
+            ? null
+            : name;
+      }
+
+      final name =
+          displayName(contact?.displayName) ?? displayName(target?.displayName);
+      final handle = nonBlank(contact?.handle) ?? nonBlank(target?.handle);
       final connection = FollowConnection(
         did: peer,
-        name: name?.isNotEmpty == true
-            ? name!
-            : targetName?.isNotEmpty == true
-            ? targetName!
-            : peer,
-        handle: contact?.handle ?? target?.handle,
+        name:
+            name ??
+            (handle == null
+                ? shortenDid(peer)
+                : handle.startsWith('@')
+                ? handle
+                : '@$handle'),
+        handle: handle,
         edge: edge,
       );
       if (result[peer] == null || result[peer]!.pending) {
