@@ -142,29 +142,36 @@ void main() {
       expect(edge!.status, FollowStatus.cancelled);
     });
 
-    test('routes valid Follow to follow service', () async {
-      final followRepo = InMemoryFollowRepository();
-      final service = _buildService(followRepo);
-      final controller = FollowInboxController(followService: service);
+    test(
+      'routes valid Follow as a pending request requiring approval',
+      () async {
+        final followRepo = InMemoryFollowRepository();
+        final service = _buildService(followRepo);
+        final controller = FollowInboxController(followService: service);
 
-      final response = await controller.handleJson({
-        'id': 'https://remote.example/activities/follow/1',
-        'type': 'Follow',
-        'actor': 'https://remote.example/users/alice',
-        'object': 'did:key:local',
-        'published': '2026-05-04T00:00:00.000Z',
-      });
+        final response = await controller.handleJson({
+          'id': 'https://remote.example/activities/follow/1',
+          'type': 'Follow',
+          'actor': 'https://remote.example/users/alice',
+          'object': 'did:key:local',
+          'published': '2026-05-04T00:00:00.000Z',
+        });
 
-      final target = await followRepo.getTargetByCanonicalUri('did:key:local');
-      final edge = await followRepo.getEdge(
-        'https://remote.example/users/alice',
-        target!.targetId,
-        FollowDirection.outbound,
-      );
+        final target = await followRepo.getTargetByCanonicalUri(
+          'did:key:local',
+        );
+        final edge = await followRepo.getEdge(
+          'https://remote.example/users/alice',
+          target!.targetId,
+          FollowDirection.outbound,
+        );
 
-      expect(response.statusCode, 200);
-      expect(edge!.status, FollowStatus.accepted);
-    });
+        expect(response.statusCode, 200);
+        expect(edge!.status, FollowStatus.pending);
+        expect(edge.visibility, FollowVisibility.federated);
+        expect(edge.acceptedAt, isNull);
+      },
+    );
   });
 }
 
