@@ -1,4 +1,5 @@
 import 'package:ansible_node/screens/sync_settings_screen.dart';
+import 'package:ansible_node/widgets/remote_node_form_dialog.dart';
 import 'package:ansible_node/services/app_sync_service.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
@@ -211,6 +212,131 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'last Relay deletion offers undo and explicit production recovery',
+    (tester) async {
+      FlutterSecureStorage.setMockInitialValues({});
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final repo = DriftRemoteNodeRepository(db);
+      final now = DateTime.utc(2026, 9, 7);
+      await repo.create(
+        RemoteNode(
+          id: 'recover-relay',
+          name: 'Saved Relay',
+          url: 'https://custom.example',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SyncSettingsScreen(
+            db: db,
+            localDid: 'did:elix:test',
+            complianceFetcher: (_) async => 'compatible',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      Future<void> remove() async {
+        final button = find.byKey(const ValueKey('delete_relay_recover-relay'));
+        if (button.evaluate().isEmpty) {
+          await tester.ensureVisible(find.text('Saved Relay'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Saved Relay'));
+          await tester.pumpAndSettle();
+        }
+        await tester.ensureVisible(button);
+        await tester.pumpAndSettle();
+        await tester.tap(button);
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+        await tester.pumpAndSettle();
+      }
+
+      await remove();
+      expect(await repo.list(), isEmpty);
+      expect(find.byKey(const Key('restore_default_relay')), findsOneWidget);
+      await tester.tap(find.text('復原'));
+      await tester.pumpAndSettle();
+      expect(
+        (await repo.getById('recover-relay'))?.url,
+        'https://custom.example',
+      );
+      await remove();
+      final restore = find.byKey(const Key('restore_default_relay'));
+      await tester.ensureVisible(restore);
+      await tester.pumpAndSettle();
+      await tester.tap(restore);
+      await tester.pumpAndSettle();
+      expect(await repo.list(), isEmpty);
+      expect(
+        tester
+            .widget<TextFormField>(find.byKey(const Key('relay_url_field')))
+            .controller!
+            .text,
+        productionRelayUrl,
+      );
+      await tester.tap(find.text('儲存'));
+      await tester.pumpAndSettle();
+      expect((await repo.list()).single.url, productionRelayUrl);
+    },
+  );
+
+  testWidgets(
+    'changing Relay URL clears old credentials and cursor and checks new host',
+    (tester) async {
+      FlutterSecureStorage.setMockInitialValues({});
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final repo = DriftRemoteNodeRepository(db);
+      final now = DateTime.utc(2026, 9, 7);
+      await repo.create(
+        RemoteNode(
+          id: 'change-relay',
+          name: 'Old Relay',
+          url: 'https://old.example',
+          accessToken: 'old-token',
+          syncCursor: 42,
+          lastSyncAt: now,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      final checked = <String>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SyncSettingsScreen(
+            db: db,
+            localDid: 'did:elix:test',
+            complianceFetcher: (url) async {
+              checked.add(url);
+              return 'compatible';
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Old Relay'));
+      await tester.pumpAndSettle();
+      final edit = find.byKey(const ValueKey('edit_relay_change-relay'));
+      await tester.ensureVisible(edit);
+      await tester.pumpAndSettle();
+      await tester.tap(edit);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('relay_url_field')), '');
+      await tester.tap(find.text('儲存'));
+      await tester.pumpAndSettle();
+      final node = (await repo.getById('change-relay'))!;
+      expect(node.url, productionRelayUrl);
+      expect(node.accessToken, isNull);
+      expect(node.syncCursor, 0);
+      expect(node.lastSyncAt, isNull);
+      expect(checked, [productionRelayUrl]);
+    },
+  );
 
   test('hostComplianceNeedsWarning gates only positive declarations', () {
     expect(hostComplianceNeedsWarning('constitution_compliant'), isFalse);

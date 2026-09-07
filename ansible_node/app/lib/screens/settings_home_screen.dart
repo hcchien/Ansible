@@ -1,4 +1,5 @@
 import '../widgets/public_profile_status_card.dart';
+import '../widgets/follow_connections_links.dart';
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
@@ -262,6 +263,10 @@ class SettingsHomeScreen extends StatelessWidget {
             ),
           ),
           PublicProfileStatusCard(db: db, did: did),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: FollowConnectionsLinks(db: db, did: did),
+          ),
           if (onOpenPersonalBoard != null)
             _SettingsSection(
               label: context.uiCopy(zh: '我的內容', en: 'MY CONTENT'),

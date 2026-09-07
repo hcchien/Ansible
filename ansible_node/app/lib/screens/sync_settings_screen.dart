@@ -387,7 +387,8 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
     RemoteNode node,
     Map<String, String?> data,
   ) async {
-    String? accessToken = node.accessToken;
+    final urlChanged = data['url'] != node.url;
+    String? accessToken = urlChanged ? null : node.accessToken;
 
     // If new credentials provided, try to authenticate
     if (data['username'] != null && data['password'] != null) {
@@ -409,11 +410,26 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
       }
     }
 
-    final updated = node.copyWith(
-      name: data['name'],
-      url: data['url'],
+    final compliance = urlChanged
+        ? await _fetchHostCompliance(data['url']!)
+        : node.constitutionCompliance;
+    if (urlChanged && hostComplianceNeedsWarning(compliance)) {
+      if (!mounted ||
+          await _confirmUndeclaredComplianceHost(compliance) != true) {
+        return;
+      }
+    }
+    final updated = RemoteNode(
+      id: node.id,
+      name: data['name']!,
+      url: data['url']!,
       accessToken: accessToken,
+      createdAt: node.createdAt,
       updatedAt: DateTime.now(),
+      syncCursor: urlChanged ? 0 : node.syncCursor,
+      lastSyncAt: urlChanged ? null : node.lastSyncAt,
+      isActive: node.isActive,
+      constitutionCompliance: compliance,
     );
 
     await _remoteNodeRepo.update(updated);
@@ -456,9 +472,18 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
       await _loadData();
 
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(text.t('forumHostDeleted'))));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(text.t('forumHostDeleted')),
+            action: SnackBarAction(
+              label: context.uiCopy(zh: '復原', en: 'Undo'),
+              onPressed: () async {
+                await _remoteNodeRepo.create(node);
+                await _loadData();
+              },
+            ),
+          ),
+        );
       }
     }
   }
@@ -1539,6 +1564,19 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
             ),
           ),
           const SizedBox(height: 12),
+          FilledButton.icon(
+            key: const Key('restore_default_relay'),
+            onPressed: () =>
+                _showAddRemoteNodeDialog(initialUrl: productionRelayUrl),
+            icon: const Icon(Icons.restore),
+            label: Text(
+              context.uiCopy(
+                zh: '使用 Elix 預設 Relay',
+                en: 'Use the default Elix Relay',
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: _showAddRemoteNodeDialog,
             icon: const Icon(Icons.add),
@@ -1874,12 +1912,14 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton.icon(
+                    key: ValueKey('edit_relay_${node.id}'),
                     onPressed: () => _showEditRemoteNodeDialog(node),
                     icon: const Icon(Icons.edit, size: 18),
                     label: Text(SubpageL10n.of(context).t('editRemoteNode')),
                   ),
                   const SizedBox(width: 8),
                   TextButton.icon(
+                    key: ValueKey('delete_relay_${node.id}'),
                     onPressed: () => _deleteRemoteNode(node),
                     icon: Icon(
                       Icons.delete,

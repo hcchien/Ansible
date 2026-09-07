@@ -17,6 +17,7 @@ import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/follow_button.dart';
+import '../widgets/follow_connections_links.dart';
 import '../widgets/report_dialog.dart';
 import 'posts_view_screen.dart';
 import 'wallet_screen.dart';
@@ -590,6 +591,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           ),
         ],
         if (widget.did == widget.followerDid) ...[
+          FollowConnectionsLinks(db: widget.db, did: widget.followerDid),
           const SizedBox(height: 14),
           OutlinedButton.icon(
             onPressed: _openCredentialManager,
