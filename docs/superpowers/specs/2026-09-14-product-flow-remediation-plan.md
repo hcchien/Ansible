@@ -1,6 +1,6 @@
 # Product flow remediation
 
-Status: local implementation complete; deployment and device validation pending. Base: a846fb40 (production 1.0.12).
+Status: implementation and backend deployment complete; TestFlight awaits local Apple account login, and device validation remains pending. Base: a846fb40 (production 1.0.12).
 
 Implementation evidence and outstanding release checks: [report](../../reviews/2026-09-14-product-flow-implementation.md).
 

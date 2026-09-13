@@ -1,6 +1,8 @@
 # Elix PD1–PD8 實作與驗證紀錄
 
 日期：2026-09-14。基準：`a846fb40`（1.0.12）。
+
+後續發布更新：prod 三個服務已部署，1.0.13 IPA 已建置；TestFlight 等待本機 Apple 登入。詳見 [1.0.13 發布紀錄](2026-09-14-elix-1.0.13-release.md)。下文保留實作完成時的驗證邊界。
 分支：`codex/product-flow-remediation`。狀態：本機實作完成，尚未部署、打包或送審。
 原始工作區的 Wallet／Issuer 等未提交修改未納入本次工作樹。
 
