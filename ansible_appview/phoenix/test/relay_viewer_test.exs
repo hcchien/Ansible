@@ -198,4 +198,20 @@ defmodule AnsibleAppview.RelayViewerTest do
     assert [[true]] =
              Repo.query!("SELECT deleted FROM feed_items WHERE op_id=$1", [op["op_id"]]).rows
   end
+
+  test "immutable did:key author does not require an anchor chain", c do
+    bytes = <<0xED, 1>> <> Base.decode16!(c.initial["identity_key"], case: :mixed)
+    alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+
+    encode = fn encode, n, acc ->
+      if n == 0,
+        do: acc,
+        else: encode.(encode, div(n, 58), String.at(alphabet, rem(n, 58)) <> acc)
+    end
+
+    did = "did:key:z" <> encode.(encode, :binary.decode_unsigned(bytes), "")
+    {op, payload} = operation(%{c | did: did}, "immutable-key", c.private)
+    op = relay_op(Map.put(op, "identity_chain", []))
+    assert {:ok, _} = Witness.observe_relay(op, payload)
+  end
 end

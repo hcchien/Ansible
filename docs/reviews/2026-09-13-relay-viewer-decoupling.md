@@ -10,6 +10,7 @@ Private content and user identity key custody boundaries remain in place.
 
 ## Implementation
 
+- Immutable did:key authors remain supported without inventing an anchor chain.
 - New App no longer contacts AppView for checkpoints, anchor/recovery/veto,
   credential revocation, or local-history revalidation. Relay receipt completes
   publication independently of Viewer availability.
@@ -27,7 +28,7 @@ Private content and user identity key custody boundaries remain in place.
 
 ## Validation
 
-- AppView: 94 tests passed, including independent Viewer bootstrap, historical
+- AppView: 95 tests passed, including independent Viewer bootstrap, historical
   keys, stale/unknown proof, revocation rollback and durable pending retry.
 - Relay: 494 tests passed, including public status minimization and earliest
   revocation time. One test-helper call error was corrected before final pass.

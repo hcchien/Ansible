@@ -12,7 +12,14 @@ defmodule AnsibleRelay.Authority.PublicStatus do
       version: 1,
       superseded: superseded?(op),
       did: op.author_did,
-      state: if(chain == [], do: "unavailable", else: "active"),
+      state:
+        if(
+          chain != [] or
+            (String.starts_with?(op.author_did, "did:key:") and
+               not AnsibleRelay.Identity.AnchorStore.frozen?(op.author_did)),
+          do: "active",
+          else: "unavailable"
+        ),
       checked_at: DateTime.to_iso8601(DateTime.utc_now()),
       credential: credential_status(op)
     }

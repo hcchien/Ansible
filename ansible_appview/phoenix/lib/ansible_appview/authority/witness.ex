@@ -24,7 +24,7 @@ defmodule AnsibleAppview.Authority.Witness do
   defp observe_relay_first(op, payload) do
     did = op["author_did"]
     status = op["authority_status"]
-    chain = op["identity_chain"]
+    chain = relay_chain(op)
 
     result =
       with %{"version" => 1, "state" => "active", "did" => ^did} <- status,
@@ -34,7 +34,7 @@ defmodule AnsibleAppview.Authority.Witness do
            true <- DateTime.compare(received, DateTime.add(now(), 300)) != :gt,
            true <- is_list(chain) and length(chain) in 1..128,
            true <- byte_size(Jason.encode!(chain)) <= 262_144,
-           true <- ChainVerifier.verified_chain?(did, chain) do
+           true <- relay_chain_valid?(did, chain) do
         locked(did, fn ->
           with :ok <- relay_frontier(did, chain),
                :ok <- relay_credential_status(did, payload, status["credential"]) do
@@ -55,6 +55,37 @@ defmodule AnsibleAppview.Authority.Witness do
   rescue
     _ -> defer(op, :relay_authority_unavailable)
   end
+
+  # did:key carries its own immutable authority; no fabricated genesis time.
+  defp relay_chain(%{"author_did" => "did:key:" <> _} = op) do
+    case op["identity_chain"] do
+      empty when empty in [nil, []] ->
+        case AuthorVerifier.authority_keys(Map.delete(op, "identity_chain")) do
+          {:ok, [{algorithm, key}]} ->
+            [%{"identity_key_algorithm" => algorithm, "identity_key" => key}]
+
+          _ ->
+            []
+        end
+
+      chain ->
+        chain
+    end
+  end
+
+  defp relay_chain(op), do: op["identity_chain"]
+
+  defp relay_chain_valid?("did:key:" <> _ = did, chain) do
+    case AuthorVerifier.authority_keys(%{"author_did" => did}) do
+      {:ok, [{algorithm, key}]} ->
+        chain == [%{"identity_key_algorithm" => algorithm, "identity_key" => key}]
+
+      _ ->
+        false
+    end
+  end
+
+  defp relay_chain_valid?(did, chain), do: ChainVerifier.verified_chain?(did, chain)
 
   # This mode explicitly trusts the Relay for latest-state completeness and
   # recovery activation. It does NOT claim independent recovery observation.
@@ -126,12 +157,15 @@ defmodule AnsibleAppview.Authority.Witness do
     # Relay receipt time, not a payload's backdated claimed creation time, fixes
     # eligibility for a previously unseen historical operation.
     eligible =
-      Enum.filter(chain, fn anchor ->
-        case DateTime.from_iso8601(anchor["created_at"] || "") do
-          {:ok, at, _} -> DateTime.compare(at, received) != :gt
-          _ -> false
-        end
-      end)
+      if String.starts_with?(op["author_did"], "did:key:"),
+        do: chain,
+        else:
+          Enum.filter(chain, fn anchor ->
+            case DateTime.from_iso8601(anchor["created_at"] || "") do
+              {:ok, at, _} -> DateTime.compare(at, received) != :gt
+              _ -> false
+            end
+          end)
 
     case List.last(eligible) do
       nil ->
