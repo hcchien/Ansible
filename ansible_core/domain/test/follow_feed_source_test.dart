@@ -138,6 +138,57 @@ void main() {
       expect(page.hasMore, isFalse);
     });
 
+    test(
+      'preserves verified local content without upgrading unverified content',
+      () async {
+        final original = (await contentRepo.getById('murmur-1'))!;
+        await contentRepo.update(original.copyWith(signatureVerified: true));
+        await contentRepo.create(
+          ContentItem(
+            id: 'unverified',
+            authorDid: original.authorDid,
+            mode: original.mode,
+            body: 'unverified thought',
+            status: original.status,
+            visibility: original.visibility,
+            createdAt: now,
+            updatedAt: now,
+            localOnly: false,
+            signatureVerified: false,
+          ),
+        );
+        final page = await source.fetch(followerDid: 'did:key:local');
+        final content = {
+          for (final item in page.items.whereType<ContentTimelineItem>())
+            item.entry.item.id: item,
+        };
+        expect(content['murmur-1']!.signatureVerified, isTrue);
+        expect(content['unverified']!.signatureVerified, isFalse);
+      },
+    );
+
+    test(
+      'explicit verification result overrides stored content status',
+      () async {
+        final item = (await contentRepo.getById('murmur-1'))!;
+        final entry = ContentFeedEntry(
+          item: item.copyWith(signatureVerified: true),
+          reasons: const {},
+        );
+        expect(
+          ContentTimelineItem(
+            entry,
+            signatureVerified: false,
+          ).signatureVerified,
+          isFalse,
+        );
+        expect(
+          ContentTimelineItem(entry, signatureVerified: true).signatureVerified,
+          isTrue,
+        );
+      },
+    );
+
     test('paginates with an opaque cursor', () async {
       final first = await source.fetch(followerDid: 'did:key:local', limit: 1);
       expect(first.items, hasLength(1));

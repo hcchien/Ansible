@@ -36,6 +36,9 @@ class ContentTimelineItem extends FollowTimelineItem {
   final ContentFeedEntry entry;
   final String? authorDisplayName;
   final String? authorHandle;
+
+  /// Keep verified local content verified when mapping into the timeline.
+  /// A source may explicitly override this when it has separate evidence.
   @override
   final bool signatureVerified;
   final int reactionCount;
@@ -43,12 +46,12 @@ class ContentTimelineItem extends FollowTimelineItem {
 
   ContentTimelineItem(
     this.entry, {
-    this.signatureVerified = false,
+    bool? signatureVerified,
     this.authorDisplayName,
     this.authorHandle,
     this.reactionCount = 0,
     this.commentCount = 0,
-  });
+  }) : signatureVerified = signatureVerified ?? entry.item.signatureVerified;
 
   @override
   DateTime get timestamp => entry.item.publishedAt ?? entry.item.createdAt;
