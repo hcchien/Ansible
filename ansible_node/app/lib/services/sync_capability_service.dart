@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'authority_witness_client.dart';
 
 import 'package:ansible_did/ansible_did.dart';
 import 'package:crypto/crypto.dart';
@@ -71,7 +70,6 @@ class SyncCapabilityService {
     WebAuthnPlatform? platform,
     DidSigner? didSigner,
     http.Client? client,
-    AuthorityWitnessClient? authorityWitness,
     DateTime Function()? now,
     PlatformCapabilities? platformCapabilities,
   }) : _baseUri = Uri.parse(baseUrl),
@@ -79,7 +77,6 @@ class SyncCapabilityService {
        _platform = platform ?? NativeWebAuthnPlatform(),
        _didSigner = didSigner ?? DidSignerImpl(),
        _client = client ?? http.Client(),
-       _witness = authorityWitness ?? AuthorityWitnessClient(client: client),
        _now = now ?? DateTime.now,
        _platformCapabilities =
            platformCapabilities ?? PlatformCapabilities.current;
@@ -89,7 +86,6 @@ class SyncCapabilityService {
   final WebAuthnPlatform _platform;
   final DidSigner _didSigner;
   final http.Client _client;
-  final AuthorityWitnessClient _witness;
   final DateTime Function() _now;
   final PlatformCapabilities _platformCapabilities;
 
@@ -179,11 +175,8 @@ class SyncCapabilityService {
       'elix.web.credentials.${sha256.convert(utf8.encode('$_holderDid\u0000$_baseUri'))}';
 
   /// Explicitly revoke every web credential this installation registered.
-  /// The independent observer must acknowledge before Relay is contacted.
+  /// Relay acknowledgement is independent of Viewer availability.
   Future<void> revokeSavedWebCredentials() async {
-    if (!_witness.enabled) {
-      throw StateError('authority_witness_not_configured');
-    }
     final prefs = await SharedPreferences.getInstance();
     final ids = prefs.getStringList(_credentialIdsKey) ?? [];
     if (ids.isEmpty) {
@@ -203,7 +196,6 @@ class SyncCapabilityService {
       final signature = await _didSigner.sign(
         utf8.encode(_canonicalJson(body)),
       );
-      await _witness.revoke(body, signature.hex);
       _cached = null;
       await _post(
         '/api/v2/webauthn/credentials/${Uri.encodeComponent(id)}/revoke',
@@ -216,10 +208,6 @@ class SyncCapabilityService {
   }
 
   Future<void> _enroll() async {
-    await _witness.checkpointFromRelay(
-      relayBaseUrl: _baseUri.toString(),
-      did: _holderDid,
-    );
     final challenge = await _post('/api/v2/webauthn/register/options', {
       'did': _holderDid,
     });

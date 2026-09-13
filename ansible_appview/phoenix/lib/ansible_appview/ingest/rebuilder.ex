@@ -24,7 +24,11 @@ defmodule AnsibleAppview.Ingest.Rebuilder do
   @doc "Pulls and folds pages from the saved cursor until the relay has no more."
   def drain(base_url \\ nil, max_pages \\ 100_000) do
     base = base_url || Application.fetch_env!(:ansible_appview, :relay_base_url)
-    do_drain(base, max_pages, 0)
+
+    case do_drain(base, max_pages, 0) do
+      {:ok, count} -> {:ok, count + AnsibleAppview.Authority.Pending.retry_due(base)}
+      error -> error
+    end
   end
 
   defp do_drain(_base, 0, total), do: {:ok, total}
@@ -34,7 +38,7 @@ defmodule AnsibleAppview.Ingest.Rebuilder do
 
     case RelayClient.fetch_delta(base, cursor) do
       {:ok, %{ops: ops, next_cursor: next_cursor, has_more: has_more}} ->
-        {indexed, _max_log} = Folder.apply_ops(ops)
+        {indexed, _max_log} = Folder.apply_ops(ops, authority_source: :relay)
         if next_cursor > cursor, do: CursorStore.put(next_cursor)
 
         cond do

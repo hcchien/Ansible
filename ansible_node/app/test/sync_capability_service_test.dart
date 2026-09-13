@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
-import 'package:ansible_node/services/authority_witness_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ansible_did/ansible_did.dart';
@@ -13,12 +12,13 @@ import 'package:http/testing.dart';
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
   test(
-    'enrolls a passkey then exchanges an assertion for a capability',
+    'enrolls and authorizes without contacting an unavailable Viewer',
     () async {
       final paths = <String>[];
       final bodies = <Map<String, dynamic>>[];
       final platform = _FakeWebAuthnPlatform();
       final client = MockClient((request) async {
+        expect(request.url.host, 'relay.example');
         paths.add(request.url.path);
         bodies.add(jsonDecode(request.body) as Map<String, dynamic>);
         switch (request.url.path) {
@@ -113,56 +113,37 @@ void main() {
           'forum.react',
         ]),
       );
-      await expectLater(service.revokeSavedWebCredentials(), throwsStateError);
-      expect(
-        paths,
-        isNot(contains('/api/v2/webauthn/credentials/Y3JlZA/revoke')),
-      );
+      await service.revokeSavedWebCredentials();
+      expect(paths, contains('/api/v2/webauthn/credentials/Y3JlZA/revoke'));
     },
   );
 
   test(
-    'observer failure prevents relay revoke and preserves retry; acknowledgement comes first',
+    'relay revoke failure preserves retry without contacting a Viewer',
     () async {
       final key =
           'elix.web.credentials.${sha256.convert(utf8.encode('did:elix:alice\u0000https://relay.example'))}';
       SharedPreferences.setMockInitialValues({
         key: ['Y3JlZA'],
       });
+      var available = false;
       final hosts = <String>[];
-      var acknowledge = false;
-      var relayAvailable = false;
-      final client = MockClient((request) async {
-        hosts.add(request.url.host);
-        if (request.url.host == 'observer.example') {
-          return http.Response(
-            acknowledge ? '{"revoked":true}' : '{"error":"unavailable"}',
-            acknowledge ? 200 : 503,
-          );
-        }
-        expect(request.url.path, '/api/v2/webauthn/credentials/Y3JlZA/revoke');
-        if (!relayAvailable) {
-          return http.Response('{"error":"unavailable"}', 503);
-        }
-        return _json({'revoked': true});
-      });
       final service = SyncCapabilityService(
         baseUrl: 'https://relay.example',
         holderDid: 'did:elix:alice',
         didSigner: _FakeDidSigner(),
         platform: _FakeWebAuthnPlatform(),
-        client: client,
-        authorityWitness: AuthorityWitnessClient(
-          baseUrl: 'https://observer.example',
-          client: client,
-        ),
+        client: MockClient((request) async {
+          hosts.add(request.url.host);
+          expect(
+            request.url.path,
+            '/api/v2/webauthn/credentials/Y3JlZA/revoke',
+          );
+          return available
+              ? _json({'revoked': true})
+              : http.Response('{"error":"unavailable"}', 503);
+        }),
       );
-      await expectLater(service.revokeSavedWebCredentials(), throwsStateError);
-      expect(hosts, ['observer.example']);
-      expect((await SharedPreferences.getInstance()).getStringList(key), [
-        'Y3JlZA',
-      ]);
-      acknowledge = true;
       await expectLater(
         service.revokeSavedWebCredentials(),
         throwsA(isA<SyncCapabilityException>()),
@@ -170,15 +151,9 @@ void main() {
       expect((await SharedPreferences.getInstance()).getStringList(key), [
         'Y3JlZA',
       ]);
-      relayAvailable = true;
+      available = true;
       await service.revokeSavedWebCredentials();
-      expect(hosts, [
-        'observer.example',
-        'observer.example',
-        'relay.example',
-        'observer.example',
-        'relay.example',
-      ]);
+      expect(hosts, ['relay.example', 'relay.example']);
       expect(
         (await SharedPreferences.getInstance()).getStringList(key),
         isEmpty,

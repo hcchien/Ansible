@@ -149,7 +149,7 @@ void main() {
   );
 
   testWidgets(
-    'authority actions explain missing observer without claiming success',
+    'revocation works without a Viewer and obsolete history action is absent',
     (tester) async {
       FlutterSecureStorage.setMockInitialValues({});
       final db = AppDatabase(NativeDatabase.memory());
@@ -176,9 +176,10 @@ void main() {
       await tester.ensureVisible(button);
       await tester.tap(button);
       await tester.pumpAndSettle();
-      expect(find.textContaining('此版本未設定公開索引服務'), findsOneWidget);
+      expect(find.textContaining('將向此 Relay 撤銷'), findsOneWidget);
+      expect(find.text('重新驗證本機公開歷史'), findsNothing);
       expect(find.text('此裝置記錄的網頁授權已撤銷。'), findsNothing);
-      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byType(AlertDialog), findsOneWidget);
     },
   );
 

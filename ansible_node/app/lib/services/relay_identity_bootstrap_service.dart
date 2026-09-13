@@ -4,7 +4,6 @@ import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_store/ansible_store.dart';
 
 import 'atproto_client.dart';
-import 'authority_witness_client.dart';
 import 'canonical_identity_store.dart';
 import 'relay_handle_store.dart';
 
@@ -32,7 +31,6 @@ class RelayIdentityBootstrapService {
     DidSigner? signer,
     String? preferredHandleSuffix,
     AtProtoClient? atProtoClient,
-    AuthorityWitnessClient? authorityWitness,
   }) async {
     if (did.trim().isEmpty) {
       throw StateError('missing_did');
@@ -102,11 +100,6 @@ class RelayIdentityBootstrapService {
       if (anchored.did != did || anchored.handle != handle) {
         throw StateError('relay_handle_mismatch');
       }
-      await (authorityWitness ?? AuthorityWitnessClient()).checkpointFromRelay(
-        relayBaseUrl: baseUrl,
-        did: did,
-        expectedPublicKeyHex: resolvedPublicKey,
-      );
       await handleStore.save(baseUrl, handle);
       return handle;
     } finally {

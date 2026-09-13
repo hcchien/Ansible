@@ -709,6 +709,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
     op
     |> Map.put(:identity_migration, migration)
     |> Map.put(:identity_chain, chain)
+    |> Map.put(:authority_status, AnsibleRelay.Authority.PublicStatus.for_operation(op, chain))
     |> Map.put(:anchor_expires_at, expiry)
     |> Map.put(:public_key_hex, IdentityCache.public_key_hex(author_did))
     |> Map.put(:signing_algorithm, signing_algorithm)

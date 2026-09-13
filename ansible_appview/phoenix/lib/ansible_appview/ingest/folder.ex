@@ -9,7 +9,7 @@ defmodule AnsibleAppview.Ingest.Folder do
   `OpsController.signing_payload/1` — the six sorted keys `author_did`,
   `entity_id`, `entity_type`, `op_id`, `op_type`, `payload`, with
   `schema_version`/`signature` excluded so signatures stay valid), and requires
-  an independent authority checkpoint and current authority on first observation.
+  a verified current Relay authority state on the configured ingest path.
   Exact witnessed history retains its verified authority on replay. Failures
   are excluded from projections and counted
   in `appview_ingest_rejections_total{reason}`.
@@ -42,7 +42,7 @@ defmodule AnsibleAppview.Ingest.Folder do
 
   @doc "Folds a list of relay op maps. Returns {indexed_count, max_log_id}."
   @spec apply_ops([map()]) :: {non_neg_integer(), integer() | nil}
-  def apply_ops(ops) when is_list(ops) do
+  def apply_ops(ops, opts \\ []) when is_list(ops) do
     # Verify the page before sequential projection upserts. Witness transactions
     # serialize authority changes and first observations for each DID.
     # Each entry is {op, decoded_payload, verification}, where verification is
@@ -50,7 +50,7 @@ defmodule AnsibleAppview.Ingest.Folder do
     prepared =
       ops
       |> Task.async_stream(
-        fn op -> prepare_op(op) end,
+        fn op -> prepare_op(op, opts) end,
         max_concurrency: System.schedulers_online(),
         ordered: true,
         timeout: 30_000,
@@ -82,6 +82,15 @@ defmodule AnsibleAppview.Ingest.Folder do
     # profile). Counted so the Phase 2 exit criterion — "public fold rejects bad
     # signatures with reason-coded metrics" — is measurable.
     record_rejections(prepared)
+
+    all_prepared = prepared
+    # A fresh configured-Relay hint can suppress an obsolete projection, but
+    # never bypass signature verification or create an author assertion.
+    prepared =
+      Enum.reject(prepared, fn {op, _, _} ->
+        opts[:authority_source] == :relay and
+          get_in(op, ["authority_status", "superseded"]) == true
+      end)
 
     target_revisions =
       for {op, payload, {:ok, _expires}} <- prepared,
@@ -149,6 +158,14 @@ defmodule AnsibleAppview.Ingest.Folder do
     # exit metric. The ingest-lag gauge is sampled by Metrics.poll_gauges.
     folded = Enum.count(prepared, fn {_op, _payload, v} -> match?({:ok, _}, v) end)
     if folded > 0, do: AnsibleAppview.Metrics.inc("appview_ingest_folds_total", %{}, folded)
+
+    # Only retire pending work after all projection writes succeeded.
+    for {op, _, {:ok, _}} <- all_prepared do
+      Repo.query!("DELETE FROM authority_pending WHERE did=$1 AND op_id=$2", [
+        op["author_did"],
+        op["op_id"]
+      ])
+    end
 
     {indexed, max_log}
   end
@@ -244,14 +261,16 @@ defmodule AnsibleAppview.Ingest.Folder do
   # Per-op preparation, guarded so a single malformed op (decode/verify raising)
   # is dead-lettered and skipped rather than crashing the whole page fold. A
   # timeout is handled separately (the task is killed and surfaces as {:exit,_}).
-  defp prepare_op(op) do
+  defp prepare_op(op, opts) do
     payload = decode_payload(op["payload"])
 
     result =
       if op["removed"] == true do
         {:error, :moderation_removed}
       else
-        AnsibleAppview.Authority.Witness.observe(op, payload)
+        if opts[:authority_source] == :relay,
+          do: AnsibleAppview.Authority.Witness.observe_relay(op, payload),
+          else: AnsibleAppview.Authority.Witness.observe(op, payload)
       end
 
     case result do
@@ -531,7 +550,11 @@ defmodule AnsibleAppview.Ingest.Folder do
       source:
         if(get_in(payload, ["web_author_proof", "scheme"]) == "webauthn-p256-sha256",
           do: "independent_webauthn_author_proof",
-          else: @source
+          else:
+            if(op["observation_kind"] == "relay_state_checked",
+              do: "relay_state_checked",
+              else: @source
+            )
         ),
       verified_at: now,
       # Retain the original signature so clients/third parties can re-verify

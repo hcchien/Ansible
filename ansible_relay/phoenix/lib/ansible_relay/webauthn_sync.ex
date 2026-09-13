@@ -277,8 +277,7 @@ defmodule AnsibleRelay.WebauthnSync do
           credential.delegation_expires_at &&
             DateTime.to_iso8601(credential.delegation_expires_at),
         "revoked_at" => credential.revoked_at && DateTime.to_iso8601(credential.revoked_at),
-        "last_used_at" =>
-          credential.last_used_at && DateTime.to_iso8601(credential.last_used_at)
+        "last_used_at" => credential.last_used_at && DateTime.to_iso8601(credential.last_used_at)
       }
     end)
   end
@@ -297,10 +296,7 @@ defmodule AnsibleRelay.WebauthnSync do
          {:ok, revoked_at, _} <- DateTime.from_iso8601(revocation["revoked_at"] || ""),
          true <- abs(DateTime.diff(DateTime.utc_now(), revoked_at, :second)) <= 300,
          true <- IdentityCache.verify_signature(did, canonical_json(revocation), signature),
-         {:ok, updated} <-
-           credential
-           |> Ecto.Changeset.change(revoked_at: revoked_at)
-           |> Repo.update() do
+         {:ok, updated} <- persist_revocation(credential, revoked_at) do
       {:ok, updated}
     else
       nil -> {:error, :unknown_credential}
@@ -312,6 +308,30 @@ defmodule AnsibleRelay.WebauthnSync do
 
   def revoke_credential(_did, _encoded_id, _revocation, _signature),
     do: {:error, :invalid_did_proof}
+
+  # Preserve the first effective revoke across retries and concurrent requests.
+  # Moving it forward would incorrectly authorize receipts between attempts.
+  defp persist_revocation(credential, revoked_at) do
+    Repo.update_all(
+      from(c in WebauthnCredential,
+        where: c.credential_id == ^credential.credential_id,
+        update: [
+          set: [
+            revoked_at:
+              fragment(
+                "LEAST(COALESCE(?, ?), ?)",
+                c.revoked_at,
+                type(^revoked_at, :utc_datetime_usec),
+                type(^revoked_at, :utc_datetime_usec)
+              )
+          ]
+        ]
+      ),
+      []
+    )
+
+    {:ok, Repo.get!(WebauthnCredential, credential.credential_id)}
+  end
 
   # The content hash is independently reconstructible by every verifier. The
   # signed operation contains a per-operation nonce to avoid challenge reuse.

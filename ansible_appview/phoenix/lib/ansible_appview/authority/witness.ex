@@ -9,6 +9,182 @@ defmodule AnsibleAppview.Authority.Witness do
   alias AnsibleAppview.Identity.{AnchorEncoding, ChainVerifier}
   alias AnsibleAppview.Ingest.AuthorVerifier
 
+  @doc "Consume current status from the configured Relay, never an App checkpoint."
+  def observe_relay(op, payload) do
+    # Existing immutable observations remain replayable after expiry/rotation.
+    case Repo.query!("SELECT 1 FROM authority_observations WHERE did=$1 AND op_id=$2", [
+           op["author_did"],
+           op["op_id"]
+         ]).rows do
+      [_] -> observe(op, payload)
+      [] -> observe_relay_first(op, payload)
+    end
+  end
+
+  defp observe_relay_first(op, payload) do
+    did = op["author_did"]
+    status = op["authority_status"]
+    chain = op["identity_chain"]
+
+    result =
+      with %{"version" => 1, "state" => "active", "did" => ^did} <- status,
+           {:ok, checked, _} <- DateTime.from_iso8601(status["checked_at"] || ""),
+           true <- abs(DateTime.diff(now(), checked)) <= 300,
+           {:ok, received, _} <- DateTime.from_iso8601(op["received_at"] || ""),
+           true <- DateTime.compare(received, DateTime.add(now(), 300)) != :gt,
+           true <- is_list(chain) and length(chain) in 1..128,
+           true <- byte_size(Jason.encode!(chain)) <= 262_144,
+           true <- ChainVerifier.verified_chain?(did, chain) do
+        locked(did, fn ->
+          with :ok <- relay_frontier(did, chain),
+               :ok <- relay_credential_status(did, payload, status["credential"]) do
+            op
+            |> Map.put(:relay_receipt_at, received)
+            |> authoritative_op(chain, now())
+            |> observe(payload)
+          end
+        end)
+      else
+        _ -> {:error, :relay_authority_unavailable}
+      end
+
+    case result do
+      {:error, reason} -> defer(op, reason)
+      ok -> ok
+    end
+  rescue
+    _ -> defer(op, :relay_authority_unavailable)
+  end
+
+  # This mode explicitly trusts the Relay for latest-state completeness and
+  # recovery activation. It does NOT claim independent recovery observation.
+  # Previously learned chains still cannot be rolled back or forked.
+  defp relay_frontier(did, chain) do
+    previous = frontier(did)
+
+    vetoed =
+      Enum.any?(chain, fn anchor ->
+        anchor["reason"] == "recovery" and
+          Repo.query!(
+            "SELECT 1 FROM authority_revocations WHERE did=$1 AND credential_hash=$2",
+            [did, "anchor:" <> AnchorEncoding.compute_cid(anchor)]
+          ).rows != []
+      end)
+
+    cond do
+      vetoed ->
+        {:error, :recovery_vetoed}
+
+      previous && not prefix?(previous.chain, chain) ->
+        {:error, :authority_rollback_or_fork}
+
+      previous && previous.chain == chain ->
+        :ok
+
+      true ->
+        sequence = if previous, do: previous.sequence + 1, else: 1
+
+        Repo.query!(
+          "INSERT INTO authority_frontiers (did,chain,sequence,observed_at) VALUES ($1,$2,$3,$4) ON CONFLICT (did) DO UPDATE SET chain=EXCLUDED.chain,sequence=EXCLUDED.sequence,observed_at=EXCLUDED.observed_at,pending=NULL,pending_since=NULL",
+          [did, %{"anchors" => chain}, sequence, now()]
+        )
+
+        :ok
+    end
+  end
+
+  defp relay_credential_status(did, %{"web_author_proof" => proof}, status) when is_map(proof) do
+    hash = get_in(proof, ["delegation", "credential_id_hash"])
+
+    case status do
+      %{"credential_hash" => ^hash, "state" => "active"} when is_binary(hash) ->
+        :ok
+
+      %{"credential_hash" => ^hash, "state" => "revoked", "revoked_at" => at}
+      when is_binary(hash) ->
+        with {:ok, revoked, _} <- DateTime.from_iso8601(at),
+             true <- DateTime.compare(revoked, DateTime.add(now(), 300)) != :gt do
+          # Permanent union: a later active snapshot cannot undo a known revoke.
+          Repo.query!(
+            "INSERT INTO authority_revocations (did,credential_hash,evidence,observed_at) VALUES ($1,$2,$3,$4) ON CONFLICT (did,credential_hash) DO UPDATE SET observed_at=LEAST(authority_revocations.observed_at,EXCLUDED.observed_at)",
+            [did, hash, %{"source" => "configured_relay", "revoked_at" => at}, revoked]
+          )
+
+          :ok
+        else
+          _ -> {:error, :relay_authority_unavailable}
+        end
+
+      _ ->
+        {:error, :relay_authority_unavailable}
+    end
+  end
+
+  defp relay_credential_status(_, _, _), do: :ok
+
+  defp receipt_authority(op, payload, chain, received) do
+    # Relay receipt time, not a payload's backdated claimed creation time, fixes
+    # eligibility for a previously unseen historical operation.
+    eligible =
+      Enum.filter(chain, fn anchor ->
+        case DateTime.from_iso8601(anchor["created_at"] || "") do
+          {:ok, at, _} -> DateTime.compare(at, received) != :gt
+          _ -> false
+        end
+      end)
+
+    case List.last(eligible) do
+      nil ->
+        {:error, :unobserved_obsolete_authority}
+
+      anchor ->
+        case payload["web_author_proof"] do
+          %{"delegation" => delegation} = proof ->
+            with true <-
+                   current_signature?(
+                     [anchor],
+                     AuthorVerifier.canonical_json(delegation),
+                     proof["delegation_signature"]
+                   ),
+                 {:ok, issued, _} <- DateTime.from_iso8601(delegation["issued_at"] || ""),
+                 {:ok, expires, _} <- DateTime.from_iso8601(delegation["expires_at"] || ""),
+                 true <-
+                   DateTime.compare(received, issued) != :lt and
+                     DateTime.compare(received, expires) == :lt,
+                 %{rows: []} <-
+                   Repo.query!(
+                     "SELECT 1 FROM authority_revocations WHERE did=$1 AND credential_hash=$2 AND observed_at <= $3",
+                     [op["author_did"], delegation["credential_id_hash"], received]
+                   ) do
+              :ok
+            else
+              _ -> {:error, :delegation_not_current}
+            end
+
+          _ ->
+            if current_signature?([anchor], SigningPayload.build(op), op["signature"]),
+              do: :ok,
+              else: {:error, :unobserved_obsolete_authority}
+        end
+    end
+  end
+
+  def defer(op, reason) do
+    did = op["author_did"]
+    id = op["op_id"]
+    log = op["log_id"]
+
+    if is_binary(did) and byte_size(did) <= 512 and is_binary(id) and byte_size(id) in 1..512 and
+         is_integer(log) and log > 0 and log <= 9_223_372_036_854_775_807 do
+      Repo.query!(
+        "INSERT INTO authority_pending (did,op_id,digest,log_id,reason) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (did,op_id) DO NOTHING",
+        [did, id, operation_digest(op), log, Atom.to_string(reason)]
+      )
+    end
+
+    {:error, reason}
+  end
+
   def checkpoint(did, chain) when is_binary(did) and is_list(chain) and length(chain) in 1..128 do
     if byte_size(Jason.encode!(chain)) <= 262_144 and ChainVerifier.verified_chain?(did, chain) do
       locked(did, fn ->
@@ -101,7 +277,7 @@ defmodule AnsibleAppview.Authority.Witness do
 
         case result do
           {:ok, _} ->
-            Repo.query!("DELETE FROM authority_pending WHERE did=$1 AND op_id=$2", [did, id])
+            :ok
 
           {:error, reason}
           when reason in [
@@ -241,13 +417,20 @@ defmodule AnsibleAppview.Authority.Witness do
              %{chain: chain} <- frontier(did),
              current_op <- authoritative_op(op, chain, observed_at),
              {:ok, _} <- AuthorVerifier.verify(current_op, payload),
-             :ok <- current_authority(current_op, payload, chain, observed_at),
+             :ok <- check_observation_authority(current_op, payload, chain, observed_at),
              bound <- AuthorVerifier.bind_provenance(current_op, payload),
              bound <- current_canonical_author(bound, current_op, chain) do
           authority =
             Map.take(
               bound,
               ~w(identity_chain public_key_hex signing_algorithm canonical_author_did anchor_expires_at)
+            )
+            |> Map.put(
+              "observation_kind",
+              if(op[:relay_receipt_at],
+                do: "relay_state_checked",
+                else: "independent_observation"
+              )
             )
 
           Repo.query!(
@@ -260,6 +443,13 @@ defmodule AnsibleAppview.Authority.Witness do
           nil -> {:error, :authority_checkpoint_required}
           {:error, _} = error -> error
         end
+    end
+  end
+
+  defp check_observation_authority(op, payload, chain, observed_at) do
+    case op[:relay_receipt_at] do
+      %DateTime{} = received -> receipt_authority(op, payload, chain, received)
+      _ -> current_authority(op, payload, chain, observed_at)
     end
   end
 

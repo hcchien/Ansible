@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 
 import '../config/app_environment.dart';
 import '../config/protocol.dart';
-import 'authority_witness_client.dart';
 
 /// Typed client for the relay's self-certifying identity-anchor endpoints
 /// (recovery design Task 4, relay-side committed). Matches
@@ -107,16 +106,13 @@ class RelayAnchorClient {
   final Uri baseUri;
   final http.Client _client;
   final Duration timeout;
-  final AuthorityWitnessClient _witness;
 
   RelayAnchorClient({
     String baseUrl = kDefaultRelayBaseUrl,
     http.Client? client,
-    AuthorityWitnessClient? authorityWitness,
     this.timeout = const Duration(seconds: 10),
   }) : baseUri = Uri.parse(baseUrl),
-       _client = client ?? http.Client(),
-       _witness = authorityWitness ?? AuthorityWitnessClient(client: client);
+       _client = client ?? http.Client();
 
   /// Submits [anchor] to the relay. When [recoveryProof] is non-null it is sent
   /// as the sibling `recovery_proof` field (the enrolled device-key signature
@@ -137,19 +133,6 @@ class RelayAnchorClient {
         response.statusCode == 201 ||
         response.statusCode == 202) {
       final graceRaw = decoded['grace_until'];
-      if (decoded['state'] == 'active') {
-        await _witness.checkpointFromRelay(
-          relayBaseUrl: baseUri.toString(),
-          did: anchor.did,
-          expectedAnchor: anchor,
-        );
-      } else if (decoded['state'] == 'pending') {
-        await _witness.announceRecovery(
-          relayBaseUrl: baseUri.toString(),
-          did: anchor.did,
-          candidate: payload,
-        );
-      }
       return AnchorSubmitResult(
         state: AnchorState.parse(decoded['state'] as String),
         anchorCid: decoded['anchor_cid'] as String,
@@ -198,11 +181,6 @@ class RelayAnchorClient {
     if (response.statusCode == 200) {
       final decoded = _decodeObject(response);
       final anchor = IdentityAnchor.fromMap(decoded);
-      await _witness.checkpointFromRelay(
-        relayBaseUrl: baseUri.toString(),
-        did: did,
-        expectedAnchor: anchor,
-      );
       return anchor;
     }
     throw _toException(response, _tryDecode(response));
@@ -244,13 +222,6 @@ class RelayAnchorClient {
     required String pendingAnchorCid,
     required String vetoSig,
   }) async {
-    final pending = _witness.enabled ? await fetchPendingAnchor(did) : null;
-    await _witness.veto(
-      did: did,
-      cid: pendingAnchorCid,
-      signature: vetoSig,
-      canonicalBody: pending?.canonicalBody,
-    );
     final response = await _post('/api/v1/identity/anchor/veto', {
       'did': did,
       'pending_anchor_cid': pendingAnchorCid,
