@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'package:ansible_domain/ansible_domain.dart';
+import 'app_view_timeline_client.dart';
 
 import 'package:http/http.dart' as http;
 
 import '../config/protocol.dart';
+import '../config/app_environment.dart';
 
 /// An actor surfaced by discovery (suggestions or people search).
 class DiscoveredActor {
@@ -123,6 +126,7 @@ class DiscoveredPost {
   final String entityId;
   final String authorDid;
   final String? visibility;
+  final bool? signatureVerified;
   final String? reputationTier;
 
   /// Forum routing context (present for `post` entities; null for note/murmur),
@@ -137,6 +141,7 @@ class DiscoveredPost {
     required this.authorDid,
     required this.payload,
     this.visibility,
+    this.signatureVerified,
     this.reputationTier,
     this.boardId,
     this.threadId,
@@ -163,6 +168,7 @@ class DiscoveredPost {
       entityId: m['entity_id'] as String? ?? '',
       authorDid: m['author_did'] as String? ?? '',
       visibility: m['visibility'] as String?,
+      signatureVerified: m['sig_verified'] as bool?,
       reputationTier: m['reputation_tier'] as String?,
       // Top-level board_id/thread_id, falling back to the payload's camelCase.
       boardId: str(m['board_id']) ?? str(payload['boardId']),
@@ -173,12 +179,21 @@ class DiscoveredPost {
 }
 
 /// Result of a unified search.
+class PublicPostPage {
+  const PublicPostPage(this.items, this.cursor, this.hasMore);
+  final List<DiscoveredPost> items;
+  final int? cursor;
+  final bool hasMore;
+}
+
 class SearchResults {
   final List<DiscoveredActor> actors;
   final List<DiscoveredPost> posts;
   final List<BoardSearchResult> boards;
+  final bool partialFailure;
 
   const SearchResults({
+    this.partialFailure = false,
     this.actors = const [],
     this.posts = const [],
     this.boards = const [],
@@ -189,16 +204,18 @@ class SearchResults {
 /// boards come from the relay (which owns board metadata).
 class DiscoveryClient {
   final String appViewBaseUrl;
-  final String relayBaseUrl;
+  final String? _relayBaseUrl;
+  String get relayBaseUrl => _relayBaseUrl ?? AppEnvironment.socialRelayBaseUrl;
   final http.Client _client;
 
   DiscoveryClient({
     required this.appViewBaseUrl,
-    required this.relayBaseUrl,
+    String? relayBaseUrl,
     http.Client? client,
-  }) : _client = client ?? http.Client();
+  }) : _relayBaseUrl = relayBaseUrl,
+       _client = client ?? http.Client();
 
-  bool get appViewEnabled => appViewBaseUrl.trim().isNotEmpty;
+  bool get appViewEnabled => relayBaseUrl.trim().isNotEmpty;
 
   /// A successful save or sync does not prove the public index is up to date.
   /// Look up this DID directly; recommendations intentionally exclude self.
@@ -216,12 +233,34 @@ class DiscoveryClient {
     return actor;
   }
 
-  Uri _appView(String path, [Map<String, String>? query]) => Uri.parse(
-    '${_trim(appViewBaseUrl)}$path',
-  ).replace(queryParameters: query);
+  Uri _appView(String path, [Map<String, String>? query]) =>
+      Uri.parse('${_trim(relayBaseUrl)}$path').replace(queryParameters: query);
 
   Uri _relay(String path, [Map<String, String>? query]) =>
       Uri.parse('${_trim(relayBaseUrl)}$path').replace(queryParameters: query);
+
+  Future<AppViewTimelinePage> thread({required String id, int? cursor}) =>
+      AppViewTimelineClient(
+        baseUrl: relayBaseUrl,
+        client: _client,
+      ).fetchThread(threadId: id, cursor: cursor);
+
+  Future<DiscoveredPost> content(String type, String id) async {
+    final response = await _client
+        .get(
+          _relay(
+            '/api/v1/content/${Uri.encodeComponent(type)}/${Uri.encodeComponent(id)}',
+          ),
+          headers: AnsibleProtocol.headers,
+        )
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw PublicContentException(response.statusCode);
+    }
+    return DiscoveredPost.fromJson(
+      Map<String, dynamic>.from(_decode(response, 'content')['item'] as Map),
+    );
+  }
 
   /// Who-to-follow suggestions for [readerDid].
   Future<List<DiscoveredActor>> suggestFollows({
@@ -241,15 +280,42 @@ class DiscoveryClient {
 
   /// Global newest-first public feed.
   Future<List<DiscoveredPost>> explore({int? cursor, int limit = 50}) async {
-    if (!appViewEnabled) return const [];
-    final res = await _client.get(
-      _appView('/api/v1/explore', {
-        if (cursor != null) 'cursor': '$cursor',
-        'limit': '$limit',
-      }),
-      headers: AnsibleProtocol.headers,
+    final posts = <DiscoveredPost>[];
+    for (var pageIndex = 0; pageIndex < 40; pageIndex++) {
+      final page = await explorePage(
+        cursor: cursor,
+        limit: limit - posts.length,
+      );
+      posts.addAll(page.items);
+      if (!page.hasMore ||
+          posts.length >= limit ||
+          page.cursor == null ||
+          page.cursor == cursor) {
+        return posts;
+      }
+      cursor = page.cursor;
+    }
+    if (posts.isEmpty) throw StateError('public_scan_incomplete');
+    return posts;
+  }
+
+  Future<PublicPostPage> explorePage({int? cursor, int limit = 50}) async {
+    if (!appViewEnabled) return const PublicPostPage([], null, false);
+    final res = await _client
+        .get(
+          _appView('/api/v1/explore', {
+            if (cursor != null) 'cursor': '$cursor',
+            'limit': '$limit',
+          }),
+          headers: AnsibleProtocol.headers,
+        )
+        .timeout(const Duration(seconds: 10));
+    final body = _decode(res, 'explore');
+    return PublicPostPage(
+      _postList(body['items']),
+      body['next_cursor'] as int?,
+      body['has_more'] == true,
     );
-    return _postList(_decode(res, 'explore')['items']);
   }
 
   /// Unified people + content search (AppView) plus board search (relay).
@@ -257,23 +323,27 @@ class DiscoveryClient {
     final q = query.trim();
     if (q.isEmpty) return const SearchResults();
 
-    // AppView and Relay are independent discovery sources. One projection
-    // being temporarily unavailable must not erase valid results from the
-    // other source.
+    Object? peopleError;
+    Object? boardError;
     final results = await Future.wait([
-      _searchPeopleAndPosts(q, limit).onError((_, _) => const SearchResults()),
-      searchBoards(
-        query: q,
-        limit: limit,
-      ).onError((_, _) => const <BoardSearchResult>[]),
+      _searchPeopleAndPosts(q, limit).onError((error, _) {
+        peopleError = error;
+        return const SearchResults();
+      }),
+      searchBoards(query: q, limit: limit).onError((error, _) {
+        boardError = error;
+        return const <BoardSearchResult>[];
+      }),
     ]);
-
+    if (peopleError != null && boardError != null) {
+      throw StateError('Public search unavailable');
+    }
     final peoplePosts = results[0] as SearchResults;
-    final boards = results[1] as List<BoardSearchResult>;
     return SearchResults(
       actors: peoplePosts.actors,
       posts: peoplePosts.posts,
-      boards: boards,
+      boards: results[1] as List<BoardSearchResult>,
+      partialFailure: peopleError != null || boardError != null,
     );
   }
 
@@ -340,10 +410,15 @@ class DiscoveryClient {
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw StateError('Discovery $label failed: ${res.statusCode}');
     }
-    return jsonDecode(res.body) as Map<String, dynamic>;
+    return jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
   }
 
   void close() => _client.close();
 
   static String _trim(String url) => url.replaceAll(RegExp(r'/+$'), '');
+}
+
+class PublicContentException implements Exception {
+  const PublicContentException(this.status);
+  final int status;
 }

@@ -136,8 +136,7 @@ class HomeTopBar extends StatelessWidget {
                         db: db,
                         localDid: did,
                         client: DiscoveryClient(
-                          appViewBaseUrl: AppEnvironment.appViewBaseUrl,
-                          relayBaseUrl: AppEnvironment.defaultRelayBaseUrl,
+                          appViewBaseUrl: AppEnvironment.socialRelayBaseUrl,
                         ),
                       ),
                     ),

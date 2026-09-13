@@ -4988,3 +4988,15 @@ h4 {
 .discovery-page button { margin-top: 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); font: inherit; cursor: pointer; }
 
 .rail-board-row .board-policy { display: block; white-space: normal; overflow-wrap: anywhere; font-size: 12px; line-height: 1.5; color: var(--muted); }
+
+/* Exact public content shares reuse the established paper/surface tokens. */
+.standalone-content { width: min(100%, 780px); margin: 24px auto; min-width: 0; }
+.standalone-content-card { padding: 24px; margin-bottom: 20px; border: 0.5px solid var(--border); border-radius: 16px; background: var(--surface); overflow-wrap: anywhere; }
+.standalone-content-card h1 { margin: 18px 0; font-family: var(--serif); }
+.standalone-content-card p { line-height: 1.8; color: var(--text); }
+.standalone-content h2 { margin: 24px 0 16px; }
+.trust-explanation { display: inline-block; max-width: 100%; vertical-align: middle; }
+.trust-explanation summary { cursor: pointer; }
+.trust-explanation[open] { display: block; margin: 8px 0; }
+.trust-explanation p { max-width: 65ch; font-size: 13px; line-height: 1.6; color: var(--muted); white-space: normal; }
+@media (max-width: 600px) { .standalone-content { margin: 16px auto; } .standalone-content-card { padding: 18px; } }

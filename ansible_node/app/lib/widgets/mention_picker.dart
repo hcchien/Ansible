@@ -57,6 +57,18 @@ class MentionDraft {
         .toList(growable: false);
   }
 
+  Map<String, String> toJson() => Map.of(_tokenByDid);
+  void restore(Object? value) {
+    _tokenByDid.clear();
+    if (value is Map) {
+      for (final entry in value.entries.take(10)) {
+        if (entry.key is String && entry.value is String) {
+          _tokenByDid[entry.key as String] = entry.value as String;
+        }
+      }
+    }
+  }
+
   void clear() => _tokenByDid.clear();
 
   static bool _containsToken(String content, String token) {
@@ -151,8 +163,7 @@ Future<DiscoveredActor?> showMentionPicker({
   DiscoveryClient? fallbackClient;
   if (search == null) {
     fallbackClient = DiscoveryClient(
-      appViewBaseUrl: AppEnvironment.appViewBaseUrl,
-      relayBaseUrl: AppEnvironment.defaultRelayBaseUrl,
+      appViewBaseUrl: AppEnvironment.socialRelayBaseUrl,
     );
   }
   final actorSearch =

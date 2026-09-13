@@ -122,6 +122,8 @@ export function createForumUiApp({
         await submitModerationAction(actionElement);
       } else if (action === 'open-notification') {
         await openNotification(actionElement);
+      } else if (action === 'retry-current-page') {
+        await navigate(windowLike.location.hash);
       } else if (action === 'mark-all-notifications-read') {
         await markAllNotificationsRead();
       }

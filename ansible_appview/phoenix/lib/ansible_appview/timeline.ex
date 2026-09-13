@@ -18,6 +18,33 @@ defmodule AnsibleAppview.Timeline do
 
   @relayable ~w(public unlisted)
 
+  @doc "Exact standalone content lookup, retaining verification and visibility gates."
+  def content(type, id) when type in ["murmur", "note"] do
+    row =
+      read_repo().one(
+        from(f in FeedItem,
+          where: f.entity_type == ^type and f.entity_id == ^id,
+          order_by: [desc: f.log_id],
+          limit: 1
+        )
+      )
+
+    case row do
+      %FeedItem{deleted: false, sig_verified: true, visibility: visibility} = item
+      when visibility in ["public", "unlisted"] ->
+        {:ok, to_map(item)}
+
+      %FeedItem{deleted: true, visibility: visibility}
+      when visibility in ["public", "unlisted"] ->
+        {:error, :deleted}
+
+      _ ->
+        {:error, :not_found}
+    end
+  end
+
+  def content(_, _), do: {:error, :not_found}
+
   @doc """
   Personalized home timeline for one reader (fan-out-on-write read path).
 
@@ -553,7 +580,8 @@ defmodule AnsibleAppview.Timeline do
       created_at: f.item_created_at && DateTime.to_iso8601(f.item_created_at),
       payload: f.payload,
       public_key_hex: f.public_key_hex,
-      reputation_tier: f.author_tier
+      reputation_tier: f.author_tier,
+      sig_verified: f.sig_verified
     }
   end
 

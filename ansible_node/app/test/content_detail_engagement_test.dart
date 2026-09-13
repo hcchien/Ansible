@@ -1,3 +1,4 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_node/screens/content_detail_screen.dart';
 import 'package:ansible_node/services/discovery_client.dart';
@@ -14,6 +15,7 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUp(() => FlutterSecureStorage.setMockInitialValues({}));
   testWidgets(
     'detail merges AppView engagement with local rows using canonical DIDs',
     (tester) async {

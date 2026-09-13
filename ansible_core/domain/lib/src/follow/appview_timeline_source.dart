@@ -7,6 +7,7 @@ import 'follow_feed_source.dart';
 /// A verified timeline item returned by the AppView (already signature-checked by
 /// the transport). Field names mirror the AppView `/api/v1/timeline` response.
 class AppViewTimelineItem {
+  final bool signatureVerified;
   final String entityType;
   final String entityId;
   final String authorDid;
@@ -22,6 +23,7 @@ class AppViewTimelineItem {
   final int commentCount;
 
   const AppViewTimelineItem({
+    this.signatureVerified = false,
     required this.entityType,
     required this.entityId,
     required this.authorDid,
@@ -50,8 +52,8 @@ class AppViewTimelinePage {
   });
 }
 
-/// Transport supplied by the app: performs the AppView HTTP call AND re-verifies
-/// each item's Ed25519 signature + DID-key binding, returning only trusted items.
+/// Transport supplied by the app for Relay public reads. Verification status
+/// is explicit per item; callers must not infer it from an author DID.
 /// Keeping it injected lets the domain layer stay free of HTTP and crypto deps.
 typedef AppViewTimelineFetcher =
     Future<AppViewTimelinePage> Function({
@@ -204,7 +206,7 @@ class AppViewTimelineSource implements FollowFeedSource {
           createdAt: created,
           updatedAt: created,
           lastEditAt: created,
-          signatureVerified: true,
+          signatureVerified: raw.signatureVerified,
         );
         final thread = Thread(
           id: raw.threadId!,
@@ -254,7 +256,7 @@ class AppViewTimelineSource implements FollowFeedSource {
           ),
           authorDisplayName: raw.authorDisplayName,
           authorHandle: raw.authorHandle,
-          signatureVerified: true,
+          signatureVerified: raw.signatureVerified,
           reactionCount: raw.reactionCount,
           commentCount: raw.commentCount,
         );

@@ -85,6 +85,7 @@ class TimelineBoardView extends StatelessWidget {
                               db: db,
                               localDid: did,
                               contentId: data.thread.id,
+                              contentKind: data.contentKind,
                               authorDid: data.author,
                               body: data.content,
                               title: data.title,
@@ -223,8 +224,7 @@ class TimelineBoardView extends StatelessWidget {
           localDid: did,
           startOnBoards: boards,
           client: DiscoveryClient(
-            appViewBaseUrl: AppEnvironment.appViewBaseUrl,
-            relayBaseUrl: AppEnvironment.defaultRelayBaseUrl,
+            appViewBaseUrl: AppEnvironment.socialRelayBaseUrl,
           ),
         ),
       ),

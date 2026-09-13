@@ -198,6 +198,20 @@ export function createForumDataAdapter({
     };
   }
 
+  async function loadContentPage({type, id, sessionViewModel} = {}) {
+    const home = await loadForumHome({sessionViewModel});
+    try {
+      const api = createRelayApiClient({relayBaseUrl: appViewBaseUrl, fetchImpl});
+      const response = await api.getJson(`/api/v1/content/${encodeURIComponent(type)}/${encodeURIComponent(id)}`);
+      try {
+        const replies = await loadThreadFeed(id);
+        return {...home, content: response.item, contentReplies: (replies?.items ?? []).filter(item => ['post', 'comment'].includes(item.entity_type)), error: null};
+      } catch (error) { return {...home, content: response.item, contentReplies: [], error: normalizeFrontendError(error)}; }
+    } catch (error) {
+      return {...home, content: null, contentReplies: [], error: normalizeFrontendError(error)};
+    }
+  }
+
   async function loadDiscoveryPage({query = '', sessionViewModel} = {}) {
     query = String(query).trim().slice(0, 200);
     const home = await loadForumHome({sessionViewModel});
@@ -207,7 +221,11 @@ export function createForumDataAdapter({
     ]);
     return {...home, discovery: {
       actors: results[0].status === 'fulfilled' ? results[0].value.items ?? [] : [],
-      posts: results[1].status === 'fulfilled' ? results[1].value.items ?? [] : [],
+      posts: results[1].status === 'fulfilled' ? (results[1].value.items ?? []).map(post => {
+        const rawBoard = post.board_id || post.payload?.boardId;
+        const board = home.boards.find(candidate => boardMatchesRoute(candidate, rawBoard));
+        return board ? {...post, board_id: board.slug || board.id} : post;
+      }) : [],
       boards: home.boards.filter(board => !query || `${board.title} ${board.description ?? ''}`.toLocaleLowerCase().includes(query.toLocaleLowerCase())),
       unavailable: results.some(result => result.status === 'rejected'),
     }};
@@ -1042,6 +1060,7 @@ export function createForumDataAdapter({
     loadForumHome,
     loadDiscoveryPage,
     loadProfilePage,
+    loadContentPage,
     loadBoardPage,
     loadDeliberationPage,
     loadThreadPage,
@@ -1556,7 +1575,8 @@ function normalizeAuthorDisplayName(item, payload = {}) {
 }
 
 function boardMatchesRoute(board, routeBoardId) {
-  const requested = String(routeBoardId ?? '');
+  const raw = String(routeBoardId ?? '');
+  const requested = /^\d+_(.+)$/.exec(raw)?.[1] ?? raw;
   return [board?.id, board?.slug, board?.legacyHostedBoardId]
     .map((value) => String(value ?? ''))
     .includes(requested);

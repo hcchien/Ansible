@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 import '../config/app_environment.dart';
 import '../l10n/app_l10n.dart';
+import '../services/composer_draft_store.dart';
 import '../l10n/moderation_copy.dart';
 import '../l10n/user_facing_error.dart';
 import '../services/elix_content_link.dart';
@@ -30,6 +31,7 @@ import 'post_composer_screen.dart';
 import '../widgets/posting_gate_notice.dart';
 import '../widgets/report_dialog.dart';
 import 'user_profile_screen.dart';
+import 'sync_settings_screen.dart';
 
 /// Seam for invoking the platform share sheet. Defaults to share_plus; tests
 /// inject a fake to assert the constructed URL without a real share sheet.
@@ -438,7 +440,10 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   Future<void> _createPost() async {
     final result = await Navigator.of(context).push<PostComposerResult>(
       MaterialPageRoute(
-        builder: (_) => PostComposerScreen(authorDid: _authorDid),
+        builder: (_) => PostComposerScreen(
+          authorDid: _authorDid,
+          draftTarget: 'thread:${widget.thread.id}',
+        ),
       ),
     );
 
@@ -453,10 +458,13 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         createdAt: now,
         updatedAt: now,
         lastEditAt: now,
-        signatureVerified: true, // signed locally via the ops dispatch below
+        signatureVerified: false, // becomes verified after signing succeeds
         mentions: result.mentions,
       );
       await _postRepo.create(post);
+      if (result.draftKey != null) {
+        await ComposerDraftStore.shared.clear(result.draftKey!);
+      }
       final projection = _hostedProjection;
       await _enqueueAndFlush(
         projection?.contentVisibility == 'end_to_end_encrypted'
@@ -491,6 +499,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       MaterialPageRoute(
         builder: (_) => PostComposerScreen(
           initialContent: post.content,
+          draftTarget: 'post:${post.id}',
           authorDid: _authorDid,
         ),
       ),
@@ -509,10 +518,13 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         lastEditAt: now,
         parentPostId: post.parentPostId,
         isDeleted: post.isDeleted,
-        signatureVerified: true, // re-signed via the update op below
+        signatureVerified: false, // becomes verified after signing succeeds
         mentions: post.mentions,
       );
       await _postRepo.update(updatedPost);
+      if (result.draftKey != null) {
+        await ComposerDraftStore.shared.clear(result.draftKey!);
+      }
       await _enqueueAndFlush(
         CrdtOpBuilder.updatePost(
           authorDid: _authorDid,
@@ -616,7 +628,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         lastEditAt: now,
         parentPostId: post.parentPostId,
         isDeleted: post.isDeleted,
-        signatureVerified: true,
+        signatureVerified: false,
       );
       await _postRepo.update(updatedPost);
       await _enqueueAndFlush(
@@ -709,8 +721,61 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
 
   Future<void> _enqueueAndFlush(OpsQueueEntry entry) async {
     final dispatchService = widget.opsDispatchService;
-    if (dispatchService == null) return;
-    await dispatchService.signAndEnqueue(entry);
+    if (dispatchService == null) {
+      await DriftOpsQueueRepository(
+        widget.db,
+      ).enqueue(entry.copyWith(status: 'awaiting_authorization'));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.uiCopy(
+                zh: '已存本機，等待傳送授權。',
+                en: 'Saved locally; awaiting delivery authorization.',
+              ),
+            ),
+            action: SnackBarAction(
+              label: context.uiCopy(zh: '查看', en: 'View'),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => SyncSettingsScreen(
+                    db: widget.db,
+                    localDid: _authorDid,
+                    initialRetryEntry: entry,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    try {
+      await dispatchService.signAndEnqueue(entry);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.uiCopy(
+                zh: '已存本機，請到傳送中心完成授權。',
+                en: 'Saved locally. Complete authorization in the sending center.',
+              ),
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    if (entry.entityType == 'post' && entry.opType != 'delete') {
+      final post = await _postRepo.getById(entry.entityId);
+      if (post != null) {
+        await _postRepo.update(
+          Post.fromJson({...post.toJson(), 'signatureVerified': true}),
+        );
+      }
+    }
     final flushPendingOps = widget.onFlushPendingOps;
     if (flushPendingOps == null) {
       unawaited(dispatchService.flushPending());

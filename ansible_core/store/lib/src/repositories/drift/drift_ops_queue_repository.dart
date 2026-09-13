@@ -10,6 +10,104 @@ class DriftOpsQueueRepository implements OpsQueueRepository {
 
   DriftOpsQueueRepository(this._db);
 
+  Future<List<entity.OpsQueueEntry>> listDelivery(String did) async {
+    final rows =
+        await (_db.select(_db.opsQueue)
+              ..where((t) => t.authorDid.equals(did))
+              ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
+              ..limit(200))
+            .get();
+    return rows.map(_mapRow).toList();
+  }
+
+  /// First persistence never overwrites an existing delivery decision or payload.
+  Future<entity.OpsQueueEntry> retainForAuthorization(
+    entity.OpsQueueEntry entry,
+  ) async {
+    await _db
+        .into(_db.opsQueue)
+        .insert(
+          OpsQueueCompanion.insert(
+            opId: entry.opId,
+            authorDid: entry.authorDid,
+            entityType: entry.entityType,
+            entityId: entry.entityId,
+            opType: entry.opType,
+            payload: entry.payload,
+            signature: entry.signature,
+            status: const Value('awaiting_authorization'),
+            createdAt: Value(entry.createdAt),
+          ),
+          mode: InsertMode.insertOrIgnore,
+        );
+    return (await deliveryOp(entry.opId))!;
+  }
+
+  /// Complete author history is needed for idempotence, even after the UI's
+  /// bounded delivery window has moved past a cancelled operation.
+  Future<List<entity.OpsQueueEntry>> listAuthorHistory(String did) async {
+    final rows =
+        await (_db.select(_db.opsQueue)
+              ..where((t) => t.authorDid.equals(did))
+              ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+            .get();
+    return rows.map(_mapRow).toList();
+  }
+
+  Future<bool> prepareRetry(entity.OpsQueueEntry entry) async {
+    final changed =
+        await (_db.update(_db.opsQueue)..where(
+              (t) =>
+                  t.opId.equals(entry.opId) &
+                  t.authorDid.equals(entry.authorDid) &
+                  t.status.isIn([
+                    'pending',
+                    'blocked',
+                    'sent',
+                    'awaiting_authorization',
+                  ]),
+            ))
+            .write(
+              OpsQueueCompanion(
+                status: const Value('pending'),
+                signature: Value(entry.signature),
+              ),
+            );
+    return changed == 1;
+  }
+
+  Future<bool> claimForSend(String opId) async {
+    final changed =
+        await (_db.update(_db.opsQueue)..where(
+              (t) => t.opId.equals(opId) & t.status.isIn(['pending', 'sent']),
+            ))
+            .write(
+              OpsQueueCompanion(
+                status: const Value('sent'),
+                sentAt: Value(DateTime.now()),
+              ),
+            );
+    return changed == 1;
+  }
+
+  Future<entity.OpsQueueEntry?> deliveryOp(String opId) async {
+    final row = await (_db.select(
+      _db.opsQueue,
+    )..where((t) => t.opId.equals(opId))).getSingleOrNull();
+    return row == null ? null : _mapRow(row);
+  }
+
+  Future<void> cancelUnattempted(String opId, String did) async {
+    await (_db.update(_db.opsQueue)..where(
+          (t) =>
+              t.opId.equals(opId) &
+              t.authorDid.equals(did) &
+              t.sentAt.isNull() &
+              t.status.isIn(['pending', 'blocked', 'awaiting_authorization']),
+        ))
+        .write(const OpsQueueCompanion(status: Value('cancelled')));
+  }
+
   // ------------------------------------------------------------------ enqueue
 
   @override
@@ -38,7 +136,9 @@ class DriftOpsQueueRepository implements OpsQueueRepository {
   Future<List<entity.OpsQueueEntry>> listPending({int limit = 50}) async {
     final rows =
         await ((_db.select(_db.opsQueue)
-              ..where((t) => t.status.equals('pending'))
+              ..where(
+                (t) => t.status.equals('pending') | t.status.equals('sent'),
+              )
               ..orderBy([(t) => OrderingTerm.asc(t.createdAt)])
               ..limit(limit)))
             .get();
@@ -70,7 +170,9 @@ class DriftOpsQueueRepository implements OpsQueueRepository {
                 (t) =>
                     t.authorDid.equals(authorDid) &
                     t.entityType.equals('reaction') &
-                    t.status.isNotValue('rejected'),
+                    t.status.isNotValue('rejected') &
+                    t.status.isNotValue('cancelled') &
+                    t.status.isNotValue('awaiting_authorization'),
               )
               ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
             .get();
@@ -162,7 +264,7 @@ class DriftOpsQueueRepository implements OpsQueueRepository {
   @override
   Stream<List<entity.OpsQueueEntry>> watchPending() {
     return (_db.select(_db.opsQueue)
-          ..where((t) => t.status.equals('pending'))
+          ..where((t) => t.status.equals('pending') | t.status.equals('sent'))
           ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
         .watch()
         .map((rows) => rows.map(_mapRow).toList());
@@ -173,7 +275,11 @@ class DriftOpsQueueRepository implements OpsQueueRepository {
     final query = _db.select(_db.opsQueue)
       ..where(
         (table) =>
-            table.status.equals('pending') | table.status.equals('blocked'),
+            table.status.equals('pending') |
+            table.status.equals('blocked') |
+            table.status.equals('sent') |
+            table.status.equals('rejected') |
+            table.status.equals('awaiting_authorization'),
       )
       ..orderBy([(table) => OrderingTerm.asc(table.createdAt)]);
     return query.watch().map(

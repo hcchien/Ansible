@@ -633,7 +633,8 @@ assert.match(threadDetailHtml, /Open thread/);
 assert.match(threadDetailHtml, /class="did-handle profile-author-link"/);
 assert.match(threadDetailHtml, /class="pk-pill"/);
 assert.match(threadDetailHtml, /class="thread-op"/);
-assert.match(threadDetailHtml, /起頭 · <span class="thread-source-strong">signed · PK<\/span>/);
+assert.match(threadDetailHtml, /起頭 · <details class="trust-explanation">/);
+assert.match(threadDetailHtml, /不保證內容真實/);
 assert.match(threadDetailHtml, /reply content from AppView/);
 assert.match(
   threadDetailHtml,

@@ -88,6 +88,10 @@ try {
     authorization: 'Bearer wst_test',
   });
 
+  const contentResponse = await fetch(`${baseUrl}/api/v1/content/murmur/exact-id`);
+  assert.equal(contentResponse.status, 200);
+  assert.equal(appViewRequests.at(-1).url, '/api/v1/content/murmur/exact-id');
+
   // External content path routes to the AppView upstream, not the relay.
   const relayCountBefore = relayRequests.length;
   const external = await request(`${baseUrl}/api/v1/boards/fediverse-watch/external?limit=20`);

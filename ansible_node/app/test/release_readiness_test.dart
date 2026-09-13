@@ -14,12 +14,7 @@ void main() {
     expect(config['ANSIBLE_ALLOW_INSECURE_SIGNING_FALLBACK'], isFalse);
     expect(config['ANSIBLE_ALLOW_INSECURE_IDENTITY_FALLBACK'], isFalse);
     expect(config['ANSIBLE_RESET_LOCAL_IDENTITY_ON_START'], isFalse);
-    expect(config['ANSIBLE_USE_APPVIEW_FEED'], isTrue);
-    expect(
-      config['ANSIBLE_USE_APPVIEW_HOME_TIMELINE'],
-      isFalse,
-      reason: 'The app does not yet send the signed /api/v1/home headers.',
-    );
+    expect(config.keys.where((key) => key.contains('APPVIEW')), isEmpty);
 
     for (final key in const [
       'ANSIBLE_RELAY_BASE_URL',
@@ -43,17 +38,11 @@ void main() {
     expect(config['ANSIBLE_USES_REAL_RUST_BRIDGE'], isTrue);
     expect(config['ANSIBLE_ALLOW_INSECURE_SIGNING_FALLBACK'], isFalse);
     expect(config['ANSIBLE_ALLOW_INSECURE_IDENTITY_FALLBACK'], isFalse);
-    expect(config['ANSIBLE_USE_APPVIEW_FEED'], isTrue);
-    expect(
-      config['ANSIBLE_USE_APPVIEW_HOME_TIMELINE'],
-      isFalse,
-      reason: 'The app does not yet send the signed /api/v1/home headers.',
-    );
+    expect(config.keys.where((key) => key.contains('APPVIEW')), isEmpty);
     for (final key in const [
       'ANSIBLE_RELAY_BASE_URL',
       'ANSIBLE_ISSUER_BASE_URL',
       'ANSIBLE_ATPROTO_BASE_URL',
-      'ANSIBLE_APPVIEW_BASE_URL',
       'ANSIBLE_FORUM_WEB_BASE_URL',
     ]) {
       final uri = Uri.parse(config[key]! as String);

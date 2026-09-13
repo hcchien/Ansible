@@ -5,12 +5,10 @@ import 'package:http/http.dart' as http;
 
 import '../config/protocol.dart';
 
-/// HTTP client for the AppView timeline API. Its [fetch] matches the
-/// `AppViewTimelineFetcher` typedef, so it plugs straight into
-/// `AppViewTimelineSource`. (Client-side Ed25519 re-verification is a follow-up:
-/// it requires the AppView to return the original signed payload + signature,
-/// which feed_items does not yet store; today the app trusts the first-party
-/// AppView's ingest-time verification, the same trust as the relay delta.)
+/// Compatibility DTO client for the selected Relay public query API. Native
+/// callers supply only the Relay origin. The Relay validates accepted ops and
+/// current authority; this client preserves the reported signature status.
+/// Independent client crypto verification of folded history is not performed.
 class AppViewTimelineClient {
   final String baseUrl;
   final http.Client _client;
@@ -211,12 +209,14 @@ class AppViewTimelineClient {
       throw StateError('AppView $label failed: ${response.statusCode}');
     }
 
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final body =
+        jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     final items = (body['items'] as List<dynamic>? ?? const [])
         .whereType<Map>()
         .map((raw) {
           final m = Map<String, dynamic>.from(raw);
           return AppViewTimelineItem(
+            signatureVerified: m['sig_verified'] == true,
             entityType: m['entity_type'] as String? ?? '',
             entityId: m['entity_id'] as String? ?? '',
             authorDid: m['author_did'] as String? ?? '',

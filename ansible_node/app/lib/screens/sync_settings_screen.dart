@@ -1,3 +1,5 @@
+import 'sending_center_screen.dart';
+import '../config/app_environment.dart';
 import '../widgets/public_profile_status_card.dart';
 import 'dart:async';
 
@@ -52,6 +54,7 @@ class SyncSettingsScreen extends StatefulWidget {
   final String localDid;
   final String? initialForumHostUrl;
   final bool profilePublication;
+  final OpsQueueEntry? initialRetryEntry;
 
   /// Test seam for fetching a host's self-declared constitution compliance
   /// at add time. Defaults to [RelayDiscoveryClient] against the host URL.
@@ -66,6 +69,7 @@ class SyncSettingsScreen extends StatefulWidget {
     required this.localDid,
     this.initialForumHostUrl,
     this.profilePublication = false,
+    this.initialRetryEntry,
     this.complianceFetcher,
     this.userPresenceVerifier,
     this.platformCapabilities,
@@ -113,6 +117,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
       {}; // nodeId -> {boardId -> days, null -> forever}
   bool _isLoading = true;
   bool _shownInitialForumHostDialog = false;
+  bool _initialRetryStarted = false;
   final Map<String, bool> _syncingNodes = {}; // nodeId -> isSyncing
   final Map<String, String> _syncCapabilitiesByNode = {};
   final Map<String, SyncCapabilityService> _syncCapabilityServices = {};
@@ -139,7 +144,14 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
     _opsQueueRepo = DriftOpsQueueRepository(widget.db);
     _nostrKeyStore = const SecureStorageNostrKeyStore();
     _nostrRelaySettingsStore = const SecureStorageNostrRelaySettingsStore();
-    _loadData();
+    _loadData().then((_) {
+      final entry = widget.initialRetryEntry;
+      if (mounted && entry != null && !_initialRetryStarted) {
+        _initialRetryStarted = true;
+        final node = _remoteNodes.where((n) => n.isActive).firstOrNull;
+        if (node != null) _performSync(node, retryEntry: entry);
+      }
+    });
   }
 
   @override
@@ -171,6 +183,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
     setState(() => _isLoading = true);
     try {
       final nodes = await _remoteNodeRepo.list();
+      AppEnvironment.socialRelayBaseUrl =
+          nodes.where((node) => node.isActive).firstOrNull?.url ??
+          AppEnvironment.defaultRelayBaseUrl;
       final boards = await _boardRepo.list();
       final hostedSubscriptions = await _hostedBoardRepo.listSubscriptions();
       final nostrRelays = await _nostrRelaySettingsStore.list();
@@ -845,6 +860,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
     RemoteNode node, {
     bool showSnackBar = true,
     bool requireUserPresence = true,
+    OpsQueueEntry? retryEntry,
   }) async {
     if (_syncingNodes.values.any((value) => value)) {
       return SyncResult.failure(errorMessage: 'sync_in_progress');
@@ -870,7 +886,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
         node,
       );
       final planningService = _relayPushService(DidSignerImpl());
-      final requirement = requireUserPresence
+      final requirement = retryEntry != null
+          ? const SyncAuthorizationRequirement(relayWrites: true)
+          : requireUserPresence
           ? await planningService.authorizationRequirement(
               remoteNodeId: node.id,
             )
@@ -954,9 +972,17 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
                 const SecurePublicProfileCredentialPreferenceStore(),
             didSigner: syncDidSigner,
           ).presentSelected(holderDid: widget.localDid, node: node);
-          opsSummary = await _relayPushService(
-            syncDidSigner,
-          ).pushLocalOpsTo(node, accessToken: syncCapability);
+          final pushService = _relayPushService(syncDidSigner);
+          opsSummary = retryEntry == null
+              ? await pushService.pushLocalOpsTo(
+                  node,
+                  accessToken: syncCapability,
+                )
+              : await pushService.retryLocalOpTo(
+                  node,
+                  retryEntry,
+                  accessToken: syncCapability,
+                );
         }
       }
 
@@ -1254,6 +1280,33 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               children: [
+                ListTile(
+                  leading: const Icon(Icons.outbox_outlined),
+                  title: Text(context.uiCopy(zh: '傳送中心', en: 'Sending center')),
+                  subtitle: Text(
+                    context.uiCopy(
+                      zh: '查看進度、重試與診斷紀錄',
+                      en: 'Delivery progress, retries and diagnostics',
+                    ),
+                  ),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => SendingCenterScreen(
+                        did: widget.localDid,
+                        db: widget.db,
+                        repository: _opsQueueRepo,
+                        onSync: _syncAllNodes,
+                        onRetry: (entry) async {
+                          final node = await _remoteNodeRepo.getActive();
+                          if (node == null) {
+                            throw StateError('relay_unavailable');
+                          }
+                          await _performSync(node, retryEntry: entry);
+                        },
+                      ),
+                    ),
+                  ),
+                ),
                 if (widget.profilePublication) ...[
                   Padding(
                     padding: const EdgeInsets.all(22),

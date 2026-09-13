@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../config/app_environment.dart';
 import '../services/ops_dispatch_service.dart';
 import '../l10n/app_l10n.dart';
+import '../services/composer_draft_store.dart';
 import '../l10n/moderation_copy.dart';
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
@@ -355,9 +356,9 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
 
   BoardExternalFetcher? _resolveExternalFetcher() {
     if (widget.externalFetcher != null) return widget.externalFetcher;
-    if (AppEnvironment.appViewBaseUrl.isEmpty) return null;
+    if (AppEnvironment.socialRelayBaseUrl.isEmpty) return null;
     final client = AppViewTimelineClient(
-      baseUrl: AppEnvironment.appViewBaseUrl,
+      baseUrl: AppEnvironment.socialRelayBaseUrl,
     );
     return (boardId) => client.fetchBoardExternal(boardId);
   }
@@ -432,6 +433,15 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
         authorDid.isEmpty) {
       return;
     }
+    final composedOps = <OpsQueueEntry>[];
+    final localWrites = <Future<void> Function()>[];
+    Future<void> queueComposedOp(
+      OpsQueueEntry entry, {
+      bool deferPublication = false,
+    }) async {
+      composedOps.add(entry.copyWith(status: 'awaiting_authorization'));
+    }
+
     final now = DateTime.now();
     final thread = Thread(
       id: const Uuid().v4(),
@@ -442,9 +452,12 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
       createdAt: now,
       updatedAt: now,
     );
-    await _threadRepo.create(thread);
+    localWrites.add(() async {
+      await _threadRepo.create(thread);
+    });
     final projection = _hostedProjection;
-    await _enqueueAndFlush(
+
+    await queueComposedOp(
       projection?.contentVisibility == 'end_to_end_encrypted'
           ? await PrivateBoardOpFactory().createThread(
               board: projection!,
@@ -473,10 +486,13 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
         updatedAt: now,
         lastEditAt: now,
         parentPostId: null,
-        signatureVerified: true, // signed locally via the ops dispatch below
+        signatureVerified: false, // becomes verified after signing succeeds
       );
-      await _postRepo.create(post);
-      await _enqueueAndFlush(
+      localWrites.add(() async {
+        await _postRepo.create(post);
+      });
+
+      await queueComposedOp(
         projection?.contentVisibility == 'end_to_end_encrypted'
             ? await PrivateBoardOpFactory().createPost(
                 board: projection!,
@@ -497,6 +513,19 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
               ),
         deferPublication: publicationDeferred,
       );
+    }
+    await widget.db.transaction(() async {
+      for (final write in localWrites) {
+        await write();
+      }
+      for (final op in composedOps) {
+        await DriftOpsQueueRepository(widget.db).enqueue(op);
+      }
+    });
+    final draftKey = dialogResult['draftKey'] as String?;
+    if (draftKey != null) await ComposerDraftStore.shared.clear(draftKey);
+    for (final entry in composedOps) {
+      await _enqueueAndFlush(entry, deferPublication: publicationDeferred);
     }
     await _recordPublicationTargets(
       threadId: thread.id,
@@ -665,8 +694,25 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
     bool deferPublication = false,
   }) async {
     final dispatchService = widget.opsDispatchService;
-    if (dispatchService == null) return;
-    await dispatchService.signAndEnqueue(entry);
+    if (dispatchService == null) {
+      await DriftOpsQueueRepository(
+        widget.db,
+      ).enqueue(entry.copyWith(status: 'awaiting_authorization'));
+      return;
+    }
+    try {
+      await dispatchService.signAndEnqueue(entry);
+    } catch (_) {
+      return;
+    }
+    if (entry.entityType == 'post' && entry.opType != 'delete') {
+      final post = await _postRepo.getById(entry.entityId);
+      if (post != null) {
+        await _postRepo.update(
+          Post.fromJson({...post.toJson(), 'signatureVerified': true}),
+        );
+      }
+    }
     if (deferPublication) return;
     final flushPendingOps = widget.onFlushPendingOps;
     if (flushPendingOps == null) {

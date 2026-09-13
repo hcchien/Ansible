@@ -12,6 +12,8 @@ import '../widgets/author_label.dart';
 import 'messenger_thread_screen.dart';
 import 'posts_view_screen.dart';
 import 'user_profile_screen.dart';
+import 'public_content_screen.dart';
+import '../services/discovery_client.dart';
 
 /// In-app notification feed (Phase A): a pure read of the local
 /// `notifications` table. Tapping a row marks it read and navigates to the
@@ -156,6 +158,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ? null
         : await _threadRepo.getById(threadId);
     if (!mounted) return;
+    if (thread == null && threadId != null) {
+      final client = DiscoveryClient(appViewBaseUrl: '');
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PublicContentScreen(
+            post: DiscoveredPost(
+              entityType: 'item',
+              entityId: threadId,
+              authorDid: notification.actorDid,
+              payload: const {},
+            ),
+            client: client,
+            db: widget.db,
+            localDid: widget.did,
+          ),
+        ),
+      );
+      client.close();
+      return;
+    }
     if (thread == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

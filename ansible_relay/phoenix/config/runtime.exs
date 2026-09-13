@@ -99,6 +99,29 @@ if config_env() == :prod do
     config :ansible_relay, :push_sender, AnsibleRelay.Push.ApnsSender
   end
 
+  # Optional public external lane. This is an explicit operator allowlist,
+  # independent of Viewer storage and of outbound federation targets.
+  external_sources =
+    System.get_env("PUBLIC_EXTERNAL_SOURCES_JSON", "[]")
+    |> Jason.decode!()
+    |> Enum.map(fn source ->
+      actor = source["actor_uri"]
+      board = source["board_id"]
+
+      unless is_binary(actor) and is_binary(board) and board != "" and
+               URI.parse(actor).scheme == "https" and is_binary(URI.parse(actor).host),
+             do: raise("PUBLIC_EXTERNAL_SOURCES_JSON requires https actor_uri and board_id")
+
+      %{
+        actor_uri: actor,
+        board_id: board,
+        enabled: source["enabled"] != false,
+        compliance_level: source["compliance_level"] || "unknown"
+      }
+    end)
+
+  config :ansible_relay, :external_sources, external_sources
+
   activity_pub_delivery_enabled =
     env_bool.("ACTIVITY_PUB_DELIVERY_ENABLED", false)
 

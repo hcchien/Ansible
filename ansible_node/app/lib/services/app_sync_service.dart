@@ -292,11 +292,19 @@ class AppSyncService {
     return false;
   }
 
+  Future<List<OpsQueueEntry>> _localOperationHistory(OpsQueueRepository queue) {
+    final did = _followerDid;
+    if (queue is DriftOpsQueueRepository && did != null) {
+      return queue.listAuthorHistory(did);
+    }
+    return queue.listAll(limit: 1000000);
+  }
+
   Future<bool> _hasRelayWriteWork() async {
     final queue = _opsQueueRepo;
     final dispatch = _opsDispatchService;
     if (queue == null || dispatch == null) return false;
-    final existingOps = await queue.listAll(limit: 1000);
+    final existingOps = await _localOperationHistory(queue);
     if (existingOps.any(
       (op) => op.status == 'pending' || op.status == 'blocked',
     )) {
@@ -480,7 +488,63 @@ class AppSyncService {
     return _flushLocalOpsTo(node, accessToken: accessToken);
   }
 
+  Future<OpsDispatchSummary> retryLocalOpTo(
+    RemoteNode node,
+    OpsQueueEntry entry, {
+    String? accessToken,
+  }) async {
+    final queue = _opsQueueRepo;
+    if (queue case final DriftOpsQueueRepository drift) {
+      final fresh = await drift.deliveryOp(entry.opId);
+      if (fresh == null) return const OpsDispatchSummary();
+      entry = fresh;
+    }
+    if (queue == null ||
+        !_allowIdentityWrites ||
+        entry.authorDid != _followerDid ||
+        ['synced', 'cancelled', 'rejected'].contains(entry.status)) {
+      return const OpsDispatchSummary();
+    }
+    final service = OpsDispatchService(
+      repository: queue,
+      signer: _didSigner,
+      relayClient: RelayOpsClient(
+        baseUrl: node.url,
+        accessToken: accessToken,
+        requestHeaders: _boardWriteHeaders,
+      ),
+    );
+    final signed =
+        entry.signature.isEmpty || entry.status == 'awaiting_authorization'
+        ? await service.sign(entry)
+        : entry;
+    final pending = signed.copyWith(status: 'pending');
+    if (queue is DriftOpsQueueRepository) {
+      if (!await queue.prepareRetry(pending)) return const OpsDispatchSummary();
+    } else {
+      await queue.enqueue(pending);
+    }
+    return service.dispatchEntries([pending]);
+  }
+
   Future<void> _enqueueLocalRelayOps() async {
+    final queue = _opsQueueRepo;
+    if (queue != null) {
+      final service = OpsDispatchService(repository: queue, signer: _didSigner);
+      for (final entry in await _localOperationHistory(queue)) {
+        if (entry.authorDid == _followerDid &&
+            entry.status == 'awaiting_authorization') {
+          final signed = (await service.sign(
+            entry,
+          )).copyWith(status: 'pending');
+          if (queue is DriftOpsQueueRepository) {
+            await queue.prepareRetry(signed);
+          } else {
+            await queue.enqueue(signed);
+          }
+        }
+      }
+    }
     await _enqueuePublicContentOps();
     await _enqueueFederatedFollowOps();
     await _enqueueProfileOp();
@@ -567,7 +631,7 @@ class AppSyncService {
       if (items.isEmpty) return 0;
 
       final existingEntityIds = {
-        for (final op in await queue.listAll(limit: 1000)) op.entityId,
+        for (final op in await _localOperationHistory(queue)) op.entityId,
       };
 
       var enqueued = 0;
@@ -581,6 +645,7 @@ class AppSyncService {
                 title: item.title,
                 visibility: item.visibility.name,
                 publishedAt: item.publishedAt,
+                contentCreatedAt: item.createdAt,
               )
             : CrdtOpBuilder.createMurmur(
                 authorDid: item.authorDid,
@@ -588,6 +653,7 @@ class AppSyncService {
                 text: item.body,
                 visibility: item.visibility.name,
                 publishedAt: item.publishedAt,
+                contentCreatedAt: item.createdAt,
               );
         await dispatch.signAndEnqueue(entry);
         await _contentItemRepo.update(item.copyWith(signatureVerified: true));
@@ -641,7 +707,7 @@ class AppSyncService {
 
       // Latest published follow-op type per target (entityId == targetDid).
       final latestOp = <String, OpsQueueEntry>{};
-      for (final op in await queue.listAll(limit: 1000)) {
+      for (final op in await _localOperationHistory(queue)) {
         if (op.entityType != 'follow') continue;
         final prev = latestOp[op.entityId];
         if (prev == null || op.createdAt.isAfter(prev.createdAt)) {
@@ -711,7 +777,7 @@ class AppSyncService {
 
       // Skip if the last published profile already matches the public subset.
       OpsQueueEntry? latest;
-      for (final op in await queue.listAll(limit: 1000)) {
+      for (final op in await _localOperationHistory(queue)) {
         if (op.entityType != 'profile') continue;
         if (latest == null || op.createdAt.isAfter(latest.createdAt)) {
           latest = op;

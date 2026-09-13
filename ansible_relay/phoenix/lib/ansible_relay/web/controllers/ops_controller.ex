@@ -285,7 +285,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
     # this host's projection changes — the stored op rows are untouched.
     ops_with_overlay =
       visible
-      |> Enum.map(&attach_public_key/1)
+      |> Enum.map(&public_evidence/1)
       |> Moderation.overlay_ops()
 
     send_json(conn, 200, %{
@@ -309,7 +309,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
       page =
         board_ops
         |> Enum.take(limit)
-        |> Enum.map(&attach_public_key/1)
+        |> Enum.map(&public_evidence/1)
 
       send_json(conn, 200, %{
         ops: Moderation.overlay_ops(page),
@@ -675,7 +675,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
     end
   end
 
-  defp attach_public_key(%{author_did: author_did} = op) do
+  def public_evidence(%{author_did: author_did} = op) do
     signing_algorithm =
       case IdentityCache.get(author_did) do
         {:ok, entry} -> Map.get(entry, :signing_algorithm, "ed25519")

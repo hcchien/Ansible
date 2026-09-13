@@ -1,3 +1,4 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:ansible_node/screens/thread_composer_screen.dart';
 import 'package:ansible_node/screens/threads_list_screen.dart';
 import 'package:ansible_node/services/forum_publication_service.dart';
@@ -38,6 +39,7 @@ void main() {
   late AppDatabase db;
 
   setUp(() {
+    FlutterSecureStorage.setMockInitialValues({});
     db = AppDatabase(NativeDatabase.memory());
   });
 

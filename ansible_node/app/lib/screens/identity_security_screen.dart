@@ -1,3 +1,4 @@
+import 'recovery_guide_screen.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -224,7 +225,10 @@ class _IdentitySecurityScreenState extends State<IdentitySecurityScreen> {
               ),
               icon: const Icon(Icons.qr_code_scanner),
               label: Text(
-                context.uiCopy(zh: '核准新裝置', en: 'Approve a new device'),
+                context.uiCopy(
+                  zh: '用這台裝置核准新手機',
+                  en: 'Approve a new phone from this device',
+                ),
               ),
             ),
             const SizedBox(height: 28),
@@ -255,15 +259,14 @@ class _IdentitySecurityScreenState extends State<IdentitySecurityScreen> {
               ),
               subtitle: Text(
                 context.uiCopy(
-                  zh: '使用舊裝置核准；legacy 備份僅為降低信任模式',
-                  en: 'Approve with an old device; legacy backup is reduced trust only',
+                  zh: '依照舊手機是否還在，選擇適合的復原方式',
+                  en: 'Choose a recovery path based on whether you still have the old phone',
                 ),
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) =>
-                      RecoveryApproveScannerScreen(localDid: widget.did),
+                  builder: (_) => RecoveryGuideScreen(did: widget.did),
                 ),
               ),
             ),

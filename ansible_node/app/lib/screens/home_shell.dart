@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../config/app_environment.dart';
 import '../l10n/app_l10n.dart';
+import '../services/composer_draft_store.dart';
 import '../l10n/subpage_l10n.dart';
 import '../widgets/agent_sheet.dart';
 import '../widgets/board_form_dialog.dart';
@@ -217,8 +218,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   PersonalFilter _personalFilter = PersonalFilter.all;
   TimelineSort _timelineSort = TimelineSort.newest;
   late final _shellDiscoveryClient = DiscoveryClient(
-    appViewBaseUrl: AppEnvironment.appViewBaseUrl,
-    relayBaseUrl: AppEnvironment.defaultRelayBaseUrl,
+    appViewBaseUrl: AppEnvironment.socialRelayBaseUrl,
   );
   ElixTab _selectedTab = ElixTab.feed;
   late HomeBoard _selectedBoard;
@@ -476,6 +476,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     }
     await _refreshNotificationUnread();
     final remoteNodes = await _remoteNodeRepo.list();
+    AppEnvironment.socialRelayBaseUrl =
+        remoteNodes.where((node) => node.isActive).firstOrNull?.url ??
+        AppEnvironment.defaultRelayBaseUrl;
     final hasActiveRemoteNode = remoteNodes.any((node) => node.isActive);
     final hasActiveForumHost = (await _forumHostRepo.listActive()).isNotEmpty;
     final hostedBoardProjections = await _hostedBoardRepo.listProjections();
@@ -1184,19 +1187,17 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   // Following-feed source: the scalable AppView timeline when enabled+configured,
   // otherwise the local Design-1 filter over synced ops.
   FollowFeedSource _followFeedSource() {
-    if (AppEnvironment.useAppViewFeed &&
-        AppEnvironment.appViewBaseUrl.isNotEmpty) {
+    if (AppEnvironment.useRelayFeed &&
+        AppEnvironment.socialRelayBaseUrl.isNotEmpty) {
       final client = AppViewTimelineClient(
-        baseUrl: AppEnvironment.appViewBaseUrl,
+        baseUrl: AppEnvironment.socialRelayBaseUrl,
       );
       return AppViewTimelineSource(
         followRepository: _followRepo,
         fetcher: client.fetch,
+
         // Prefer the server-materialized home timeline (fan-out-on-write) when
         // enabled; otherwise fall back to fan-out-on-read over the follow set.
-        homeFetcher: AppEnvironment.useAppViewHomeTimeline
-            ? client.fetchHome
-            : null,
       );
     }
 
@@ -1220,8 +1221,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
     // AppView is an online acceleration/read model, not the sole source of
     // truth. Merge locally synced followed content as an offline-safe lane.
-    if (AppEnvironment.useAppViewFeed &&
-        AppEnvironment.appViewBaseUrl.isNotEmpty) {
+    if (AppEnvironment.useRelayFeed &&
+        AppEnvironment.socialRelayBaseUrl.isNotEmpty) {
       try {
         final local = await _localFollowFeedSource().fetch(
           followerDid: widget.did,
@@ -1240,31 +1241,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       }
     }
 
-    if (!AppEnvironment.useAppViewFeed ||
-        AppEnvironment.appViewBaseUrl.isEmpty ||
-        followed.length >= limit) {
-      return followed;
-    }
-
-    try {
-      final client = AppViewTimelineClient(
-        baseUrl: AppEnvironment.appViewBaseUrl,
-      );
-      final page = await client.fetchExplore(limit: limit - followed.length);
-      final mapper = AppViewTimelineSource(
-        followRepository: _followRepo,
-        fetcher: client.fetch,
-      );
-      final merged = <FollowTimelineItem>[...followed];
-      final seen = followed.map(_timelineItemKey).toSet();
-      for (final item in mapper.mapItems(page.items)) {
-        if (seen.add(_timelineItemKey(item))) merged.add(item);
-      }
-      merged.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-      return merged.take(limit).toList(growable: false);
-    } catch (_) {
-      return followed;
-    }
+    return followed;
   }
 
   String _timelineItemKey(FollowTimelineItem item) => switch (item) {
@@ -1506,6 +1483,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       authorHandle: authorHandle,
       // Murmur/note have no thread — tapping must not open an empty thread view.
       openableThread: false,
+      contentKind: item.mode.name,
     );
   }
 
@@ -1930,6 +1908,15 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         boardId.isEmpty) {
       return;
     }
+    final composedOps = <OpsQueueEntry>[];
+    final localWrites = <Future<void> Function()>[];
+    Future<void> queueComposedOp(
+      OpsQueueEntry entry, {
+      bool deferPublication = false,
+    }) async {
+      composedOps.add(entry.copyWith(status: 'awaiting_authorization'));
+    }
+
     final now = DateTime.now();
     final thread = Thread(
       id: _uuid.v4(),
@@ -1943,8 +1930,27 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final projection = await _hostedBoardRepo.getProjectionByLocalBoardId(
       boardId,
     );
-    await _threadRepo.create(thread);
-    await _enqueueAndFlush(
+    localWrites.add(() async {
+      await _threadRepo.create(thread);
+    });
+
+    // 建立首帖
+    final post = Post(
+      id: _uuid.v4(),
+      threadId: thread.id,
+      boardId: boardId,
+      authorId: widget.did,
+      content: content,
+      createdAt: now,
+      updatedAt: now,
+      lastEditAt: now,
+      parentPostId: null,
+      signatureVerified: false, // becomes verified after signing succeeds
+    );
+    localWrites.add(() async {
+      await _postRepo.create(post);
+    });
+    await queueComposedOp(
       projection?.contentVisibility == 'end_to_end_encrypted'
           ? await PrivateBoardOpFactory().createThread(
               board: projection!,
@@ -1962,21 +1968,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             ),
       deferPublication: publicationDeferred,
     );
-    // 建立首帖
-    final post = Post(
-      id: _uuid.v4(),
-      threadId: thread.id,
-      boardId: boardId,
-      authorId: widget.did,
-      content: content,
-      createdAt: now,
-      updatedAt: now,
-      lastEditAt: now,
-      parentPostId: null,
-      signatureVerified: true, // signed locally via the ops dispatch below
-    );
-    await _postRepo.create(post);
-    await _enqueueAndFlush(
+    await queueComposedOp(
       projection?.contentVisibility == 'end_to_end_encrypted'
           ? await PrivateBoardOpFactory().createPost(
               board: projection!,
@@ -1995,6 +1987,19 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             ),
       deferPublication: publicationDeferred,
     );
+    await widget.db.transaction(() async {
+      for (final write in localWrites) {
+        await write();
+      }
+      for (final op in composedOps) {
+        await DriftOpsQueueRepository(widget.db).enqueue(op);
+      }
+    });
+    final draftKey = dialogResult['draftKey'] as String?;
+    if (draftKey != null) await ComposerDraftStore.shared.clear(draftKey);
+    for (final entry in composedOps) {
+      await _enqueueAndFlush(entry, deferPublication: publicationDeferred);
+    }
     await _recordThreadPublicationTargets(
       threadId: thread.id,
       boardId: boardId,
@@ -2078,7 +2083,31 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     OpsQueueEntry entry, {
     bool deferPublication = false,
   }) async {
-    await _opsDispatchService.signAndEnqueue(entry);
+    try {
+      await _opsDispatchService.signAndEnqueue(entry);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.uiCopy(
+                zh: '已存本機，請到傳送中心完成授權。',
+                en: 'Saved locally. Complete authorization in the sending center.',
+              ),
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    if (entry.entityType == 'post' && entry.opType != 'delete') {
+      final post = await _postRepo.getById(entry.entityId);
+      if (post != null) {
+        await _postRepo.update(
+          Post.fromJson({...post.toJson(), 'signatureVerified': true}),
+        );
+      }
+    }
     if (deferPublication) return;
     unawaited(_flushPendingOps());
   }

@@ -1,3 +1,4 @@
+import '../../widgets/content_trust_badge.dart';
 import 'dart:async';
 
 import 'package:ansible_store/ansible_store.dart';
@@ -68,6 +69,7 @@ class PostCardData {
     this.authorHandle,
     this.signatureVerified = false,
     this.openableThread = true,
+    this.contentKind,
     this.replyPreviews = const [],
   }) : sortTimestamp = sortTimestamp ?? thread.createdAt;
 
@@ -96,6 +98,7 @@ class PostCardData {
   /// so tapping must NOT push an (empty) thread view — it falls back to the
   /// author. Also hides the per-thread comment chip.
   final bool openableThread;
+  final String? contentKind;
 
   /// Replies that caused this thread to surface in the timeline. They stay
   /// visually attached to the opening post so a reply is never presented as a
@@ -132,6 +135,7 @@ class PostCardData {
     authorHandle: authorHandle,
     signatureVerified: signatureVerified,
     openableThread: openableThread,
+    contentKind: contentKind,
     replyPreviews: replyPreviews ?? this.replyPreviews,
   );
 }
@@ -382,6 +386,14 @@ class _PostCardState extends State<PostCard> {
             );
       if (publicUrl != null) text = publicUrl;
     }
+    if (widget.data.contentKind case final kind?) {
+      final base = AppEnvironment.forumWebBaseUrl.replaceAll(
+        RegExp(r'/+$'),
+        '',
+      );
+      text =
+          '$base/#/content/$kind/${Uri.encodeComponent(widget.data.thread.id)}';
+    }
     if (text.isEmpty) return;
     try {
       await widget.shareSheet(text, sharePositionOrigin: origin);
@@ -581,9 +593,8 @@ class _PostCardState extends State<PostCard> {
                             ),
                             if (data.signatureVerified) ...[
                               const SizedBox(width: 5),
-                              Icon(
-                                Icons.verified,
-                                size: 14,
+                              ContentTrustBadge(
+                                human: false,
                                 color: style.accent,
                               ),
                             ],
@@ -592,7 +603,7 @@ class _PostCardState extends State<PostCard> {
                         const SizedBox(height: 2),
                         Text(
                           '${data.timeAgo}'
-                          '${data.signatureVerified ? context.uiCopy(zh: ' · signed', en: ' · signed') : ''}',
+                          '${data.signatureVerified ? context.uiCopy(zh: ' · 已簽署', en: ' · signed') : ''}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -604,9 +615,11 @@ class _PostCardState extends State<PostCard> {
                       ],
                     ),
                   ),
-                  if (PostingGate.isVerifiedHuman(data.authorTier) &&
-                      !data.signatureVerified) ...[
-                    Icon(Icons.verified, size: 14, color: AnsibleDesign.spore),
+                  if (PostingGate.isVerifiedHuman(data.authorTier)) ...[
+                    const ContentTrustBadge(
+                      human: true,
+                      color: AnsibleDesign.spore,
+                    ),
                     const SizedBox(width: 8),
                   ],
                   if (data.author != widget.authorDid)

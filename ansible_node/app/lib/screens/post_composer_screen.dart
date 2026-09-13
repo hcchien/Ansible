@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:ansible_store/ansible_store.dart';
 
 import '../l10n/app_l10n.dart';
+import '../services/composer_draft_store.dart';
+import '../widgets/composer_draft_boundary.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/author_label.dart';
 import '../widgets/mention_picker.dart';
@@ -11,11 +13,13 @@ class PostComposerResult {
     required this.content,
     this.mentionDids = const [],
     this.mentions = const [],
+    this.draftKey,
   });
 
   final String content;
   final List<String> mentionDids;
   final List<PostMention> mentions;
+  final String? draftKey;
 }
 
 /// Full-screen composer for a forum reply (new or edit), styled to the app's
@@ -28,9 +32,11 @@ class PostComposerScreen extends StatefulWidget {
     this.initialContent,
     this.authorDid,
     this.mentionSearch,
+    this.draftTarget,
   });
 
   final String? initialContent;
+  final String? draftTarget;
 
   /// Shown in the footer for parity with the other composers. Optional.
   final String? authorDid;
@@ -45,6 +51,11 @@ class _PostComposerScreenState extends State<PostComposerScreen> {
   final MentionDraft _mentions = MentionDraft();
   String? _error;
   bool _mentionPickerOpen = false;
+
+  String? get _draftKey =>
+      widget.authorDid == null || widget.draftTarget == null
+      ? null
+      : ComposerDraftStore.key(widget.authorDid!, 'reply', widget.draftTarget!);
 
   bool get _isEdit => widget.initialContent != null;
 
@@ -76,6 +87,7 @@ class _PostComposerScreenState extends State<PostComposerScreen> {
     Navigator.of(context).pop(
       PostComposerResult(
         content: content,
+        draftKey: _draftKey,
         mentionDids: mentions.map((mention) => mention.did).toList(),
         mentions: mentions,
       ),
@@ -117,63 +129,75 @@ class _PostComposerScreenState extends State<PostComposerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      backgroundColor: AnsibleDesign.paper,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _TopBar(
-              isEdit: _isEdit,
-              onCancel: () => Navigator.of(context).pop(),
-              onDone: _submit,
-            ),
-            if (_error != null) _ErrorBanner(message: _error!),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(22, 12, 22, 16),
-                child: TextField(
-                  key: const Key('post_composer_body_field'),
-                  controller: _controller,
-                  onChanged: _onComposerChanged,
-                  autofocus: true,
-                  minLines: 8,
-                  maxLines: null,
-                  keyboardType: TextInputType.multiline,
-                  cursorColor: AnsibleDesign.accent,
-                  cursorWidth: 2,
-                  style: const TextStyle(
-                    fontFamily: AnsibleDesign.serif,
-                    fontSize: 22,
-                    height: 1.5,
-                    color: AnsibleDesign.ink,
-                  ),
-                  decoration: InputDecoration(
-                    filled: false,
-                    hintText: context.uiCopy(
-                      zh: '輸入貼文內容',
-                      en: 'Write your reply',
-                    ),
-                    hintStyle: const TextStyle(
+    return ComposerDraftBoundary(
+      draftKey: _draftKey,
+      controllers: [_controller],
+      snapshot: () => {
+        'body': _controller.text,
+        'mentions': _mentions.toJson(),
+      },
+      restore: (data) => setState(() {
+        _controller.text = data['body'] as String? ?? '';
+        _mentions.restore(data['mentions']);
+      }),
+      child: Scaffold(
+        resizeToAvoidBottomInset: true,
+        backgroundColor: AnsibleDesign.paper,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _TopBar(
+                isEdit: _isEdit,
+                onCancel: () => Navigator.of(context).pop(),
+                onDone: _submit,
+              ),
+              if (_error != null) _ErrorBanner(message: _error!),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(22, 12, 22, 16),
+                  child: TextField(
+                    key: const Key('post_composer_body_field'),
+                    controller: _controller,
+                    onChanged: _onComposerChanged,
+                    autofocus: true,
+                    minLines: 8,
+                    maxLines: null,
+                    keyboardType: TextInputType.multiline,
+                    cursorColor: AnsibleDesign.accent,
+                    cursorWidth: 2,
+                    style: const TextStyle(
                       fontFamily: AnsibleDesign.serif,
-                      color: AnsibleDesign.inkFaint,
                       fontSize: 22,
                       height: 1.5,
+                      color: AnsibleDesign.ink,
                     ),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
+                    decoration: InputDecoration(
+                      filled: false,
+                      hintText: context.uiCopy(
+                        zh: '輸入貼文內容',
+                        en: 'Write your reply',
+                      ),
+                      hintStyle: const TextStyle(
+                        fontFamily: AnsibleDesign.serif,
+                        color: AnsibleDesign.inkFaint,
+                        fontSize: 22,
+                        height: 1.5,
+                      ),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding: EdgeInsets.zero,
+                    ),
                   ),
                 ),
               ),
-            ),
-            _Footer(
-              did: widget.authorDid,
-              characterCount: _controller.text.characters.length,
-              onMention: _isEdit ? null : () => _pickMention(),
-            ),
-          ],
+              _Footer(
+                did: widget.authorDid,
+                characterCount: _controller.text.characters.length,
+                onMention: _isEdit ? null : () => _pickMention(),
+              ),
+            ],
+          ),
         ),
       ),
     );

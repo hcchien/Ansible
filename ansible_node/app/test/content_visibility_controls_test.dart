@@ -1,3 +1,4 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:ansible_node/screens/murmur_screen.dart';
 import 'package:ansible_node/screens/note_workspace_screen.dart';
 import 'package:ansible_store/ansible_store.dart';
@@ -5,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setUp(() => FlutterSecureStorage.setMockInitialValues({}));
   testWidgets('murmur saves selected public visibility', (tester) async {
     final repository = InMemoryContentItemRepository();
 
@@ -19,16 +21,20 @@ void main() {
       ),
     );
 
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('murmur_visibility_chip')));
     await tester.pumpAndSettle();
     expect(find.text('誰能看見 · VISIBILITY'), findsOneWidget);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('公開'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('確認'));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const Key('murmur_body_field')),
       'public murmur',
     );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('送出'));
     await tester.pumpAndSettle();
 
@@ -94,10 +100,13 @@ void main() {
       ),
     );
 
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('visibility_chip_note-1')));
     await tester.pumpAndSettle();
     expect(find.text('誰能看見 · VISIBILITY'), findsOneWidget);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('公開'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('確認'));
     await tester.pumpAndSettle();
 

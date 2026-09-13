@@ -23,6 +23,8 @@ import '../widgets/reaction_bar.dart';
 import '../widgets/publication_time.dart';
 import '../widgets/report_dialog.dart';
 import 'user_profile_screen.dart';
+import '../services/composer_draft_store.dart';
+import '../widgets/composer_draft_boundary.dart';
 
 typedef ContentThreadFetcher =
     Future<AppViewTimelinePage> Function({required String threadId});
@@ -30,14 +32,14 @@ typedef ContentThreadFetcher =
 /// Detail view for a standalone content item (murmur/note): the full content as
 /// the head, plus a comment thread. Comments are `post` ops keyed by the
 /// content's entity id (`threadId == contentId`); they read back from the
-/// AppView's `GET /api/v1/thread/:thread_id`. The board-less content has no
-/// local board sync, so the AppView is the only comment read path.
+/// Relay's `GET /api/v1/thread/:thread_id`, merged with local replies.
 class ContentDetailScreen extends StatefulWidget {
   const ContentDetailScreen({
     super.key,
     required this.db,
     required this.localDid,
     required this.contentId,
+    this.contentKind,
     required this.authorDid,
     required this.body,
     required this.opsDispatchService,
@@ -55,6 +57,7 @@ class ContentDetailScreen extends StatefulWidget {
   final AppDatabase db;
   final String localDid;
   final String contentId;
+  final String? contentKind;
   final String authorDid;
   final String body;
   final String? title;
@@ -77,6 +80,11 @@ class ContentDetailScreen extends StatefulWidget {
 }
 
 class _ContentDetailScreenState extends State<ContentDetailScreen> {
+  String get _draftKey => ComposerDraftStore.key(
+    widget.localDid,
+    'reply',
+    'thread:${widget.contentId}',
+  );
   final _composer = TextEditingController();
   final _composerFocus = FocusNode();
   final MentionDraft _mentions = MentionDraft();
@@ -113,7 +121,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   Color get _danger => _dark ? AnsibleDesign.darkEmber : AnsibleDesign.danger;
 
   String get _appViewBaseUrl =>
-      widget.appViewBaseUrl ?? AppEnvironment.appViewBaseUrl;
+      widget.appViewBaseUrl ?? AppEnvironment.socialRelayBaseUrl;
   SafetyActions get _safetyActions => widget.safetyActions ?? SafetyActions();
 
   @override
@@ -235,21 +243,39 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           createdAt: now,
           updatedAt: now,
           lastEditAt: now,
-          signatureVerified: true,
+          signatureVerified: false,
           mentions: mentions,
         ),
       );
-      await widget.opsDispatchService.signAndEnqueue(
-        CrdtOpBuilder.createComment(
-          authorDid: widget.localDid,
-          entityId: commentId,
-          targetId: widget.contentId,
-          content: text,
-          mentionDids: mentionDids,
-          mentions: mentions,
-        ),
-      );
-      unawaited(widget.onFlushPendingOps());
+      final op = CrdtOpBuilder.createComment(
+        authorDid: widget.localDid,
+        entityId: commentId,
+        targetId: widget.contentId,
+        content: text,
+        mentionDids: mentionDids,
+        mentions: mentions,
+      ).copyWith(status: 'awaiting_authorization');
+      await widget.opsDispatchService.repository.enqueue(op);
+      _composer.clear();
+      _mentions.clear();
+      await ComposerDraftStore.shared.clear(_draftKey);
+      try {
+        await widget.opsDispatchService.signAndEnqueue(op);
+        unawaited(widget.onFlushPendingOps());
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                context.uiCopy(
+                  zh: '留言已存本機，請到傳送中心完成授權。',
+                  en: 'Reply saved locally. Complete authorization in the sending center.',
+                ),
+              ),
+            ),
+          );
+        }
+      }
       if (!mounted) return;
       setState(() {
         _comments = _sorted([
@@ -344,7 +370,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           createdAt: existing.createdAt,
           updatedAt: now,
           lastEditAt: now,
-          signatureVerified: true,
+          signatureVerified: false,
           mentions: existing.mentions,
         ),
       );
@@ -483,49 +509,61 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       child: AnsibleScreenScaffold(
         title: context.uiCopy(zh: '貼文', en: 'POST'),
         leadingLabel: context.uiCopy(zh: '← 返回', en: '← Back'),
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.only(bottom: 16),
-                children: [
-                  _head(context),
-                  CommunityNotesPanel(
-                    targetRef: widget.contentId,
-                    localDid: widget.localDid,
-                    opsDispatchService: widget.opsDispatchService,
-                    onFlushPendingOps: widget.onFlushPendingOps,
-                    appViewBaseUrl: _appViewBaseUrl,
-                  ),
-                  if (_loading)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 28),
-                      child: Center(
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+        child: ComposerDraftBoundary(
+          draftKey: _draftKey,
+          controllers: [_composer],
+          snapshot: () => {
+            'body': _composer.text,
+            'mentions': _mentions.toJson(),
+          },
+          restore: (data) => setState(() {
+            _composer.text = data['body'] as String? ?? '';
+            _mentions.restore(data['mentions']);
+          }),
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  children: [
+                    _head(context),
+                    CommunityNotesPanel(
+                      targetRef: widget.contentId,
+                      localDid: widget.localDid,
+                      opsDispatchService: widget.opsDispatchService,
+                      onFlushPendingOps: widget.onFlushPendingOps,
+                      appViewBaseUrl: _appViewBaseUrl,
+                    ),
+                    if (_loading)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 28),
+                        child: Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         ),
-                      ),
-                    )
-                  else if (_comments.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-                      child: Text(
-                        context.uiCopy(
-                          zh: '還沒有留言，搶頭香！',
-                          en: 'No comments yet — be the first.',
+                      )
+                    else if (_comments.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+                        child: Text(
+                          context.uiCopy(
+                            zh: '還沒有留言，搶頭香！',
+                            en: 'No comments yet — be the first.',
+                          ),
+                          style: TextStyle(fontSize: 13, color: _faint),
                         ),
-                        style: TextStyle(fontSize: 13, color: _faint),
-                      ),
-                    )
-                  else
-                    for (final c in _comments) _commentRow(context, c),
-                ],
+                      )
+                    else
+                      for (final c in _comments) _commentRow(context, c),
+                  ],
+                ),
               ),
-            ),
-            _composerBar(context),
-          ],
+              _composerBar(context),
+            ],
+          ),
         ),
       ),
     );
@@ -660,7 +698,11 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   }
 
   void _share() {
-    final text = widget.body.isNotEmpty ? widget.body : (widget.title ?? '');
+    final kind = widget.contentKind;
+    final base = AppEnvironment.forumWebBaseUrl.replaceAll(RegExp(r'/+$'), '');
+    final text = kind == null
+        ? (widget.body.isNotEmpty ? widget.body : (widget.title ?? ''))
+        : '$base/#/content/$kind/${Uri.encodeComponent(widget.contentId)}';
     if (text.isNotEmpty) Share.share(text);
   }
 

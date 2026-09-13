@@ -26,7 +26,12 @@ class ElixContentRef {
     : kind = 'thread',
       threadId = thread;
 
+  const ElixContentRef.content(this.kind, String id)
+    : boardId = '',
+      threadId = id;
+
   bool get isThread => kind == 'thread';
+  bool get isStandalone => kind == 'murmur' || kind == 'note';
 
   @override
   bool operator ==(Object other) =>
@@ -97,6 +102,11 @@ class ElixContentLink {
     final segments = _contentSegments(uri, allowLocalHttp: allowLocalHttp);
     if (segments == null) return null;
 
+    if (segments.length == 3 &&
+        segments[0] == 'content' &&
+        ['murmur', 'note'].contains(segments[1])) {
+      return ElixContentRef.content(segments[1], segments[2]);
+    }
     if (segments.length == 2 && segments[0] == 'boards') {
       final boardId = segments[1];
       if (boardId.isEmpty) return null;
@@ -129,6 +139,11 @@ class ElixContentLink {
     if (uri.scheme == 'https' ||
         (uri.scheme == 'http' && allowLocalHttp && _isLoopbackHost(uri.host))) {
       if (uri.host.isEmpty) return null;
+      if (uri.fragment.startsWith('/')) {
+        return Uri.parse(
+          uri.fragment,
+        ).pathSegments.where((s) => s.isNotEmpty).toList();
+      }
       return uri.pathSegments.where((s) => s.isNotEmpty).toList();
     }
 

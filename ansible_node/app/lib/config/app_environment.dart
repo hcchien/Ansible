@@ -47,26 +47,10 @@ class AppEnvironment {
     defaultValue: defaultRelayBaseUrl,
   );
 
-  /// Base URL of the AppView timeline service (scalable following feed). When
-  /// [useAppViewFeed] is true, the Following feed is served from here instead of
-  /// filtering the relay global delta locally.
-  static const appViewBaseUrl = String.fromEnvironment(
-    'ANSIBLE_APPVIEW_BASE_URL',
-    defaultValue: '',
-  );
-
-  static const useAppViewFeed = bool.fromEnvironment(
-    'ANSIBLE_USE_APPVIEW_FEED',
-    defaultValue: false,
-  );
-
-  /// When true (and the AppView feed is enabled), the Following feed is served
-  /// from the reader's server-materialized home timeline (fan-out-on-write,
-  /// `GET /api/v1/home`) instead of fan-out-on-read over the follow set.
-  static const useAppViewHomeTimeline = bool.fromEnvironment(
-    'ANSIBLE_USE_APPVIEW_HOME_TIMELINE',
-    defaultValue: false,
-  );
+  /// Native social reads use the selected Relay. Viewer configuration has no
+  /// effect on native traffic. Issuer/Wallet endpoints are independent.
+  static String socialRelayBaseUrl = defaultRelayBaseUrl;
+  static const useRelayFeed = true;
 
   static const resetLocalIdentityOnStart = bool.fromEnvironment(
     'ANSIBLE_RESET_LOCAL_IDENTITY_ON_START',

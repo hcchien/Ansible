@@ -5,7 +5,7 @@
 > is parked, and what already landed, with links to the underlying specs and
 > plans.
 >
-> **Last updated:** 2026-07-07
+> **Last updated:** 2026-09-14 (PD1–PD8 local implementation; deployment and device validation pending; older statuses not re-audited)
 >
 > **Keep it current:** when a plan lands, is paused, or a new spec/plan is
 > added under `docs/superpowers/`, update this file in the same change.
@@ -82,6 +82,9 @@ already underway (architecture Phase 1 / Phase 0).
 
 ### Improve（改善）
 
+最新檢查：[2026-09-13 產品功能設計複查（1.0.12）](reviews/2026-09-13-elix-product-design-review.md)。
+PD1–PD8 已完成本機實作，包括原文入口、傳送中心、草稿、匿名閱讀、信任標示、搜尋範圍、復原導引及 Relay 社群查詢。詳見 [實作及驗證紀錄](reviews/2026-09-14-product-flow-implementation.md)；尚未部署或實機驗收。
+
 | Item | Notes |
 |---|---|
 | Value-prop copy: mechanism → benefit | Onboarding/marketing says「先建立身分」(engineer-speak); users need outcomes:「沒有機器人的討論區」「帳號和內容永遠是你的」 |
@@ -97,6 +100,23 @@ already underway (architecture Phase 1 / Phase 0).
 | Cross-cutting foundations — app↔relay API versioning + observability baseline | P1 — **✅ done 2026-06-13** | [Architecture plan — Phase 0](architecture/service_architecture_plan.md) | Versioning: `x-ansible-protocol` header + `/api/v1/meta` + `426 upgrade_required` on relay & appview, op `schema_version` (additive, out of signed payload). Observability: `GET /metrics` (Prometheus) on relay/appview/issuer/frontend with the series later phases need for exit criteria (sig pass/fail, op growth, ingest lag, wake sends). Phase 0 complete |
 
 ## Next（下一步）
+
+### 原生 App 社群資料通訊統一走 Relay（2026-09-14）
+
+- [x] 原生社群 feed、公開檔案、探索、搜尋、互動及脈絡內容改讀所選 Relay。
+- [x] Relay 提供自有公開查詢及分頁，不轉送 AppView，也不下載全站 delta 作前端搜尋。
+- [x] AppView 不作 App 寫入或查詢確認關卡；Web Viewer 仍獨立讀取證據、驗證與索引。
+- [x] 公開閱讀保留受限內容、刪除、撤銷／權限狀態過濾及作者原始時間。
+- [ ] 部署 Relay migration／查詢 API、AppView 精確原文路由及 Web，再發布新版 App。
+- [ ] 正式資料量效能、實機背景終止／復原，以及 AppView 停用的裝置網路驗收。
+
+**範圍：** 社群通訊；Wallet／Issuer 等明確授權的獨立服務與可選外部分發不變。
+外部閱讀改用 Relay 經驗證 inbox 與明確來源清單，既有 Viewer outbox 歷史不會自動搬移。
+詳細相容性、測試及部署條件見 [實作及驗證紀錄](reviews/2026-09-14-product-flow-implementation.md)。
+
+**Constitution Review：** 維持本機優先、私密資料 fail-closed、使用者持有金鑰及最小揭露。
+Relay 為選定最新狀態來源；Web Viewer 保留獨立簽章、撤銷與防回滾檢查。
+不宣稱能防止惡意 Relay 隱藏未見更新，也不把原生公開 DTO 的 Relay 驗證結果當作額外客戶端密碼學驗證。
 
 | Item | Priority | Links | Notes / dependencies |
 |---|---|---|---|

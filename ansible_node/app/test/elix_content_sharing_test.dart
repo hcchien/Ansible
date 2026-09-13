@@ -11,6 +11,28 @@ import 'package:flutter_test/flutter_test.dart';
 // Widget tests assert zh-Hant copy because the test locale falls back to
 // zh-Hant (see existing screen tests, e.g. posting_gate_test.dart).
 void main() {
+  test('standalone links and Web hash links retain exact content identity', () {
+    expect(
+      ElixContentLink.parse(
+        Uri.parse('https://elix.cool/#/content/murmur/a%20b'),
+      ),
+      const ElixContentRef.content('murmur', 'a b'),
+    );
+    expect(
+      ElixContentLink.parse(Uri.parse('https://elix.cool/content/note/n1')),
+      const ElixContentRef.content('note', 'n1'),
+    );
+    expect(
+      ElixContentLink.parse(
+        Uri.parse('https://elix.cool/#/boards/2026/threads/t1'),
+      ),
+      const ElixContentRef.thread(boardId: '2026', thread: 't1'),
+    );
+    expect(
+      ElixContentLink.parse(Uri.parse('https://elix.cool/content/private/a')),
+      isNull,
+    );
+  });
   const localDid = 'did:plc:share-test-user';
   const canonicalBoardUri = 'https://relay.example/boards/hosted-1';
   const frontendBaseUrl = 'https://web.example/app';

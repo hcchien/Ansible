@@ -1,3 +1,4 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_node/services/canonical_identity_store.dart';
 import 'package:ansible_node/main.dart';
@@ -11,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'support/accepted_terms_store.dart';
 
 void main() {
+  setUp(() => FlutterSecureStorage.setMockInitialValues({}));
   testWidgets('phone navigation opens composers and enforces murmur limit', (
     tester,
   ) async {
@@ -62,7 +64,7 @@ void main() {
     );
     await tester.tap(find.text('Send'));
     await tester.pumpAndSettle();
-    expect(find.text('Sent'), findsOneWidget);
+    expect(find.text('Saved on this device'), findsOneWidget);
     expect(find.text('測試碎念存檔'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.arrow_back_ios_new));

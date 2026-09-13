@@ -187,7 +187,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Future<List<AppViewTimelineItem>> _fetchPublicPosts(String did) async {
-    final baseUrl = AppEnvironment.appViewBaseUrl.trim();
+    final baseUrl = AppEnvironment.socialRelayBaseUrl.trim();
     if (baseUrl.isEmpty) return const [];
     final page = await AppViewTimelineClient(
       baseUrl: baseUrl,

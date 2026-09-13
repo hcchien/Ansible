@@ -1,3 +1,6 @@
+import 'screens/public_browse_screen.dart';
+import 'screens/public_content_screen.dart';
+import 'services/discovery_client.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -21,7 +24,7 @@ import 'screens/edit_profile_screen.dart';
 import 'screens/onboarding_backup_step_screen.dart'; // Post-registration backup + initial anchor
 import 'screens/onboarding_intro_screen.dart';
 import 'screens/passkeys_registration_screen.dart'; // V2.0: Passkeys registration
-import 'screens/google_play_review_screen.dart';
+// Public browsing is available to every build.
 import 'screens/posts_view_screen.dart';
 import 'screens/recovery_wizard_screen.dart'; // Restore-from-backup recovery
 import 'screens/threads_list_screen.dart';
@@ -369,10 +372,6 @@ class _MyAppState extends State<MyApp> {
   final _globalSyncController = ElixGlobalSyncController();
   StreamSubscription<Uri>? _webSessionLinkSubscription;
 
-  bool get _googlePlayReviewAccessEnabled =>
-      widget.googlePlayReviewAccessEnabled ??
-      AppEnvironment.enableGooglePlayReviewAccess;
-
   @override
   void initState() {
     super.initState();
@@ -518,7 +517,37 @@ class _MyAppState extends State<MyApp> {
           ),
         );
       case ContentUnavailable():
-        _showContentUnavailableMessage();
+        if (ref.isThread || ref.isStandalone) {
+          final post = DiscoveredPost(
+            entityType: ref.kind,
+            entityId: ref.threadId!,
+            authorDid: '',
+            payload: const {},
+            boardId: ref.isThread ? ref.boardId : null,
+            threadId: ref.isThread ? ref.threadId : null,
+          );
+          final client = DiscoveryClient(appViewBaseUrl: '');
+          await navigator.push(
+            MaterialPageRoute<void>(
+              builder: (_) => PublicContentScreen(
+                post: post,
+                client: client,
+                db: widget.db,
+                localDid: _anchoredDid,
+                onInteract: _anchoredDid == null
+                    ? () {
+                        _pendingPublicPost = post;
+                        navigator.popUntil((route) => route.isFirst);
+                        setState(() => _introDone = true);
+                      }
+                    : null,
+              ),
+            ),
+          );
+          client.close();
+        } else {
+          _showContentUnavailableMessage();
+        }
     }
   }
 
@@ -623,6 +652,8 @@ class _MyAppState extends State<MyApp> {
     );
   }
 
+  DiscoveredPost? _pendingPublicPost;
+
   void _completeOnboarding(String did) {
     // Pop the onboarding backup step (if still on the stack) and enter the app.
     _navigatorKey.currentState?.popUntil((route) => route.isFirst);
@@ -635,6 +666,24 @@ class _MyAppState extends State<MyApp> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final navigator = _navigatorKey.currentState;
       if (navigator == null) return;
+      final pending = _pendingPublicPost;
+      if (pending != null) {
+        _pendingPublicPost = null;
+        navigator.push(
+          MaterialPageRoute<void>(
+            builder: (_) => PublicContentScreen(
+              post: pending,
+              db: widget.db,
+              localDid: did,
+              client: DiscoveryClient(
+                appViewBaseUrl: '',
+                relayBaseUrl: AppEnvironment.socialRelayBaseUrl,
+              ),
+            ),
+          ),
+        );
+        return;
+      }
       navigator.push(
         MaterialPageRoute<void>(
           builder: (_) =>
@@ -778,13 +827,19 @@ class _MyAppState extends State<MyApp> {
                 )
               : OnboardingIntroScreen(
                   onContinue: () => setState(() => _introDone = true),
-                  reviewPublicContent: _googlePlayReviewAccessEnabled
-                      ? () => _navigatorKey.currentState?.push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const GooglePlayReviewScreen(),
-                          ),
-                        )
-                      : null,
+                  reviewPublicContent: () => _navigatorKey.currentState?.push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => PublicBrowseScreen(
+                        onRegister: (post) {
+                          _pendingPublicPost = post;
+                          _navigatorKey.currentState?.popUntil(
+                            (route) => route.isFirst,
+                          );
+                          setState(() => _introDone = true);
+                        },
+                      ),
+                    ),
+                  ),
                 ),
         );
       },

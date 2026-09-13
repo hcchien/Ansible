@@ -16,6 +16,7 @@ import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/author_label.dart';
 import '../widgets/board_gate_badge.dart';
 import 'posts_view_screen.dart';
+import 'public_content_screen.dart';
 import 'threads_list_screen.dart';
 import 'user_profile_screen.dart';
 import 'follow_qr_screen.dart';
@@ -441,7 +442,20 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
-  List<Widget> _tabContent(BuildContext context) {
+  List<Widget> _tabContent(BuildContext context) => [
+    if (_query.isNotEmpty && _results.partialFailure && !_searching)
+      _errorPane(
+        context,
+        context.uiCopy(
+          zh: '部分搜尋未完成，下方保留已取得的結果。',
+          en: 'Some searches failed. Available results are shown below.',
+        ),
+        () => _runSearch(_query),
+      ),
+    ..._resultContent(context),
+  ];
+
+  List<Widget> _resultContent(BuildContext context) {
     final searching = _query.isNotEmpty;
     // Loading / error states (shared across tabs).
     if (searching && _searching) return [_loader()];
@@ -802,7 +816,16 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   /// back to the author's profile so the tap is never a dead end.
   Future<void> _openPost(DiscoveredPost post) async {
     if (!post.isThreadPost) {
-      _openActor(post.authorDid);
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PublicContentScreen(
+            post: post,
+            client: widget.client,
+            db: widget.db,
+            localDid: widget.localDid,
+          ),
+        ),
+      );
       return;
     }
     final resolution = await ElixContentRouter(widget.db).resolve(
@@ -824,15 +847,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       );
       return;
     }
-    // Thread not synced locally yet — guide the user to the board.
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          context.uiCopy(
-            zh: '請先在「看板」分頁訂閱該看板才能閱讀這篇貼文',
-            en: 'Follow this board (Boards tab) to read this post',
-          ),
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PublicContentScreen(
+          post: post,
+          client: widget.client,
+          db: widget.db,
+          localDid: widget.localDid,
         ),
       ),
     );

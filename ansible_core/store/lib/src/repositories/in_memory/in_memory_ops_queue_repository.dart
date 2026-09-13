@@ -13,11 +13,20 @@ class InMemoryOpsQueueRepository implements OpsQueueRepository {
 
   // Cached latest subscription starter — simulates BehaviorSubject by
   // wrapping the broadcast stream so new subscribers get the current value.
-  List<OpsQueueEntry> _currentPending() =>
-      _entries.where((e) => e.status == 'pending').toList();
+  List<OpsQueueEntry> _currentPending() => _entries
+      .where((e) => (e.status == 'pending' || e.status == 'sent'))
+      .toList();
 
   List<OpsQueueEntry> _currentOutstanding() => _entries
-      .where((e) => e.status == 'pending' || e.status == 'blocked')
+      .where(
+        (e) => [
+          'pending',
+          'sent',
+          'blocked',
+          'rejected',
+          'awaiting_authorization',
+        ].contains(e.status),
+      )
       .toList();
 
   void _notifyPending() {
@@ -28,14 +37,18 @@ class InMemoryOpsQueueRepository implements OpsQueueRepository {
 
   @override
   Future<void> enqueue(OpsQueueEntry entry) async {
+    _entries.removeWhere((existing) => existing.opId == entry.opId);
     _entries.add(entry);
     _notifyPending();
   }
 
   @override
   Future<List<OpsQueueEntry>> listPending({int limit = 50}) async {
-    final pending = _entries.where((e) => e.status == 'pending').toList()
-      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    final pending =
+        _entries
+            .where((e) => (e.status == 'pending' || e.status == 'sent'))
+            .toList()
+          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
     return pending.take(limit).toList();
   }
 
@@ -142,7 +155,9 @@ class InMemoryOpsQueueRepository implements OpsQueueRepository {
 
   @override
   Future<int> countPending() async {
-    return _entries.where((e) => e.status == 'pending').length;
+    return _entries
+        .where((e) => (e.status == 'pending' || e.status == 'sent'))
+        .length;
   }
 
   @override

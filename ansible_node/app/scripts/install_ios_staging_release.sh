@@ -93,13 +93,7 @@ ANSIBLE_ATPROTO_BASE_URL="${ANSIBLE_ATPROTO_BASE_URL:-$ANSIBLE_RELAY_BASE_URL}"
 # created and anchored against the active relay. Use when an identity anchored on
 # an old relay can't re-anchor on a newly-pointed relay. Rebuild with =false after.
 ANSIBLE_RESET_LOCAL_IDENTITY_ON_START="${ANSIBLE_RESET_LOCAL_IDENTITY_ON_START-false}"
-# Use `-` (not `:-`) so an explicitly-set empty value is honored: when the
-# AppView is not deployed (e.g. dev pointing only at relay+issuer), pass
-# ANSIBLE_APPVIEW_BASE_URL="" to disable AppView-backed discovery/home-timeline.
-ANSIBLE_APPVIEW_BASE_URL="${ANSIBLE_APPVIEW_BASE_URL-http://${LOCAL_IP}:4003}"
-ANSIBLE_USE_APPVIEW_FEED="${ANSIBLE_USE_APPVIEW_FEED-true}"
-# Phase C: server-materialized home timeline (fan-out-on-write, GET /api/v1/home).
-ANSIBLE_USE_APPVIEW_HOME_TIMELINE="${ANSIBLE_USE_APPVIEW_HOME_TIMELINE-false}"
+# Social discovery and timeline reads use the selected Relay.
 
 tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/elix-ios-release.XXXXXX")"
 stdin_fifo="$tmp_dir/flutter-stdin"
@@ -181,9 +175,6 @@ cmd=(
   --dart-define="ANSIBLE_ISSUER_BASE_URL=$ANSIBLE_ISSUER_BASE_URL"
   --dart-define="ANSIBLE_RELAY_BASE_URL=$ANSIBLE_RELAY_BASE_URL"
   --dart-define="ANSIBLE_ATPROTO_BASE_URL=$ANSIBLE_ATPROTO_BASE_URL"
-  --dart-define="ANSIBLE_APPVIEW_BASE_URL=$ANSIBLE_APPVIEW_BASE_URL"
-  --dart-define="ANSIBLE_USE_APPVIEW_FEED=$ANSIBLE_USE_APPVIEW_FEED"
-  --dart-define="ANSIBLE_USE_APPVIEW_HOME_TIMELINE=$ANSIBLE_USE_APPVIEW_HOME_TIMELINE"
   --dart-define="ANSIBLE_RESET_LOCAL_IDENTITY_ON_START=$ANSIBLE_RESET_LOCAL_IDENTITY_ON_START"
 )
 
@@ -192,7 +183,6 @@ echo "  app dir:                $APP_DIR"
 echo "  device:                 $IOS_DEVICE_ID ($IOS_DEVICE_CONNECTION)"
 echo "  env:                    $ANSIBLE_APP_ENV"
 echo "  relay base URL:         $ANSIBLE_RELAY_BASE_URL"
-echo "  appview base URL:       $ANSIBLE_APPVIEW_BASE_URL"
 echo "  issuer base URL:        $ANSIBLE_ISSUER_BASE_URL"
 echo "  AT Protocol base URL:   $ANSIBLE_ATPROTO_BASE_URL"
 echo "  real Rust bridge:       $ANSIBLE_USES_REAL_RUST_BRIDGE"

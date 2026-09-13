@@ -32,7 +32,7 @@ void main() {
     Future<http.Response> Function(http.Request) handler,
   ) => DiscoveryClient(
     appViewBaseUrl: 'https://appview.test',
-    relayBaseUrl: '',
+    relayBaseUrl: 'https://relay.test',
     client: MockClient(handler),
   );
 

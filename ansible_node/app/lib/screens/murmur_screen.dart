@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
 import '../l10n/app_l10n.dart';
+import '../services/composer_draft_store.dart';
+import '../widgets/composer_draft_boundary.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/content_visibility_sheet.dart';
 import 'murmur_detail_screen.dart';
@@ -43,6 +45,8 @@ class _MurmurScreenState extends State<MurmurScreen> {
   DistributionPreference _distributionPreference =
       DistributionPreference.localOnly;
   bool _saving = false;
+  String get _draftKey =>
+      ComposerDraftStore.key(widget.authorDid, 'murmur', 'new');
 
   @override
   void dispose() {
@@ -66,23 +70,56 @@ class _MurmurScreenState extends State<MurmurScreen> {
       updatedAt: now,
       localOnly: _visibility == ContentVisibility.private,
     );
-    await widget.contentItemRepository!.create(item);
-    if (_visibility != ContentVisibility.private) {
-      await widget.onPublishContentItem?.call(item, _distributionPreference);
+    final preference = _distributionPreference;
+    var saved = false;
+    try {
+      await widget.contentItemRepository!.create(item);
+      saved = true;
+      if (mounted) {
+        _bodyController.clear();
+      }
+      await ComposerDraftStore.shared.clear(_draftKey);
+      if (item.visibility != ContentVisibility.private) {
+        await widget.onPublishContentItem?.call(item, preference);
+      }
+      await widget.onSaved?.call();
+      if (item.visibility == ContentVisibility.public) {
+        await widget.onPublicPostSaved?.call();
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            item.visibility == ContentVisibility.private
+                ? context.uiCopy(zh: '已儲存在這台裝置', en: 'Saved on this device')
+                : context.uiCopy(
+                    zh: '已儲存。傳送進度可在傳送中心查看。',
+                    en: 'Saved. Check the sending center for delivery progress.',
+                  ),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              saved
+                  ? context.uiCopy(
+                      zh: '內容已儲存；尚未完成傳送，請到傳送中心重試。',
+                      en: 'Content saved; delivery is incomplete. Retry in the sending center.',
+                    )
+                  : context.uiCopy(
+                      zh: '儲存失敗，草稿仍保留，請重試。',
+                      en: 'Save failed. Your draft is retained; please retry.',
+                    ),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
-    if (!mounted) return;
-    await widget.onSaved?.call();
-    if (_visibility == ContentVisibility.public) {
-      await widget.onPublicPostSaved?.call();
-    }
-    if (!mounted) return;
-    setState(() {
-      _saving = false;
-      _bodyController.clear();
-    });
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(context.l10n.sent)));
   }
 
   Future<void> _showVisibilitySheet() async {
@@ -105,161 +142,186 @@ class _MurmurScreenState extends State<MurmurScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              l10n.murmurTitle,
-              style: const TextStyle(
-                fontFamily: AnsibleDesign.mono,
-                fontSize: 10,
-                letterSpacing: 1.6,
-                color: AnsibleDesign.inkFaint,
-              ),
-            ),
-            const Spacer(),
-            AnsibleStatusChip(label: l10n.local, dot: AnsibleDesign.spore),
-            const SizedBox(width: 8),
-            FilledButton(
-              onPressed: _saving ? null : _save,
-              child: Text(l10n.send),
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
-        Expanded(
-          child: ListView(
-            padding: EdgeInsets.zero,
+    return ComposerDraftBoundary(
+      draftKey: _draftKey,
+      controllers: [_bodyController],
+      snapshot: () => {
+        'body': _bodyController.text,
+        'visibility': _visibility.name,
+        'distribution': _distributionPreference.name,
+      },
+      restore: (data) => setState(() {
+        _bodyController.text = data['body'] as String? ?? '';
+        _visibility =
+            ContentVisibility.values
+                .where((v) => v.name == data['visibility'])
+                .firstOrNull ??
+            ContentVisibility.private;
+        _distributionPreference =
+            DistributionPreference.values
+                .where((v) => v.name == data['distribution'])
+                .firstOrNull ??
+            DistributionPreference.localOnly;
+      }),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
               Text(
-                l10n.murmurPrompt,
+                l10n.murmurTitle,
                 style: const TextStyle(
-                  fontSize: 23,
-                  height: 1.4,
-                  fontWeight: FontWeight.w500,
-                  color: AnsibleDesign.ink,
+                  fontFamily: AnsibleDesign.mono,
+                  fontSize: 10,
+                  letterSpacing: 1.6,
+                  color: AnsibleDesign.inkFaint,
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                _visibility == ContentVisibility.private
-                    ? l10n.murmurPrivateHint
-                    : l10n.murmurSyncHint,
-                style: const TextStyle(
-                  fontSize: 13,
-                  height: 1.65,
-                  color: AnsibleDesign.inkMuted,
-                  fontStyle: FontStyle.italic,
-                ),
+              const Spacer(),
+              AnsibleStatusChip(label: l10n.local, dot: AnsibleDesign.spore),
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: _saving ? null : _save,
+                child: Text(l10n.send),
               ),
-              const SizedBox(height: 18),
-              Container(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
-                decoration: BoxDecoration(
-                  color: AnsibleDesign.paperElev,
-                  border: Border.all(color: AnsibleDesign.rule, width: 0.5),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: TextField(
-                  key: const Key('murmur_body_field'),
-                  controller: _bodyController,
-                  cursorColor: AnsibleDesign.accent,
-                  maxLength: _limit,
-                  minLines: 8,
-                  maxLines: 12,
-                  inputFormatters: [LengthLimitingTextInputFormatter(_limit)],
+            ],
+          ),
+          const SizedBox(height: 18),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                Text(
+                  l10n.murmurPrompt,
                   style: const TextStyle(
-                    fontSize: 18,
-                    height: 1.65,
+                    fontSize: 23,
+                    height: 1.4,
+                    fontWeight: FontWeight.w500,
                     color: AnsibleDesign.ink,
                   ),
-                  buildCounter:
-                      (
-                        context, {
-                        required currentLength,
-                        required isFocused,
-                        required maxLength,
-                      }) {
-                        return Text(
-                          '$currentLength / $maxLength',
-                          style: const TextStyle(
-                            fontFamily: AnsibleDesign.mono,
-                            color: AnsibleDesign.inkFaint,
-                            fontSize: 9,
-                            letterSpacing: 1,
-                          ),
-                        );
-                      },
-                  decoration: InputDecoration(
-                    hintText: l10n.murmurInputHint,
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    filled: false,
-                  ),
                 ),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  InkWell(
-                    key: const Key('murmur_visibility_chip'),
-                    borderRadius: BorderRadius.circular(999),
-                    onTap: _showVisibilitySheet,
-                    child: AnsibleStatusChip(
-                      label: contentVisibilityMeta(context, _visibility).label,
-                      dot: contentVisibilityMeta(context, _visibility).dot,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      switch (_visibility) {
-                        ContentVisibility.private =>
-                          l10n.murmurPrivateVisibilityHint,
-                        ContentVisibility.followers => context.uiCopy(
-                          zh: '只有已核准的追蹤者能讀；託管 Host 可讀取內容。',
-                          en: 'Approved followers can read; the hosting service can read the content.',
-                        ),
-                        ContentVisibility.unlisted =>
-                          l10n.murmurUnlistedVisibilityHint,
-                        ContentVisibility.public =>
-                          l10n.murmurPublicVisibilityHint,
-                      },
-                      style: const TextStyle(
-                        color: AnsibleDesign.inkFaint,
-                        fontStyle: FontStyle.italic,
-                        fontSize: 13.5,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 22),
-              AnsibleSectionHead(zh: l10n.looseMurmurs, en: 'LOOSE MURMURS'),
-              if (widget.recentMurmurs.isEmpty)
+                const SizedBox(height: 8),
                 Text(
-                  l10n.looseMurmursEmpty,
+                  _visibility == ContentVisibility.private
+                      ? l10n.murmurPrivateHint
+                      : l10n.murmurSyncHint,
                   style: const TextStyle(
+                    fontSize: 13,
+                    height: 1.65,
                     color: AnsibleDesign.inkMuted,
                     fontStyle: FontStyle.italic,
                   ),
-                )
-              else
-                for (final murmur in widget.recentMurmurs.reversed.take(5))
-                  _RecentMurmurRow(
-                    murmur: murmur,
-                    contentItemRepository: widget.contentItemRepository,
-                    referenceCount:
-                        widget.murmurReferenceCounts[murmur.id] ?? 0,
-                    onDeleted: widget.onSaved,
+                ),
+                const SizedBox(height: 18),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+                  decoration: BoxDecoration(
+                    color: AnsibleDesign.paperElev,
+                    border: Border.all(color: AnsibleDesign.rule, width: 0.5),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-            ],
+                  child: TextField(
+                    key: const Key('murmur_body_field'),
+                    controller: _bodyController,
+                    cursorColor: AnsibleDesign.accent,
+                    maxLength: _limit,
+                    minLines: 8,
+                    maxLines: 12,
+                    inputFormatters: [LengthLimitingTextInputFormatter(_limit)],
+                    style: const TextStyle(
+                      fontSize: 18,
+                      height: 1.65,
+                      color: AnsibleDesign.ink,
+                    ),
+                    buildCounter:
+                        (
+                          context, {
+                          required currentLength,
+                          required isFocused,
+                          required maxLength,
+                        }) {
+                          return Text(
+                            '$currentLength / $maxLength',
+                            style: const TextStyle(
+                              fontFamily: AnsibleDesign.mono,
+                              color: AnsibleDesign.inkFaint,
+                              fontSize: 9,
+                              letterSpacing: 1,
+                            ),
+                          );
+                        },
+                    decoration: InputDecoration(
+                      hintText: l10n.murmurInputHint,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      filled: false,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    InkWell(
+                      key: const Key('murmur_visibility_chip'),
+                      borderRadius: BorderRadius.circular(999),
+                      onTap: _showVisibilitySheet,
+                      child: AnsibleStatusChip(
+                        label: contentVisibilityMeta(
+                          context,
+                          _visibility,
+                        ).label,
+                        dot: contentVisibilityMeta(context, _visibility).dot,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        switch (_visibility) {
+                          ContentVisibility.private =>
+                            l10n.murmurPrivateVisibilityHint,
+                          ContentVisibility.followers => context.uiCopy(
+                            zh: '只有已核准的追蹤者能讀；託管 Host 可讀取內容。',
+                            en: 'Approved followers can read; the hosting service can read the content.',
+                          ),
+                          ContentVisibility.unlisted =>
+                            l10n.murmurUnlistedVisibilityHint,
+                          ContentVisibility.public =>
+                            l10n.murmurPublicVisibilityHint,
+                        },
+                        style: const TextStyle(
+                          color: AnsibleDesign.inkFaint,
+                          fontStyle: FontStyle.italic,
+                          fontSize: 13.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 22),
+                AnsibleSectionHead(zh: l10n.looseMurmurs, en: 'LOOSE MURMURS'),
+                if (widget.recentMurmurs.isEmpty)
+                  Text(
+                    l10n.looseMurmursEmpty,
+                    style: const TextStyle(
+                      color: AnsibleDesign.inkMuted,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  )
+                else
+                  for (final murmur in widget.recentMurmurs.reversed.take(5))
+                    _RecentMurmurRow(
+                      murmur: murmur,
+                      contentItemRepository: widget.contentItemRepository,
+                      referenceCount:
+                          widget.murmurReferenceCounts[murmur.id] ?? 0,
+                      onDeleted: widget.onSaved,
+                    ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

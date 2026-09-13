@@ -29,7 +29,7 @@ class _GooglePlayReviewScreenState extends State<GooglePlayReviewScreen> {
     final client =
         widget.client ??
         DiscoveryClient(
-          appViewBaseUrl: AppEnvironment.appViewBaseUrl,
+          appViewBaseUrl: AppEnvironment.socialRelayBaseUrl,
           relayBaseUrl: AppEnvironment.defaultRelayBaseUrl,
         );
     _posts = client.explore(limit: 30);

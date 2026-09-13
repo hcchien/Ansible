@@ -58,7 +58,7 @@ class _ReactionBarState extends State<ReactionBar> {
 
   Future<void> _loadRemote() async {
     final id = widget.publicThreadId;
-    if (id == null || AppEnvironment.appViewBaseUrl.isEmpty) return;
+    if (id == null || AppEnvironment.socialRelayBaseUrl.isEmpty) return;
     try {
       // Do not send a local draft/private content id to the public read model.
       final content = await DriftContentItemRepository(widget.db).getById(id);
@@ -79,7 +79,7 @@ class _ReactionBarState extends State<ReactionBar> {
           DateTime.now().difference(request.at).inSeconds > 10) {
         final result = () async {
           final client = AppViewTimelineClient(
-            baseUrl: AppEnvironment.appViewBaseUrl,
+            baseUrl: AppEnvironment.socialRelayBaseUrl,
           );
           final page = await client.fetchCompleteThread(threadId: id);
           return page.items.where((i) => i.entityType == 'reaction').toList();
@@ -260,7 +260,10 @@ class _ReactionBarState extends State<ReactionBar> {
               boardId: widget.boardId,
             );
       // A cancelled/failed signing ceremony must not change the visible choice.
-      await widget.opsDispatchService!.signAndEnqueue(op);
+      await widget.opsDispatchService!.signAndEnqueue(
+        op,
+        persistBeforeSigning: false,
+      );
       if (choice.remove) {
         await _repo.delete(id);
         _overrides[widget.localDid!] = null;

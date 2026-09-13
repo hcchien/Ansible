@@ -14,7 +14,6 @@
 #   ANSIBLE_RELAY_BASE_URL   REQUIRED    https, non-local relay base URL
 #   ANSIBLE_ISSUER_BASE_URL  REQUIRED    https, non-local issuer base URL
 #   ANSIBLE_ATPROTO_BASE_URL optional    defaults to the relay base URL
-#   ANSIBLE_APPVIEW_BASE_URL optional    https AppView base URL (feed/timeline)
 #   ANSIBLE_USES_REAL_RUST_BRIDGE=true   (set by this script; prod requires it)
 #   ANSIBLE_ALLOW_INSECURE_SIGNING_FALLBACK=false   (forced false by this script)
 #   ANSIBLE_ALLOW_INSECURE_IDENTITY_FALLBACK=false  (forced false by this script)
@@ -52,9 +51,6 @@ Required environment:
 
 Optional environment:
   ANSIBLE_ATPROTO_BASE_URL  Defaults to ANSIBLE_RELAY_BASE_URL.
-  ANSIBLE_APPVIEW_BASE_URL  AppView base URL. Empty disables AppView feed.
-  ANSIBLE_USE_APPVIEW_FEED  Default false.
-  ANSIBLE_USE_APPVIEW_HOME_TIMELINE  Default false.
   IOS_DEVICE_CONNECTION     Flutter device connection, default wireless.
 
 Notes:
@@ -114,12 +110,6 @@ ANSIBLE_ATPROTO_BASE_URL="${ANSIBLE_ATPROTO_BASE_URL:-$ANSIBLE_RELAY_BASE_URL}"
 require_https_nonlocal "ANSIBLE_ATPROTO_BASE_URL" "$ANSIBLE_ATPROTO_BASE_URL"
 
 # Optional AppView. Empty ("") disables AppView-backed feed/timeline.
-ANSIBLE_APPVIEW_BASE_URL="${ANSIBLE_APPVIEW_BASE_URL-}"
-if [[ -n "$ANSIBLE_APPVIEW_BASE_URL" ]]; then
-  require_https_nonlocal "ANSIBLE_APPVIEW_BASE_URL" "$ANSIBLE_APPVIEW_BASE_URL"
-fi
-ANSIBLE_USE_APPVIEW_FEED="${ANSIBLE_USE_APPVIEW_FEED-false}"
-ANSIBLE_USE_APPVIEW_HOME_TIMELINE="${ANSIBLE_USE_APPVIEW_HOME_TIMELINE-false}"
 
 # Production-forced secure defaults. These are hard requirements of the app's
 # prod readiness guard, so we set them here rather than trusting the environment.
@@ -137,9 +127,6 @@ cmd=(
   --dart-define="ANSIBLE_RELAY_BASE_URL=$ANSIBLE_RELAY_BASE_URL"
   --dart-define="ANSIBLE_ISSUER_BASE_URL=$ANSIBLE_ISSUER_BASE_URL"
   --dart-define="ANSIBLE_ATPROTO_BASE_URL=$ANSIBLE_ATPROTO_BASE_URL"
-  --dart-define="ANSIBLE_APPVIEW_BASE_URL=$ANSIBLE_APPVIEW_BASE_URL"
-  --dart-define="ANSIBLE_USE_APPVIEW_FEED=$ANSIBLE_USE_APPVIEW_FEED"
-  --dart-define="ANSIBLE_USE_APPVIEW_HOME_TIMELINE=$ANSIBLE_USE_APPVIEW_HOME_TIMELINE"
   --dart-define="ANSIBLE_ALLOW_INSECURE_SIGNING_FALLBACK=$ANSIBLE_ALLOW_INSECURE_SIGNING_FALLBACK"
   --dart-define="ANSIBLE_ALLOW_INSECURE_IDENTITY_FALLBACK=$ANSIBLE_ALLOW_INSECURE_IDENTITY_FALLBACK"
 )
@@ -151,7 +138,6 @@ echo "  env:                    prod"
 echo "  relay base URL:         $ANSIBLE_RELAY_BASE_URL"
 echo "  issuer base URL:        $ANSIBLE_ISSUER_BASE_URL"
 echo "  AT Protocol base URL:   $ANSIBLE_ATPROTO_BASE_URL"
-echo "  appview base URL:       ${ANSIBLE_APPVIEW_BASE_URL:-<disabled>}"
 echo "  real Rust bridge:       $ANSIBLE_USES_REAL_RUST_BRIDGE"
 
 if [[ "$DRY_RUN" == true ]]; then

@@ -218,6 +218,66 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.FediverseAccountController.delete(conn, conn.body_params)
   end
 
+  get "/api/v1/context-notes" do
+    send_json(
+      conn,
+      200,
+      AnsibleRelay.PublicReads.context_notes(
+        conn.query_params["target_ref"] || "",
+        conn.query_params
+      )
+    )
+  end
+
+  get "/api/v1/boards/:board_id/external" do
+    send_json(conn, 200, AnsibleRelay.PublicExternalReads.for_board(board_id, conn.query_params))
+  end
+
+  # Native public reads are backed by this Relay, never a Viewer proxy.
+  get "/api/v1/explore" do
+    AnsibleRelay.Web.Controllers.PublicReadsController.show(conn, :explore, conn.query_params)
+  end
+
+  get "/api/v1/search" do
+    AnsibleRelay.Web.Controllers.PublicReadsController.show(conn, :search, conn.query_params)
+  end
+
+  get "/api/v1/search/actors" do
+    AnsibleRelay.Web.Controllers.PublicReadsController.show(conn, :actors, conn.query_params)
+  end
+
+  get "/api/v1/suggest/follows" do
+    AnsibleRelay.Web.Controllers.PublicReadsController.show(conn, :suggest, conn.query_params)
+  end
+
+  get "/api/v1/profiles/:did" do
+    AnsibleRelay.Web.Controllers.PublicReadsController.show(
+      conn,
+      :profile,
+      Map.put(conn.query_params, "did", did)
+    )
+  end
+
+  get "/api/v1/thread/:id" do
+    AnsibleRelay.Web.Controllers.PublicReadsController.show(
+      conn,
+      :thread,
+      Map.put(conn.query_params, "id", id)
+    )
+  end
+
+  get "/api/v1/content/:type/:id" do
+    AnsibleRelay.Web.Controllers.PublicReadsController.show(
+      conn,
+      :content,
+      Map.put(Map.put(conn.query_params, "id", id), "type", type)
+    )
+  end
+
+  post "/api/v1/timeline" do
+    AnsibleRelay.Web.Controllers.PublicReadsController.show(conn, :timeline, conn.body_params)
+  end
+
   # Phase 2 — Delta pull (cursor-based)
   get "/api/v1/ops/delta" do
     AnsibleRelay.Web.Controllers.OpsController.delta(conn, conn.query_params)

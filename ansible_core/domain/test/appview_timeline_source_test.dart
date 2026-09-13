@@ -100,6 +100,7 @@ void main() {
               AppViewTimelineItem(
                 entityType: 'murmur',
                 entityId: 'm1',
+                signatureVerified: true,
                 authorDid: 'did:key:alice',
                 visibility: 'public',
                 createdAt: now,
@@ -146,7 +147,7 @@ void main() {
       );
       expect(
         page.items.whereType<PostTimelineItem>().single.signatureVerified,
-        isTrue,
+        isFalse,
       );
       expect(page.nextCursor, 42);
       expect(page.hasMore, isTrue);

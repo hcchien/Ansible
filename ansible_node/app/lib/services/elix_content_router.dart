@@ -37,6 +37,7 @@ class ElixContentRouter {
   const ElixContentRouter(this.db);
 
   Future<ElixContentResolution> resolve(ElixContentRef ref) async {
+    if (ref.isStandalone) return ContentUnavailable(ref);
     if (ref.isThread) {
       final thread = await DriftThreadRepository(db).getById(ref.threadId!);
       if (thread == null) {

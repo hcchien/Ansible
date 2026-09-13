@@ -48,6 +48,9 @@ export function renderPageBody(viewModel, uiState = {}) {
     case PAGE_IDS.deliberation:
       bodyHtml = renderDeliberationDetail(viewModel, uiState);
       break;
+    case PAGE_IDS.content:
+      bodyHtml = renderStandaloneContent(viewModel);
+      break;
     case PAGE_IDS.profile:
       bodyHtml = renderProfile(viewModel);
       break;
@@ -168,7 +171,7 @@ function renderProfilePost(post) {
       : t('profile.discussion');
   const href = post.type === 'discussion' && post.boardId && post.threadId
     ? `#/boards/${encodeURIComponent(post.boardId)}/threads/${encodeURIComponent(post.threadId)}`
-    : null;
+    : ['murmur', 'note'].includes(post.type) && post.id ? `#/content/${encodeURIComponent(post.type)}/${encodeURIComponent(post.id)}` : null;
   const title = post.title ? `<h3>${escapeHtml(post.title)}</h3>` : '';
   const body = post.body ? `<p>${escapeHtml(post.body)}</p>` : '';
   const inner = `
@@ -239,7 +242,7 @@ function renderHome(viewModel, uiState = {}) {
              straight into the composer and the stream. The heading stays for
              assistive tech, and the read-only state is already shown by the
              session pill in the header. -->
-        <h1 id="feed-title" class="visually-hidden">${escapeHtml(t('home.title'))}</h1>
+        <h1 id="feed-title" class="visually-hidden">${escapeHtml(t('home.publicScopeTitle'))}</h1>
         ${renderMobileFocusStage(viewModel, boards, preferences)}
       </section>
       ${renderRightRail(viewModel, boards)}
@@ -698,7 +701,7 @@ function threadInitial(primary, fallback = 'T') {
 }
 
 function renderPkPill(label = t('focus.passkeyCompact')) {
-  return `<span class="pk-pill">${escapeHtml(label)}</span>`;
+  return `<details class="trust-explanation"><summary class="pk-pill">${escapeHtml(label)}</summary><p>${escapeHtml(t('trust.signatureExplanation'))}</p></details>`;
 }
 
 function renderThreadIdentity(entity) {
@@ -760,7 +763,7 @@ function renderThreadOriginalPost(thread, context = {}) {
       <div class="thread-post-content">
         <div class="thread-post-top">
           ${renderProfileAuthorLink({ author, label: authorLabel, className: 'thread-author' })}
-          <span class="thread-source">${escapeHtml(t('thread.originalMarker'))}${signed ? ` · <span class="thread-source-strong">${escapeHtml(t('thread.signedPk'))}</span>` : ''}</span>
+          <span class="thread-source">${escapeHtml(t('thread.originalMarker'))}${signed ? ` · ${renderPkPill(t('thread.signedPk'))}` : ''}</span>
           ${renderThreadTime(thread.createdAt ?? thread.updatedAt, 'thread-post-time')}
           ${ownerActions}
         </div>
@@ -1048,7 +1051,7 @@ function renderThreadContextRail(viewModel, board = {}) {
         <p class="thread-board-meta">${escapeHtml(permission)} · ${escapeHtml(t('common.trustTier'))}: ${escapeHtml(trustTier)}</p>
       </section>
       <section class="side-note">
-        ${escapeHtml(t('home.feedNote'))}
+        ${escapeHtml(t('home.publicScopeNote'))}
       </section>
     </aside>
   `;
@@ -1615,7 +1618,7 @@ function renderRightRail(viewModel, boards) {
         </div>
       </section>
       <section class="side-note">
-        ${escapeHtml(t('home.feedNote'))}
+        ${escapeHtml(t('home.publicScopeNote'))}
       </section>
     </aside>
   `;
@@ -2257,7 +2260,7 @@ function renderDiscovery(viewModel) {
     const payload = typeof post.payload === 'object' && post.payload ? post.payload : {};
     const board = post.board_id || payload.boardId;
     const thread = post.thread_id || payload.threadId || (post.entity_type === 'thread' ? post.entity_id : null);
-    const href = board && thread ? `#/boards/${encodeURIComponent(board)}/threads/${encodeURIComponent(thread)}` : `#/profiles/${encodeURIComponent(post.author_did || '')}`;
+    const href = board && thread ? `#/boards/${encodeURIComponent(board)}/threads/${encodeURIComponent(thread)}` : `#/content/${encodeURIComponent(post.entity_type)}/${encodeURIComponent(post.entity_id)}`;
     return `<li><a href="${escapeAttribute(href)}">${escapeHtml(payload.title || payload.body || post.title || post.content || t('common.threadFallback'))}</a></li>`;
   }).join('');
   return `<section class="cols"><section class="feed discovery-page"><h1>${escapeHtml(t('home.discover'))}</h1>
@@ -2266,4 +2269,13 @@ function renderDiscovery(viewModel) {
     ${discovery.unavailable ? `<p role="status">${escapeHtml(t('discover.unavailable'))}</p>` : ''}
     ${[['discover.people',actors],['common.boards',boards],['discover.posts',posts]].map(([title,items]) => `<section><h2>${escapeHtml(t(title))}</h2>${items ? `<ul>${items}</ul>` : `<p>${escapeHtml(t('discover.empty'))}</p>`}</section>`).join('')}
     </section></section>`;
+}
+
+function renderStandaloneContent(viewModel) {
+  const item = viewModel.content;
+  const retry = `<button type="button" class="secondary-action" data-action="retry-current-page">${escapeHtml(t('content.retry'))}</button>`;
+  if (!item) return `<section class="feed standalone-content"><h1>${escapeHtml(t('discover.posts'))}</h1>${renderError(viewModel.error)}${retry}</section>`;
+  const payload = item.payload ?? {};
+  const href = `#/content/${encodeURIComponent(item.entity_type)}/${encodeURIComponent(item.entity_id)}`;
+  return `<section class="feed standalone-content"><article class="standalone-content-card"><a href="#/profiles/${encodeURIComponent(item.author_did)}">${escapeHtml(item.author_display_name || item.author_handle || shortIdentity(item.author_did))}</a>${item.sig_verified === true ? renderPkPill(t('thread.signedPk')) : ''}<h1>${escapeHtml(payload.title || item.entity_type)}</h1><p style="white-space:pre-wrap">${escapeHtml(payload.body || payload.content || '')}</p><a href="${escapeAttribute(href)}">${icon('link', 'icon')} ${escapeHtml(t('content.permalink'))}</a></article><section aria-label="${escapeAttribute(t('common.reply'))}"><h2>${escapeHtml(t('common.reply'))}</h2>${viewModel.error ? renderError(viewModel.error) + retry : ''}${(viewModel.contentReplies ?? []).map(reply => `<article class="standalone-content-card"><a href="#/profiles/${encodeURIComponent(reply.author_did)}">${escapeHtml(reply.author_display_name || reply.author_handle || shortIdentity(reply.author_did))}</a><p style="white-space:pre-wrap">${escapeHtml(reply.payload?.content || reply.payload?.body || '')}</p></article>`).join('')}</section></section>`;
 }

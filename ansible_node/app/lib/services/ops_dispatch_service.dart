@@ -6,6 +6,7 @@ import 'package:ansible_store/ansible_store.dart';
 import '../config/app_environment.dart';
 import 'op_signature_payload.dart';
 import 'relay_ops_client.dart';
+import 'delivery_diagnostics.dart';
 
 class OpsDispatchSummary {
   const OpsDispatchSummary({
@@ -37,9 +38,38 @@ class OpsDispatchService {
   }) : signer = signer ?? DidSignerImpl(),
        relayClient = relayClient ?? RelayOpsClient();
 
-  Future<OpsQueueEntry> signAndEnqueue(OpsQueueEntry entry) async {
-    final signed = await sign(entry);
-    await repository.enqueue(signed);
+  Future<OpsQueueEntry> signAndEnqueue(
+    OpsQueueEntry entry, {
+    bool persistBeforeSigning = true,
+  }) async {
+    // A cancelled reaction toggle keeps its previous visible choice. Composed
+    // posts instead survive authorization cancellation as a durable draft op.
+    if (!persistBeforeSigning) {
+      final signed = (await sign(entry)).copyWith(status: 'pending');
+      await repository.enqueue(signed);
+      return signed;
+    }
+    if (repository case final DriftOpsQueueRepository drift) {
+      final current = await drift.retainForAuthorization(entry);
+      if (current.authorDid != entry.authorDid ||
+          ['cancelled', 'rejected'].contains(current.status)) {
+        throw StateError('operation_not_retryable');
+      }
+      if (current.status == 'synced') return current;
+      entry = current;
+    } else {
+      await repository.enqueue(
+        entry.copyWith(status: 'awaiting_authorization'),
+      );
+    }
+    final signed = (await sign(entry)).copyWith(status: 'pending');
+    if (repository is DriftOpsQueueRepository) {
+      if (!await (repository as DriftOpsQueueRepository).prepareRetry(signed)) {
+        throw StateError('operation_cancelled');
+      }
+    } else {
+      await repository.enqueue(signed);
+    }
     return signed;
   }
 
@@ -58,17 +88,43 @@ class OpsDispatchService {
 
   Future<OpsDispatchSummary> flushPending({int limit = 25}) async {
     final entries = await repository.listPending(limit: limit);
+    return dispatchEntries(entries);
+  }
+
+  Future<OpsDispatchSummary> dispatchEntries(
+    List<OpsQueueEntry> entries,
+  ) async {
     var sent = 0;
     var rejected = 0;
     final rejectionReasons = <String>[];
 
     for (final entry in entries) {
       try {
+        if (repository case final DriftOpsQueueRepository drift) {
+          if (!await drift.claimForSend(entry.opId)) continue;
+        } else {
+          await repository.markSent(entry.opId);
+        }
+        await DeliveryDiagnostics.shared.record(
+          entry,
+          relayClient.baseUri,
+          'attempting',
+        );
         await relayClient.ingest(entry);
-        await repository.markSent(entry.opId);
         await repository.markSynced(entry.opId);
+        await DeliveryDiagnostics.shared.record(
+          entry,
+          relayClient.baseUri,
+          'accepted',
+        );
         sent += 1;
       } on RelayOpsException catch (error) {
+        await DeliveryDiagnostics.shared.record(
+          entry,
+          relayClient.baseUri,
+          error.isDuplicate ? 'accepted' : 'failed',
+          reason: error.error ?? 'relay_request_failed',
+        );
         if (error.isDuplicate) {
           await repository.markSynced(entry.opId);
           sent += 1;
@@ -90,7 +146,7 @@ class OpsDispatchService {
             rejectionReasons: rejectionReasons,
           );
         }
-        if (error.isRetryable) {
+        if (!error.isPermanentRejection) {
           // A temporary server failure must stay explicitly retryable.  A
           // manual sync moves blocked operations back to pending before
           // dispatching them again.
@@ -104,6 +160,12 @@ class OpsDispatchService {
           rejectionReasons: rejectionReasons,
         );
       } catch (error) {
+        await DeliveryDiagnostics.shared.record(
+          entry,
+          relayClient.baseUri,
+          'failed',
+          reason: 'network_or_authorization_failed',
+        );
         // Network, TLS, and request-header failures happen before a Relay
         // response exists.  Preserve both the operation and the diagnostic
         // for the explicit retry boundary in the next manual sync.

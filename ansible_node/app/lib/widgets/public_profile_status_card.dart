@@ -46,10 +46,7 @@ class _PublicProfileStatusCardState extends State<PublicProfileStatusCard> {
   void _makeClient() {
     _client =
         widget.client ??
-        DiscoveryClient(
-          appViewBaseUrl: AppEnvironment.appViewBaseUrl,
-          relayBaseUrl: AppEnvironment.defaultRelayBaseUrl,
-        );
+        DiscoveryClient(appViewBaseUrl: AppEnvironment.socialRelayBaseUrl);
   }
 
   @override

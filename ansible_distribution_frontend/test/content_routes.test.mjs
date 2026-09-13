@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {parseRoute, routeToHash} from '../src/page_routes.mjs';
+import {buildAppViewModel, PAGE_IDS} from '../src/state_model.mjs';
+import {renderPageBody} from '../src/forum_page_renderers.mjs';
+const route = {pageId: PAGE_IDS.content, params: {type: 'murmur', id: 'a b'}};
+assert.deepEqual(parseRoute('#/content/murmur/a%20b'), route);
+assert.equal(routeToHash(route), '#/content/murmur/a%20b');
+const html = renderPageBody(buildAppViewModel({route, forum: {content: {entity_type: 'murmur', entity_id: 'a b', author_did: 'did:a', sig_verified: true, payload: {body: '<script>hello</script>\n完整原文'}}, contentReplies: [{author_did: 'did:b', payload: {content: '回覆全文'}}]}}));
+assert.match(html, /完整原文/);
+assert.match(html, /回覆全文/);
+assert.match(html, /&lt;script&gt;/);
+assert.doesNotMatch(html, /<script>/);
+assert.match(html, /trust-explanation/);
+assert.match(html, /#\/content\/murmur\/a%20b/);
+const missing = renderPageBody(buildAppViewModel({route, forum: {content: null, error: {type: 'not_found', message: 'Unavailable'}}}));
+assert.match(missing, /data-action="retry-current-page"/);
+console.log('ok - standalone content routes preserve exact identity, full text, replies and trust explanation');

@@ -6,32 +6,41 @@ import '../config/app_environment.dart';
 
 /// Resolves a DID to its registered handle (e.g. `alice.elix.cool`) via the
 /// relay, so author bylines can show a friendly name instead of a raw DID.
-/// Results — including negatives — are cached for the process lifetime; a feed
+/// Results have a short, origin-scoped cache; a feed
 /// usually has few distinct authors, so this stays cheap.
 class HandleResolver {
   HandleResolver({
     String? baseUrl,
     http.Client? client,
     this.timeout = const Duration(seconds: 8),
-  }) : _baseUri = Uri.parse(baseUrl ?? AppEnvironment.atProtoBaseUrl),
+  }) : _overrideBaseUri = baseUrl == null ? null : Uri.parse(baseUrl),
        _client = client ?? http.Client();
 
-  final Uri _baseUri;
+  final Uri? _overrideBaseUri;
+  Uri get _baseUri =>
+      _overrideBaseUri ?? Uri.parse(AppEnvironment.socialRelayBaseUrl);
   final http.Client _client;
   final Duration timeout;
   final Map<String, String?> _cache = {};
+  final Map<String, DateTime> _cachedAt = {};
+  final Map<String, String> _cachedOrigin = {};
 
   /// Shared instance so the cache is reused across screens.
   static final HandleResolver shared = HandleResolver();
 
   /// Synchronously returns a cached handle if known, else null. Useful for a
   /// first paint without flicker when the handle was already resolved.
-  String? cached(String did) => _cache[did];
+  String? cached(String did) =>
+      _cachedOrigin[did] == _baseUri.toString() ? _cache[did] : null;
 
   /// Pre-populates the cache with a known [did] → [handle] mapping, bypassing
   /// the network. Used by the screenshot harness (and tests) to render friendly
   /// bylines offline.
-  void seed(String did, String handle) => _cache[did] = handle;
+  void seed(String did, String handle) {
+    _cache[did] = handle;
+    _cachedAt[did] = DateTime.now();
+    _cachedOrigin[did] = _baseUri.toString();
+  }
 
   /// Returns the handle for [did], or null if unknown/unresolvable.
   Future<String?> handleFor(String did) async {
@@ -40,19 +49,28 @@ class HandleResolver {
     // Some imported/federated records already carry a handle in the author
     // field. Do not turn that friendly identifier into a failed DID lookup.
     if (!identity.startsWith('did:')) return identity.replaceFirst('@', '');
-    if (_cache.containsKey(identity)) return _cache[identity];
+    if (_cachedOrigin[identity] == _baseUri.toString() &&
+        DateTime.now().difference(_cachedAt[identity] ?? DateTime(1970)) <
+            const Duration(minutes: 2)) {
+      return _cache[identity];
+    }
+    final base = _baseUri;
     try {
       final response = await _client
-          .get(_handleEndpoint(identity))
+          .get(_handleEndpoint(base, identity))
           .timeout(timeout);
       if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
+        final body = jsonDecode(utf8.decode(response.bodyBytes));
         final handle = body is Map ? body['handle'] as String? : null;
-        _cache[identity] = handle; // cache success (incl. null body)
+        _cache[identity] = handle;
+        _cachedAt[identity] = DateTime.now();
+        _cachedOrigin[identity] = base.toString();
         return handle;
       }
       if (response.statusCode == 404) {
-        _cache[identity] = null; // cache the negative
+        _cache[identity] = null;
+        _cachedAt[identity] = DateTime.now();
+        _cachedOrigin[identity] = base.toString();
       }
       return null;
     } catch (_) {
@@ -60,9 +78,9 @@ class HandleResolver {
     }
   }
 
-  Uri _handleEndpoint(String did) => _baseUri.replace(
+  Uri _handleEndpoint(Uri base, String did) => base.replace(
     pathSegments: [
-      ..._baseUri.pathSegments.where((segment) => segment.isNotEmpty),
+      ...base.pathSegments.where((segment) => segment.isNotEmpty),
       'api',
       'v1',
       'identity',
@@ -145,15 +163,19 @@ class PublicProfileResolver {
     http.Client? client,
     HandleResolver? handleResolver,
     this.timeout = const Duration(seconds: 8),
-  }) : _baseUri = Uri.tryParse(baseUrl ?? AppEnvironment.appViewBaseUrl),
+  }) : _overrideBaseUri = baseUrl == null ? null : Uri.tryParse(baseUrl),
        _client = client ?? http.Client(),
        _handleResolver = handleResolver ?? HandleResolver.shared;
 
-  final Uri? _baseUri;
+  final Uri? _overrideBaseUri;
+  Uri? get _baseUri =>
+      _overrideBaseUri ?? Uri.tryParse(AppEnvironment.socialRelayBaseUrl);
   final http.Client _client;
   final HandleResolver _handleResolver;
   final Duration timeout;
   final Map<String, PublicAuthorProfile?> _cache = {};
+  final Map<String, DateTime> _cachedAt = {};
+  final Map<String, String> _cachedOrigin = {};
 
   static final PublicProfileResolver shared = PublicProfileResolver();
 
@@ -168,7 +190,13 @@ class PublicProfileResolver {
     if (!identity.startsWith('did:')) {
       return PublicAuthorProfile(handle: identity.replaceFirst('@', ''));
     }
-    if (!refresh && _cache.containsKey(identity)) return _cache[identity];
+    if (!refresh &&
+        _cachedOrigin[identity] == _baseUri.toString() &&
+        DateTime.now().difference(_cachedAt[identity] ?? DateTime(1970)) <
+            const Duration(minutes: 2)) {
+      return _cache[identity];
+    }
+    bool lookupFailed = false;
 
     // Resolve both public presentation sources concurrently so a slow Relay
     // cannot add another full timeout after the AppView lookup (or vice versa).
@@ -181,7 +209,7 @@ class PublicProfileResolver {
             .get(_profileEndpoint(base, identity))
             .timeout(timeout);
         if (response.statusCode == 200) {
-          final body = jsonDecode(response.body);
+          final body = jsonDecode(utf8.decode(response.bodyBytes));
           if (body is Map) {
             publishedProfile = PublicAuthorProfile(
               displayName:
@@ -203,12 +231,18 @@ class PublicProfileResolver {
                   : const <PublicProfileCredential>[],
             );
           }
+        } else if (response.statusCode != 404) {
+          lookupFailed = true;
         }
       } catch (_) {
+        lookupFailed = true;
         // Preserve the Relay fallback below when AppView is transiently down.
       }
     }
 
+    if (lookupFailed && _cachedOrigin[identity] == base.toString()) {
+      publishedProfile = _cache[identity];
+    }
     final canonicalHandle = await canonicalHandleFuture;
     final profile = publishedProfile == null && canonicalHandle == null
         ? null
@@ -223,6 +257,8 @@ class PublicProfileResolver {
                 const <PublicProfileCredential>[],
           );
     _cache[identity] = profile;
+    if (!lookupFailed) _cachedAt[identity] = DateTime.now();
+    _cachedOrigin[identity] = base.toString();
     return profile;
   }
 

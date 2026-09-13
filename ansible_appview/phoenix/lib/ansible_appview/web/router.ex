@@ -34,6 +34,14 @@ defmodule AnsibleAppview.Web.Router do
     })
   end
 
+  get "/api/v1/content/:type/:id" do
+    case AnsibleAppview.Timeline.content(type, id) do
+      {:ok, item} -> send_json(conn, 200, %{item: item})
+      {:error, :deleted} -> send_json(conn, 410, %{error: "content_deleted"})
+      {:error, _} -> send_json(conn, 404, %{error: "content_not_found"})
+    end
+  end
+
   # Public, root-signature verified authority evidence. Native clients use their
   # configured AppView directly; a Relay response cannot acknowledge this state.
   post "/api/v1/authority/checkpoint" do

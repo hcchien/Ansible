@@ -52,7 +52,7 @@ class _CommunityNotesPanelState extends State<CommunityNotesPanel> {
   bool _submitting = false;
 
   String get _appViewBaseUrl =>
-      widget.appViewBaseUrl ?? AppEnvironment.appViewBaseUrl;
+      widget.appViewBaseUrl ?? AppEnvironment.socialRelayBaseUrl;
   String get _forumHostBaseUrl =>
       widget.forumHostBaseUrl ?? AppEnvironment.defaultRelayBaseUrl;
   AppViewTimelineClient get _appViewClient =>

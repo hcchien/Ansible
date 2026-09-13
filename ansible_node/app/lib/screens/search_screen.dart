@@ -8,6 +8,7 @@ import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import 'murmur_detail_screen.dart';
+import 'public_browse_screen.dart';
 import 'posts_view_screen.dart';
 import 'threads_list_screen.dart';
 
@@ -67,10 +68,35 @@ class _SearchScreenState extends State<SearchScreen> {
     final total = results.length;
 
     return AnsibleScreenScaffold(
-      title: context.uiCopy(zh: '搜尋', en: 'Search'),
+      title: context.uiCopy(zh: '搜尋本機資料', en: 'Search this device'),
       leadingLabel: l10n.searchBack,
       child: ListView(
         children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    context.uiCopy(
+                      zh: '本機搜尋不會傳送查詢內容。',
+                      en: 'Local search does not send your query.',
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const PublicBrowseScreen(),
+                    ),
+                  ),
+                  child: Text(
+                    context.uiCopy(zh: '搜尋公開內容', en: 'Search public content'),
+                  ),
+                ),
+              ],
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(22, 0, 22, 12),
             child: TextField(

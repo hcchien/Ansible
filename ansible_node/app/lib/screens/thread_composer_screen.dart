@@ -4,6 +4,8 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
 import '../l10n/app_l10n.dart';
+import '../services/composer_draft_store.dart';
+import '../widgets/composer_draft_boundary.dart';
 import '../services/posting_gate.dart';
 import '../theme/ansible_design.dart';
 
@@ -66,12 +68,20 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
   ];
   String? _selectedBoardId;
   String? _error;
+  String? get _draftKey => widget.authorDid == null
+      ? null
+      : ComposerDraftStore.key(
+          widget.authorDid!,
+          widget.type.name,
+          widget.initialBoardId ?? 'choose-board',
+        );
   bool get _isPoll => widget.type == ThreadComposerType.poll;
   int? _pollDurationDays = 3;
 
   /// True when the selected board requires a tier the local user lacks.
   /// UX pre-validation only — the relay re-checks at intent acceptance.
   bool _postingBlocked = false;
+  int _policyGeneration = 0;
   bool _writeEnabled = true;
 
   bool get _publicationDeferred => _postingBlocked || !_writeEnabled;
@@ -97,6 +107,7 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
   /// was provided (e.g. previews); the gate stays discoverable before
   /// posting (constitution Base Rule 6) whenever we can check it.
   Future<void> _loadBoardPolicy() async {
+    final generation = ++_policyGeneration;
     final db = widget.db;
     final boardId = _selectedBoardId;
     if (db == null || boardId == null) return;
@@ -146,7 +157,7 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
       );
     }
 
-    if (!mounted) return;
+    if (!mounted || generation != _policyGeneration) return;
     setState(() {
       _postingBlocked = blocked;
       _writeEnabled = writeEnabled;
@@ -211,6 +222,7 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
       return;
     }
     Navigator.of(context).pop<Map<String, Object?>>({
+      'draftKey': _draftKey,
       'boardId': _selectedBoardId,
       'title': title,
       'content': content,
@@ -266,151 +278,200 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      backgroundColor: AnsibleDesign.paper,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _TopBar(
-              onCancel: () => Navigator.of(context).pop(),
-              onDone: _submit,
-              isPoll: _isPoll,
-            ),
-            if (_error != null) _ErrorBanner(message: _error!),
-            _BoardSelector(
-              label: l10n.chooseHostedBoard,
-              boardTitle: _selectedBoard?.title ?? l10n.hostedBoardMissing,
-              canChange: widget.boards.length > 1,
-              onTap: _pickBoard,
-            ),
-            if (_publicationDeferred)
-              _PostingGateBanner(writeEnabled: _writeEnabled),
-            if (!_publicationDeferred && _crossPostTargets.isNotEmpty)
-              _CrossPostSelector(
-                targets: _crossPostTargets,
-                selectedIds: _selectedCrossPostIds,
-                onToggle: (subscriptionId, selected) => setState(() {
-                  if (selected) {
-                    _selectedCrossPostIds.add(subscriptionId);
-                  } else {
-                    _selectedCrossPostIds.remove(subscriptionId);
-                  }
-                }),
+    return ComposerDraftBoundary(
+      draftKey: _draftKey,
+      controllers: [
+        _titleController,
+        _contentController,
+        ..._pollOptionControllers,
+      ],
+      snapshot: () => {
+        'title': _titleController.text,
+        'content': _contentController.text,
+        'boardId': _selectedBoardId,
+        'crossPosts': _selectedCrossPostIds.toList(),
+        'options': _pollOptionControllers.map((c) => c.text).toList(),
+        'duration': _pollDurationDays,
+      },
+      restore: (data) {
+        setState(() {
+          _titleController.text = data['title'] as String? ?? '';
+          _contentController.text = data['content'] as String? ?? '';
+          final board = data['boardId'];
+          if (widget.boards.any((b) => b.id == board)) {
+            _selectedBoardId = board as String;
+          }
+          _selectedCrossPostIds.addAll(
+            (data['crossPosts'] as List? ?? []).whereType<String>(),
+          );
+          final options = (data['options'] as List? ?? [])
+              .whereType<String>()
+              .take(12)
+              .toList();
+          if (options.length >= 2) {
+            for (final c in _pollOptionControllers) {
+              c.dispose();
+            }
+            _pollOptionControllers.clear();
+            _pollOptionControllers.addAll(
+              options.map((s) => TextEditingController(text: s)),
+            );
+          }
+          _pollDurationDays = data['duration'] as int?;
+        });
+        unawaited(_loadBoardPolicy());
+      },
+      child: Scaffold(
+        resizeToAvoidBottomInset: true,
+        backgroundColor: AnsibleDesign.paper,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _TopBar(
+                onCancel: () => Navigator.of(context).pop(),
+                onDone: _submit,
+                isPoll: _isPoll,
               ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(22, 8, 22, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Theme(
-                      // The app-wide dark selection colour made selected ink
-                      // text unreadable on this fixed Paper composer surface.
-                      data: Theme.of(context).copyWith(
-                        textSelectionTheme: TextSelectionThemeData(
-                          cursorColor: AnsibleDesign.ink,
-                          selectionColor: AnsibleDesign.accent.withValues(
-                            alpha: 0.58,
+              if (_error != null) _ErrorBanner(message: _error!),
+              _BoardSelector(
+                label: l10n.chooseHostedBoard,
+                boardTitle: _selectedBoard?.title ?? l10n.hostedBoardMissing,
+                canChange: widget.boards.length > 1,
+                onTap: _pickBoard,
+              ),
+              if (_publicationDeferred)
+                _PostingGateBanner(writeEnabled: _writeEnabled),
+              if (!_publicationDeferred && _crossPostTargets.isNotEmpty)
+                _CrossPostSelector(
+                  targets: _crossPostTargets,
+                  selectedIds: _selectedCrossPostIds,
+                  onToggle: (subscriptionId, selected) => setState(() {
+                    if (selected) {
+                      _selectedCrossPostIds.add(subscriptionId);
+                    } else {
+                      _selectedCrossPostIds.remove(subscriptionId);
+                    }
+                  }),
+                ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(22, 8, 22, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Theme(
+                        // The app-wide dark selection colour made selected ink
+                        // text unreadable on this fixed Paper composer surface.
+                        data: Theme.of(context).copyWith(
+                          textSelectionTheme: TextSelectionThemeData(
+                            cursorColor: AnsibleDesign.ink,
+                            selectionColor: AnsibleDesign.accent.withValues(
+                              alpha: 0.58,
+                            ),
+                            selectionHandleColor: AnsibleDesign.accent,
                           ),
-                          selectionHandleColor: AnsibleDesign.accent,
+                        ),
+                        child: TextField(
+                          key: const Key('thread_composer_title_field'),
+                          controller: _titleController,
+                          autofocus: true,
+                          textInputAction: TextInputAction.next,
+                          cursorColor: AnsibleDesign.ink,
+                          style: const TextStyle(
+                            fontFamily: AnsibleDesign.serif,
+                            fontSize: 28,
+                            height: 1.2,
+                            color: AnsibleDesign.ink,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          decoration: InputDecoration(
+                            // The composer surface is always Paper, even when
+                            // the rest of the app follows the system dark theme.
+                            // Do not inherit darkTheme's filled input background.
+                            filled: false,
+                            isDense: true,
+                            hintText: l10n.discussionTitleHint,
+                            hintStyle: const TextStyle(
+                              color: AnsibleDesign.inkFaint,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            border: const UnderlineInputBorder(
+                              borderSide: BorderSide(
+                                color: AnsibleDesign.ruleSoft,
+                                width: 0.5,
+                              ),
+                            ),
+                            enabledBorder: const UnderlineInputBorder(
+                              borderSide: BorderSide(
+                                color: AnsibleDesign.ruleSoft,
+                                width: 0.5,
+                              ),
+                            ),
+                            focusedBorder: const UnderlineInputBorder(
+                              borderSide: BorderSide(
+                                color: AnsibleDesign.accent,
+                                width: 1,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.fromLTRB(
+                              0,
+                              4,
+                              0,
+                              8,
+                            ),
+                          ),
                         ),
                       ),
-                      child: TextField(
-                        key: const Key('thread_composer_title_field'),
-                        controller: _titleController,
-                        autofocus: true,
-                        textInputAction: TextInputAction.next,
+                      if (_isPoll) ...[
+                        const SizedBox(height: 18),
+                        _PollOptionsEditor(
+                          controllers: _pollOptionControllers,
+                          onAdd: _addPollOption,
+                          onRemove: _removePollOption,
+                          durationDays: _pollDurationDays,
+                          onDurationChanged: (value) =>
+                              setState(() => _pollDurationDays = value),
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      TextField(
+                        key: const Key('thread_composer_body_field'),
+                        controller: _contentController,
+                        minLines: 6,
+                        maxLines: null,
+                        keyboardType: TextInputType.multiline,
                         cursorColor: AnsibleDesign.ink,
                         style: const TextStyle(
                           fontFamily: AnsibleDesign.serif,
-                          fontSize: 28,
-                          height: 1.2,
-                          color: AnsibleDesign.ink,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        decoration: InputDecoration(
-                          // The composer surface is always Paper, even when
-                          // the rest of the app follows the system dark theme.
-                          // Do not inherit darkTheme's filled input background.
-                          filled: false,
-                          isDense: true,
-                          hintText: l10n.discussionTitleHint,
-                          hintStyle: const TextStyle(
-                            color: AnsibleDesign.inkFaint,
-                            fontSize: 28,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          border: const UnderlineInputBorder(
-                            borderSide: BorderSide(
-                              color: AnsibleDesign.ruleSoft,
-                              width: 0.5,
-                            ),
-                          ),
-                          enabledBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(
-                              color: AnsibleDesign.ruleSoft,
-                              width: 0.5,
-                            ),
-                          ),
-                          focusedBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(
-                              color: AnsibleDesign.accent,
-                              width: 1,
-                            ),
-                          ),
-                          contentPadding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
-                        ),
-                      ),
-                    ),
-                    if (_isPoll) ...[
-                      const SizedBox(height: 18),
-                      _PollOptionsEditor(
-                        controllers: _pollOptionControllers,
-                        onAdd: _addPollOption,
-                        onRemove: _removePollOption,
-                        durationDays: _pollDurationDays,
-                        onDurationChanged: (value) =>
-                            setState(() => _pollDurationDays = value),
-                      ),
-                    ],
-                    const SizedBox(height: 8),
-                    TextField(
-                      key: const Key('thread_composer_body_field'),
-                      controller: _contentController,
-                      minLines: 6,
-                      maxLines: null,
-                      keyboardType: TextInputType.multiline,
-                      cursorColor: AnsibleDesign.ink,
-                      style: const TextStyle(
-                        fontFamily: AnsibleDesign.serif,
-                        fontSize: AnsibleDesign.readingTextSize,
-                        height: 1.8,
-                        color: AnsibleDesign.ink,
-                      ),
-                      decoration: InputDecoration(
-                        filled: false,
-                        hintText: l10n.discussionContentHint,
-                        hintStyle: const TextStyle(
-                          color: AnsibleDesign.inkFaint,
                           fontSize: AnsibleDesign.readingTextSize,
                           height: 1.8,
+                          color: AnsibleDesign.ink,
                         ),
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        contentPadding: EdgeInsets.zero,
+                        decoration: InputDecoration(
+                          filled: false,
+                          hintText: l10n.discussionContentHint,
+                          hintStyle: const TextStyle(
+                            color: AnsibleDesign.inkFaint,
+                            fontSize: AnsibleDesign.readingTextSize,
+                            height: 1.8,
+                          ),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding: EdgeInsets.zero,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-            _Footer(
-              did: widget.authorDid,
-              characterCount: _contentController.text.characters.length,
-            ),
-          ],
+              _Footer(
+                did: widget.authorDid,
+                characterCount: _contentController.text.characters.length,
+              ),
+            ],
+          ),
         ),
       ),
     );

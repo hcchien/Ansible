@@ -374,6 +374,7 @@ class CrdtOpBuilder {
     String? tone,
     String? sourceType,
     DateTime? publishedAt,
+    DateTime? contentCreatedAt,
   }) {
     final opId = _uuid.v4();
     final createdAt = DateTime.now();
@@ -383,8 +384,10 @@ class CrdtOpBuilder {
       'visibility': visibility,
       'tone': tone,
       'sourceType': sourceType,
-      'createdAt': createdAt.toUtc().toIso8601String(),
-      'publishedAt': (publishedAt ?? createdAt).toUtc().toIso8601String(),
+      'createdAt': (contentCreatedAt ?? createdAt).toUtc().toIso8601String(),
+      'publishedAt': (publishedAt ?? contentCreatedAt ?? createdAt)
+          .toUtc()
+          .toIso8601String(),
     });
     return OpsQueueEntry(
       opId: opId,
@@ -410,6 +413,7 @@ class CrdtOpBuilder {
     required String visibility,
     String? title,
     DateTime? publishedAt,
+    DateTime? contentCreatedAt,
   }) {
     final opId = _uuid.v4();
     final createdAt = DateTime.now();
@@ -418,8 +422,10 @@ class CrdtOpBuilder {
       'body': body,
       'title': title,
       'visibility': visibility,
-      'createdAt': createdAt.toUtc().toIso8601String(),
-      'publishedAt': (publishedAt ?? createdAt).toUtc().toIso8601String(),
+      'createdAt': (contentCreatedAt ?? createdAt).toUtc().toIso8601String(),
+      'publishedAt': (publishedAt ?? contentCreatedAt ?? createdAt)
+          .toUtc()
+          .toIso8601String(),
     });
     return OpsQueueEntry(
       opId: opId,

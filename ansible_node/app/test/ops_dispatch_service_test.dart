@@ -177,7 +177,7 @@ void main() {
   });
 
   test(
-    'flushPending keeps unverified DID ops pending for re-anchoring',
+    'flushPending preserves unverified DID ops for explicit authorization retry',
     () async {
       final repo = InMemoryOpsQueueRepository();
       await repo.enqueue(_entry());
@@ -194,8 +194,9 @@ void main() {
 
       await service.flushPending();
 
-      expect(await repo.countPending(), 1);
-      expect((await repo.listAll()).single.status, 'pending');
+      expect(await repo.countPending(), 0);
+      expect((await repo.listAll()).single.status, 'blocked');
+      expect((await repo.listAll()).single.sentAt, isNotNull);
     },
   );
 }

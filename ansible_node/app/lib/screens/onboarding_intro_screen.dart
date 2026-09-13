@@ -148,11 +148,8 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                       // Benefit-led, not mechanism-led (UX review P1 + 行銷策略書:
                       // 「不要賣機制，要賣機制帶來的感受」).
                       context.uiCopy(
-                        zh: '一個每個人都是真人的討論社群。沒有機器人、沒有網軍，你的帳號和內容永遠是你的。',
-                        en:
-                            'A community where everyone is a real person. No bots, '
-                            'no troll armies — and your account and words stay '
-                            'yours, always.',
+                        zh: '掌握自己的身分與內容，選擇想參與的討論。部分社群會要求真人資格驗證，減少濫用。',
+                        en: 'Control your identity and content, and choose your communities. Some communities require human verification to reduce abuse.',
                       ),
                       style: TextStyle(
                         fontFamily: AnsibleDesign.serif,
@@ -183,8 +180,8 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                   onPressed: widget.reviewPublicContent,
                   child: Text(
                     context.uiCopy(
-                      zh: '查看公開內容（Google Play 審查）',
-                      en: 'Review public content (Google Play)',
+                      zh: '先看看公開內容',
+                      en: 'Browse public content first',
                     ),
                   ),
                 ),
@@ -192,8 +189,8 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
               const SizedBox(height: 14),
               Text(
                 context.uiCopy(
-                  zh: '沒有帳號 · 沒有雲端 · 不會被收集',
-                  en: 'No account · No cloud · Never collected',
+                  zh: '本機優先 · 公開由你決定',
+                  en: 'Local first · You choose what to publish',
                 ),
                 textAlign: TextAlign.center,
                 style: TextStyle(

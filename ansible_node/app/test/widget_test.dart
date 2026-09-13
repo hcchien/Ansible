@@ -126,8 +126,13 @@ void main() {
     await tester.tap(access);
     await tester.pumpAndSettle();
 
-    expect(find.text('Google Play review access'), findsOneWidget);
-    expect(find.text('Elix public content'), findsOneWidget);
+    expect(find.text('Explore public content'), findsOneWidget);
+    expect(
+      find.text(
+        'Browse public content. Create your identity when you want to post or follow.',
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('uses swipe shell navigation on phone width', (tester) async {

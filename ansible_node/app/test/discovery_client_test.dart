@@ -47,59 +47,56 @@ void main() {
     expect(items.single.label, 'Bob');
   });
 
-  test(
-    'search fans out to AppView (people+posts) and relay (boards)',
-    () async {
-      final hosts = <String>[];
-      final client = build((req) async {
-        hosts.add('${req.url.host}${req.url.path}');
-        if (req.url.host == 'appview.test') {
-          return http.Response(
-            jsonEncode({
-              'actors': [
-                {'did': 'did:key:alice', 'handle': 'alice.example'},
-              ],
-              'posts': [
-                {
-                  'entity_type': 'murmur',
-                  'entity_id': 'm1',
-                  'author_did': 'did:key:alice',
-                  'payload': {'body': 'hello elixir'},
-                },
-              ],
-            }),
-            200,
-          );
-        }
-        // relay board search
+  test('search uses Relay for people, posts and boards', () async {
+    final hosts = <String>[];
+    final client = build((req) async {
+      hosts.add('${req.url.host}${req.url.path}');
+      if (req.url.path == '/api/v1/search') {
         return http.Response(
           jsonEncode({
-            'boards': [
+            'actors': [
+              {'did': 'did:key:alice', 'handle': 'alice.example'},
+            ],
+            'posts': [
               {
-                'hosted_board_id': 'elixir',
-                'title': 'Elixir',
-                'tags': ['lang'],
+                'entity_type': 'murmur',
+                'entity_id': 'm1',
+                'author_did': 'did:key:alice',
+                'payload': {'body': 'hello elixir'},
               },
             ],
           }),
           200,
         );
-      });
-
-      final results = await client.search(query: 'elixir', limit: 10);
-
-      expect(results.actors.single.did, 'did:key:alice');
-      expect(results.posts.single.body, 'hello elixir');
-      expect(results.boards.single.title, 'Elixir');
-      expect(
-        hosts,
-        containsAll([
-          'appview.test/api/v1/search',
-          'relay.test/api/v1/discover/boards',
-        ]),
+      }
+      // relay board search
+      return http.Response(
+        jsonEncode({
+          'boards': [
+            {
+              'hosted_board_id': 'elixir',
+              'title': 'Elixir',
+              'tags': ['lang'],
+            },
+          ],
+        }),
+        200,
       );
-    },
-  );
+    });
+
+    final results = await client.search(query: 'elixir', limit: 10);
+
+    expect(results.actors.single.did, 'did:key:alice');
+    expect(results.posts.single.body, 'hello elixir');
+    expect(results.boards.single.title, 'Elixir');
+    expect(
+      hosts,
+      containsAll([
+        'relay.test/api/v1/search',
+        'relay.test/api/v1/discover/boards',
+      ]),
+    );
+  });
 
   test('empty query returns empty results without any HTTP call', () async {
     var called = false;
@@ -116,7 +113,7 @@ void main() {
 
   test('search preserves relay boards when AppView is unavailable', () async {
     final client = build((req) async {
-      if (req.url.host == 'appview.test') {
+      if (req.url.path == '/api/v1/search') {
         return http.Response('', 500);
       }
       return http.Response(
@@ -137,12 +134,16 @@ void main() {
   });
 
   test(
-    'suggestFollows returns empty when AppView base URL is not configured',
+    'suggestFollows uses Relay even without any AppView configuration',
     () async {
       final client = DiscoveryClient(
         appViewBaseUrl: '',
         relayBaseUrl: 'https://relay.test/',
-        client: MockClient((_) async => http.Response('{}', 500)),
+        client: MockClient((request) async {
+          expect(request.url.host, 'relay.test');
+          expect(request.url.path, '/api/v1/suggest/follows');
+          return http.Response('{"items":[]}', 200);
+        }),
       );
       expect(await client.suggestFollows(readerDid: 'did:key:me'), isEmpty);
     },
