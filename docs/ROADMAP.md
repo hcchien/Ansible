@@ -5,7 +5,7 @@
 > is parked, and what already landed, with links to the underlying specs and
 > plans.
 >
-> **Last updated:** 2026-09-14 (PD1–PD8 backend deployed; TestFlight upload and device validation pending; older statuses not re-audited)
+> **Last updated:** 2026-09-14 (PD1–PD8 backend deployed; TestFlight uploaded; Apple processing and device validation pending; older statuses not re-audited)
 >
 > **Keep it current:** when a plan lands, is paused, or a new spec/plan is
 > added under `docs/superpowers/`, update this file in the same change.
@@ -83,7 +83,7 @@ already underway (architecture Phase 1 / Phase 0).
 ### Improve（改善）
 
 最新檢查：[2026-09-13 產品功能設計複查（1.0.12）](reviews/2026-09-13-elix-product-design-review.md)。
-PD1–PD8 已完成本機實作，包括原文入口、傳送中心、草稿、匿名閱讀、信任標示、搜尋範圍、復原導引及 Relay 社群查詢。詳見 [實作及驗證紀錄](reviews/2026-09-14-product-flow-implementation.md)；後端已部署，TestFlight 上傳與實機驗收待完成。
+PD1–PD8 已完成本機實作，包括原文入口、傳送中心、草稿、匿名閱讀、信任標示、搜尋範圍、復原導引及 Relay 社群查詢。詳見 [實作及驗證紀錄](reviews/2026-09-14-product-flow-implementation.md)；後端已部署，1.0.13 已上傳 TestFlight；Apple 處理完成及實機驗收待確認。
 
 | Item | Notes |
 |---|---|
@@ -108,7 +108,7 @@ PD1–PD8 已完成本機實作，包括原文入口、傳送中心、草稿、�
 - [x] AppView 不作 App 寫入或查詢確認關卡；Web Viewer 仍獨立讀取證據、驗證與索引。
 - [x] 公開閱讀保留受限內容、刪除、撤銷／權限狀態過濾及作者原始時間。
 - [x] 部署 Relay migration／查詢 API、AppView 精確原文路由及 Web。
-- [ ] 1.0.13 TestFlight 上傳：IPA 已驗證，待本機 Xcode 帳號登入；[發布紀錄](reviews/2026-09-14-elix-1.0.13-release.md)。
+- [x] 1.0.13 (2026091401) 已上傳 TestFlight，Apple 回覆處理中；[發布紀錄](reviews/2026-09-14-elix-1.0.13-release.md)。
 - [ ] 正式資料量效能、實機背景終止／復原，以及 AppView 停用的裝置網路驗收。
 
 **範圍：** 社群通訊；Wallet／Issuer 等明確授權的獨立服務與可選外部分發不變。
