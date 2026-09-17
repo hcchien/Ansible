@@ -55,7 +55,7 @@ class BoardSwipeHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final brightness = Theme.of(context).brightness;
+    final brightness = MediaQuery.platformBrightnessOf(context);
     final datas = [
       personalStyle.dataFor(brightness),
       timelineStyle.dataFor(brightness),

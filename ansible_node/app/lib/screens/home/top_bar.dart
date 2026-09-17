@@ -79,7 +79,9 @@ class HomeTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final styleData = screenStyle.dataFor(Theme.of(context).brightness);
+    final styleData = screenStyle.dataFor(
+      MediaQuery.platformBrightnessOf(context),
+    );
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(

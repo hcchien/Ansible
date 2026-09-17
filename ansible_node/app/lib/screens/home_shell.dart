@@ -886,12 +886,18 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               : ElixScreenStyle.paper,
       };
     });
+    ElixThemeController.shared.usePersonalStyle(
+      _screenStyles[ElixTab.feed]!.storageValue,
+    );
   }
 
   Future<void> _setScreenStyle(ElixTab tab, ElixScreenStyle screenStyle) async {
     setState(() {
       _screenStyles = {..._screenStyles, tab: screenStyle};
     });
+    if (tab == ElixTab.feed) {
+      ElixThemeController.shared.usePersonalStyle(screenStyle.storageValue);
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_screenStyleKey(tab), screenStyle.storageValue);
   }
@@ -2846,7 +2852,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final currentScreenStyle =
         (_screenStyles[_selectedTab] ?? ElixScreenStyle.paper).dataFor(
-          Theme.of(context).brightness,
+          MediaQuery.platformBrightnessOf(context),
         );
     // Phone layout uses the bottom icon nav (Threads-style); wide keeps the
     // sidebar + top header.
@@ -2862,7 +2868,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                       ? currentScreenStyle
                       : ElixScreenStyle.forAppBrightness(
                           Theme.of(context).brightness,
-                        ).dataFor(Theme.of(context).brightness),
+                        ).dataFor(MediaQuery.platformBrightnessOf(context)),
                   onSearch: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) =>

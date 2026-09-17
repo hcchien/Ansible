@@ -7,6 +7,7 @@ import '../l10n/app_l10n.dart';
 import '../services/composer_draft_store.dart';
 import '../widgets/composer_draft_boundary.dart';
 import '../theme/ansible_design.dart';
+import '../theme/elix_screen_style.dart';
 import '../widgets/content_visibility_sheet.dart';
 import 'murmur_detail_screen.dart';
 
@@ -141,6 +142,7 @@ class _MurmurScreenState extends State<MurmurScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = ElixScreenStyleData.of(context);
     final l10n = context.l10n;
     return ComposerDraftBoundary(
       draftKey: _draftKey,
@@ -170,11 +172,11 @@ class _MurmurScreenState extends State<MurmurScreen> {
             children: [
               Text(
                 l10n.murmurTitle,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: AnsibleDesign.mono,
                   fontSize: 10,
                   letterSpacing: 1.6,
-                  color: AnsibleDesign.inkFaint,
+                  color: colors.faint,
                 ),
               ),
               const Spacer(),
@@ -193,11 +195,11 @@ class _MurmurScreenState extends State<MurmurScreen> {
               children: [
                 Text(
                   l10n.murmurPrompt,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 23,
                     height: 1.4,
                     fontWeight: FontWeight.w500,
-                    color: AnsibleDesign.ink,
+                    color: colors.foreground,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -205,10 +207,10 @@ class _MurmurScreenState extends State<MurmurScreen> {
                   _visibility == ContentVisibility.private
                       ? l10n.murmurPrivateHint
                       : l10n.murmurSyncHint,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     height: 1.65,
-                    color: AnsibleDesign.inkMuted,
+                    color: colors.muted,
                     fontStyle: FontStyle.italic,
                   ),
                 ),
@@ -216,22 +218,22 @@ class _MurmurScreenState extends State<MurmurScreen> {
                 Container(
                   padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
                   decoration: BoxDecoration(
-                    color: AnsibleDesign.paperElev,
-                    border: Border.all(color: AnsibleDesign.rule, width: 0.5),
+                    color: colors.surface,
+                    border: Border.all(color: colors.rule, width: 0.5),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: TextField(
                     key: const Key('murmur_body_field'),
                     controller: _bodyController,
-                    cursorColor: AnsibleDesign.accent,
+                    cursorColor: colors.accent,
                     maxLength: _limit,
                     minLines: 8,
                     maxLines: 12,
                     inputFormatters: [LengthLimitingTextInputFormatter(_limit)],
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       height: 1.65,
-                      color: AnsibleDesign.ink,
+                      color: colors.foreground,
                     ),
                     buildCounter:
                         (
@@ -242,9 +244,9 @@ class _MurmurScreenState extends State<MurmurScreen> {
                         }) {
                           return Text(
                             '$currentLength / $maxLength',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: AnsibleDesign.mono,
-                              color: AnsibleDesign.inkFaint,
+                              color: colors.faint,
                               fontSize: 9,
                               letterSpacing: 1,
                             ),
@@ -289,8 +291,8 @@ class _MurmurScreenState extends State<MurmurScreen> {
                           ContentVisibility.public =>
                             l10n.murmurPublicVisibilityHint,
                         },
-                        style: const TextStyle(
-                          color: AnsibleDesign.inkFaint,
+                        style: TextStyle(
+                          color: colors.faint,
                           fontStyle: FontStyle.italic,
                           fontSize: 13.5,
                         ),
@@ -303,8 +305,8 @@ class _MurmurScreenState extends State<MurmurScreen> {
                 if (widget.recentMurmurs.isEmpty)
                   Text(
                     l10n.looseMurmursEmpty,
-                    style: const TextStyle(
-                      color: AnsibleDesign.inkMuted,
+                    style: TextStyle(
+                      color: colors.muted,
                       fontStyle: FontStyle.italic,
                     ),
                   )
@@ -341,15 +343,16 @@ class _RecentMurmurRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = ElixScreenStyleData.of(context);
     final row = InkWell(
       key: Key('murmur_row_${murmur.id}'),
       onTap: () => _openDetail(context),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: const BoxDecoration(
-          color: AnsibleDesign.paper,
+        decoration: BoxDecoration(
+          color: colors.background,
           border: Border(
-            bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+            bottom: BorderSide(color: colors.ruleSoft, width: 0.5),
           ),
         ),
         child: Column(
@@ -361,10 +364,10 @@ class _RecentMurmurRow extends StatelessWidget {
               children: [
                 Text(
                   'MURMUR · ${_formatDate(murmur.createdAt)}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: AnsibleDesign.mono,
                     fontSize: 8.5,
-                    color: AnsibleDesign.inkFaint,
+                    color: colors.faint,
                     letterSpacing: 1.4,
                   ),
                 ),
@@ -381,10 +384,10 @@ class _RecentMurmurRow extends StatelessWidget {
                   referenceCount == 0
                       ? context.l10n.unused
                       : context.l10n.referenceCount(referenceCount),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: AnsibleDesign.mono,
                     fontSize: 9,
-                    color: AnsibleDesign.inkFaint,
+                    color: colors.faint,
                     letterSpacing: 0.8,
                   ),
                 ),
@@ -393,10 +396,10 @@ class _RecentMurmurRow extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               murmur.body,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: AnsibleDesign.readingTextSize,
                 height: 1.6,
-                color: AnsibleDesign.ink,
+                color: colors.foreground,
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -469,34 +472,26 @@ class _DeleteBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = ElixScreenStyleData.of(context);
     return Container(
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
-        ),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: colors.ruleSoft, width: 0.5)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           Container(
             width: 84,
-            color: AnsibleDesign.paperElev,
+            color: colors.surface,
             alignment: Alignment.center,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
-                  Icons.remove_rounded,
-                  size: 14,
-                  color: AnsibleDesign.inkMuted,
-                ),
+                Icon(Icons.remove_rounded, size: 14, color: colors.muted),
                 const SizedBox(width: 6),
                 Text(
                   context.uiCopy(zh: '收起', en: 'Keep'),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AnsibleDesign.inkMuted,
-                  ),
+                  style: TextStyle(fontSize: 12, color: colors.muted),
                 ),
               ],
             ),
@@ -508,7 +503,7 @@ class _DeleteBackground extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
+                Icon(
                   Icons.delete_outline_rounded,
                   size: 15,
                   color: AnsibleDesign.paper,
@@ -516,7 +511,7 @@ class _DeleteBackground extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(
                   context.uiCopy(zh: '刪除', en: 'Delete'),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13.5,
                     color: AnsibleDesign.paper,
                     letterSpacing: 0.5,
@@ -601,6 +596,7 @@ class _MurmurDeleteSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = ElixScreenStyleData.of(context);
     return _BottomActionSheet(
       label: context.uiCopy(zh: '刪除 · DELETE', en: 'DELETE'),
       title: context.uiCopy(zh: '把這條 murmur 拔掉？', en: 'Delete this murmur?'),
@@ -616,11 +612,9 @@ class _MurmurDeleteSheet extends StatelessWidget {
       preview: Container(
         margin: const EdgeInsets.fromLTRB(0, 14, 0, 12),
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-        decoration: const BoxDecoration(
-          color: AnsibleDesign.paperElev,
-          border: Border(
-            left: BorderSide(color: AnsibleDesign.inkFaint, width: 1.5),
-          ),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          border: Border(left: BorderSide(color: colors.faint, width: 1.5)),
           borderRadius: BorderRadius.only(
             topRight: Radius.circular(6),
             bottomRight: Radius.circular(6),
@@ -630,10 +624,10 @@ class _MurmurDeleteSheet extends StatelessWidget {
           murmur.body,
           maxLines: 3,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             height: 1.5,
-            color: AnsibleDesign.ink,
+            color: colors.foreground,
             fontStyle: FontStyle.italic,
           ),
         ),
@@ -647,9 +641,9 @@ class _MurmurDeleteSheet extends StatelessWidget {
               en: 'Referenced murmurs require one extra confirmation.',
             ),
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
-              color: AnsibleDesign.inkFaint,
+              color: colors.faint,
               fontStyle: FontStyle.italic,
             ),
           ),
@@ -691,9 +685,10 @@ class _BottomActionSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = ElixScreenStyleData.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: AnsibleDesign.paper,
+        color: colors.background,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
         boxShadow: [
           BoxShadow(
@@ -714,7 +709,7 @@ class _BottomActionSheet extends StatelessWidget {
               height: 4,
               margin: const EdgeInsets.only(bottom: 14),
               decoration: BoxDecoration(
-                color: AnsibleDesign.rule,
+                color: colors.rule,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -731,21 +726,17 @@ class _BottomActionSheet extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 19,
               height: 1.4,
               fontWeight: FontWeight.w500,
-              color: AnsibleDesign.ink,
+              color: colors.foreground,
             ),
           ),
           if (preview != null) preview!,
           Text(
             body,
-            style: const TextStyle(
-              fontSize: 12.5,
-              height: 1.65,
-              color: AnsibleDesign.inkMuted,
-            ),
+            style: TextStyle(fontSize: 12.5, height: 1.65, color: colors.muted),
           ),
           const SizedBox(height: 14),
           Row(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/ansible_design.dart';
+import '../theme/elix_screen_style.dart';
 
 class NoteMarkdownEditingController extends TextEditingController {
   NoteMarkdownEditingController({super.text});
@@ -15,6 +16,8 @@ class NoteMarkdownEditingController extends TextEditingController {
       text: text,
       baseStyle: style,
       stripSyntax: false,
+      mutedColor: ElixScreenStyleData.of(context).muted,
+      syntaxColor: ElixScreenStyleData.of(context).faint,
     );
   }
 }
@@ -26,7 +29,6 @@ class NoteMarkdownBody extends StatelessWidget {
     this.style = const TextStyle(
       fontSize: AnsibleDesign.readingTextSize,
       height: 1.75,
-      color: AnsibleDesign.ink,
     ),
     this.maxLines,
     this.overflow = TextOverflow.clip,
@@ -42,7 +44,16 @@ class NoteMarkdownBody extends StatelessWidget {
     return RichText(
       maxLines: maxLines,
       overflow: overflow,
-      text: buildNoteMarkdownTextSpan(text: text, baseStyle: style),
+      text: buildNoteMarkdownTextSpan(
+        text: text,
+        baseStyle: DefaultTextStyle.of(context).style
+            .merge(style)
+            .copyWith(
+              color: style.color ?? ElixScreenStyleData.of(context).foreground,
+            ),
+        mutedColor: ElixScreenStyleData.of(context).muted,
+        syntaxColor: ElixScreenStyleData.of(context).faint,
+      ),
     );
   }
 }
@@ -51,6 +62,8 @@ TextSpan buildNoteMarkdownTextSpan({
   required String text,
   TextStyle? baseStyle,
   bool stripSyntax = true,
+  Color mutedColor = AnsibleDesign.inkMuted,
+  Color syntaxColor = AnsibleDesign.inkFaint,
 }) {
   final style =
       baseStyle ??
@@ -72,7 +85,7 @@ TextSpan buildNoteMarkdownTextSpan({
       spans.add(
         TextSpan(
           text: line.substring(0, bodyStart),
-          style: style.copyWith(color: AnsibleDesign.inkFaint),
+          style: style.copyWith(color: syntaxColor),
         ),
       );
     }
@@ -80,11 +93,18 @@ TextSpan buildNoteMarkdownTextSpan({
       TextStyle(
         fontSize: isHeading ? (style.fontSize ?? 15) + 5 : null,
         fontWeight: isHeading ? FontWeight.w600 : null,
-        color: isQuote ? AnsibleDesign.inkMuted : null,
+        color: isQuote ? mutedColor : null,
         fontStyle: isQuote ? FontStyle.italic : null,
       ),
     );
-    spans.addAll(_inlineSpans(body, lineStyle, stripSyntax: stripSyntax));
+    spans.addAll(
+      _inlineSpans(
+        body,
+        lineStyle,
+        stripSyntax: stripSyntax,
+        syntaxColor: syntaxColor,
+      ),
+    );
     if (index < lines.length - 1) {
       spans.add(TextSpan(text: '\n', style: style));
     }
@@ -97,6 +117,7 @@ List<TextSpan> _inlineSpans(
   String text,
   TextStyle style, {
   required bool stripSyntax,
+  required Color syntaxColor,
 }) {
   final spans = <TextSpan>[];
   var index = 0;
@@ -116,7 +137,7 @@ List<TextSpan> _inlineSpans(
       spans.add(
         TextSpan(
           text: match.open,
-          style: style.copyWith(color: AnsibleDesign.inkFaint),
+          style: style.copyWith(color: syntaxColor),
         ),
       );
     }
@@ -125,7 +146,7 @@ List<TextSpan> _inlineSpans(
       spans.add(
         TextSpan(
           text: match.close,
-          style: style.copyWith(color: AnsibleDesign.inkFaint),
+          style: style.copyWith(color: syntaxColor),
         ),
       );
     }

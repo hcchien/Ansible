@@ -331,7 +331,7 @@ class _StylePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = style.dataFor(Theme.of(context).brightness);
+    final data = style.dataFor(MediaQuery.platformBrightnessOf(context));
     final decoration = style == ElixScreenStyle.system
         ? BoxDecoration(
             borderRadius: BorderRadius.circular(5),

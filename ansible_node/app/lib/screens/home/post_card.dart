@@ -549,7 +549,7 @@ class _PostCardState extends State<PostCard> {
         decoration: BoxDecoration(
           color: postCardBackgroundColor(
             screenStyle: screenStyle,
-            systemBrightness: Theme.of(context).brightness,
+            systemBrightness: MediaQuery.platformBrightnessOf(context),
           ),
           border: Border.all(color: style.rule, width: 1),
           borderRadius: BorderRadius.circular(18),

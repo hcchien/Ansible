@@ -4,6 +4,33 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
+  test(
+    'profile refresh also refreshes a cached missing or renamed handle',
+    () async {
+      var reads = 0;
+      final handles = HandleResolver(
+        baseUrl: 'https://relay.example',
+        client: MockClient((_) async {
+          reads++;
+          return reads == 1
+              ? http.Response('', 404)
+              : http.Response('{"handle":"new-handle.elix.cool"}', 200);
+        }),
+      );
+      final profiles = PublicProfileResolver(
+        baseUrl: 'https://appview.example',
+        handleResolver: handles,
+        client: MockClient((_) async => http.Response('', 404)),
+      );
+      expect(await profiles.profileFor('did:elix:alice'), isNull);
+      expect(
+        (await profiles.profileFor('did:elix:alice', refresh: true))?.handle,
+        'new-handle.elix.cool',
+      );
+      expect(reads, 2);
+    },
+  );
+
   test('encodes a DID exactly once when resolving its handle', () async {
     late Uri requested;
     final resolver = HandleResolver(

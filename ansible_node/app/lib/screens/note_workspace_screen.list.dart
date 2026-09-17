@@ -5,11 +5,12 @@ class _EmptyNotesPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = ElixScreenStyleData.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 28),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border.symmetric(
-          horizontal: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+          horizontal: BorderSide(color: colors.ruleSoft, width: 0.5),
         ),
       ),
       child: Column(
@@ -17,19 +18,19 @@ class _EmptyNotesPreview extends StatelessWidget {
         children: [
           Text(
             context.l10n.noNotesYet,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
-              color: AnsibleDesign.ink,
+              color: colors.foreground,
               fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             context.l10n.noNotesDescription,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               height: 1.6,
-              color: AnsibleDesign.inkMuted,
+              color: colors.muted,
               fontStyle: FontStyle.italic,
             ),
           ),
@@ -60,6 +61,7 @@ class _NoteRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = ElixScreenStyleData.of(context);
     return InkWell(
       onTap: () {
         Navigator.of(context).push(
@@ -75,9 +77,9 @@ class _NoteRow extends StatelessWidget {
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border: Border(
-            bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+            bottom: BorderSide(color: colors.ruleSoft, width: 0.5),
           ),
         ),
         child: Column(
@@ -90,19 +92,19 @@ class _NoteRow extends StatelessWidget {
                 Expanded(
                   child: Text(
                     note.title ?? 'Untitled note',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w500,
-                      color: AnsibleDesign.ink,
+                      color: colors.foreground,
                     ),
                   ),
                 ),
                 Text(
                   _formatDate(note.updatedAt),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: AnsibleDesign.mono,
                     fontSize: 9,
-                    color: AnsibleDesign.inkFaint,
+                    color: colors.faint,
                     letterSpacing: 0.8,
                   ),
                 ),
@@ -113,10 +115,10 @@ class _NoteRow extends StatelessWidget {
               note.body,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: AnsibleDesign.previewTextSize,
                 height: 1.5,
-                color: AnsibleDesign.inkMuted,
+                color: colors.muted,
               ),
             ),
             const SizedBox(height: 8),
@@ -278,12 +280,11 @@ class _MurmurRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = ElixScreenStyleData.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 11),
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
-        ),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: colors.ruleSoft, width: 0.5)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -292,19 +293,19 @@ class _MurmurRow extends StatelessWidget {
             width: 5,
             height: 5,
             margin: const EdgeInsets.only(top: 8),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AnsibleDesign.inkFaint,
+              color: colors.faint,
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               murmur.body,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 height: 1.55,
-                color: AnsibleDesign.ink,
+                color: colors.foreground,
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -312,10 +313,10 @@ class _MurmurRow extends StatelessWidget {
           const SizedBox(width: 12),
           Text(
             _formatTime(murmur.createdAt),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AnsibleDesign.mono,
               fontSize: 9,
-              color: AnsibleDesign.inkFaint,
+              color: colors.faint,
               letterSpacing: 0.8,
             ),
           ),
@@ -334,11 +335,12 @@ class _LineagePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = ElixScreenStyleData.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AnsibleDesign.paperElev,
-        border: Border.all(color: AnsibleDesign.ruleSoft, width: 0.5),
+        color: colors.surface,
+        border: Border.all(color: colors.ruleSoft, width: 0.5),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Column(
@@ -346,19 +348,19 @@ class _LineagePreview extends StatelessWidget {
         children: [
           Text(
             context.l10n.lineageDescription,
-            style: const TextStyle(
-              color: AnsibleDesign.inkMuted,
+            style: TextStyle(
+              color: colors.muted,
               height: 1.55,
               fontStyle: FontStyle.italic,
             ),
           ),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             'MURMUR · NOTE · THREAD',
             style: TextStyle(
               fontFamily: AnsibleDesign.mono,
               fontSize: 9,
-              color: AnsibleDesign.inkFaint,
+              color: colors.faint,
               letterSpacing: 1.3,
             ),
           ),

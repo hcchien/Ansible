@@ -50,7 +50,7 @@ import 'services/web_session_approval_client.dart';
 import 'services/web_session_grant_service.dart';
 import 'theme/ansible_design.dart';
 
-final ElixThemeController themeController = ElixThemeController();
+final ElixThemeController themeController = ElixThemeController.shared;
 final ValueNotifier<String> _bootstrapStage = ValueNotifier<String>(
   'Starting Elix',
 );

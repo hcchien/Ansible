@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 
 import '../l10n/app_l10n.dart';
 import '../theme/ansible_design.dart';
+import '../theme/elix_screen_style.dart';
 import '../widgets/content_visibility_sheet.dart';
 import '../widgets/note_markdown_text.dart';
 import 'note_detail_screen.dart';
@@ -79,6 +80,7 @@ class _NoteWorkspaceScreenState extends State<NoteWorkspaceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = ElixScreenStyleData.of(context);
     final l10n = context.l10n;
     final sortedNotes = [...widget.notes]..sort(_compareNotes);
     final sortedMurmurs = [...widget.murmurs]
@@ -107,7 +109,7 @@ class _NoteWorkspaceScreenState extends State<NoteWorkspaceScreen> {
               ),
               label: Text(_recentFirst ? l10n.newest : l10n.oldest),
               style: TextButton.styleFrom(
-                foregroundColor: AnsibleDesign.inkMuted,
+                foregroundColor: colors.muted,
                 textStyle: const TextStyle(
                   fontFamily: AnsibleDesign.mono,
                   fontSize: 10,
@@ -147,9 +149,9 @@ class _NoteWorkspaceScreenState extends State<NoteWorkspaceScreen> {
         if (sortedMurmurs.isEmpty)
           Text(
             l10n.noLooseMurmursYet,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
-              color: AnsibleDesign.inkMuted,
+              color: colors.muted,
               fontStyle: FontStyle.italic,
             ),
           )
@@ -172,11 +174,9 @@ class _NoteWorkspaceScreenState extends State<NoteWorkspaceScreen> {
         // Summon strip — B·04 design
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          decoration: const BoxDecoration(
-            border: Border(
-              top: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
-            ),
-            color: AnsibleDesign.paper,
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: colors.ruleSoft, width: 0.5)),
+            color: colors.background,
           ),
           child: GestureDetector(
             onTap: () => onSummonAI(),
@@ -185,15 +185,15 @@ class _NoteWorkspaceScreenState extends State<NoteWorkspaceScreen> {
                 Container(
                   width: 24,
                   height: 24,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AnsibleDesign.ink,
+                    color: colors.foreground,
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Icon(
                       Icons.auto_awesome,
                       size: 12,
-                      color: AnsibleDesign.paper,
+                      color: colors.background,
                     ),
                   ),
                 ),
@@ -204,19 +204,15 @@ class _NoteWorkspaceScreenState extends State<NoteWorkspaceScreen> {
                       zh: '想從之前的 murmur 找東西延伸這篇？',
                       en: 'Find earlier murmurs to extend this note?',
                     ),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: AnsibleDesign.serif,
                       fontSize: 13,
-                      color: AnsibleDesign.inkMuted,
+                      color: colors.muted,
                       fontStyle: FontStyle.italic,
                     ),
                   ),
                 ),
-                const Icon(
-                  Icons.arrow_forward,
-                  size: 14,
-                  color: AnsibleDesign.inkFaint,
-                ),
+                Icon(Icons.arrow_forward, size: 14, color: colors.faint),
               ],
             ),
           ),

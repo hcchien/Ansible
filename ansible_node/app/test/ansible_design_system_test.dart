@@ -1,8 +1,35 @@
 import 'package:ansible_node/theme/ansible_design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  test('app appearance loads the personal setting used by Settings', () async {
+    for (final entry in {
+      'paper': ThemeMode.light,
+      'ink': ThemeMode.dark,
+      'system': ThemeMode.system,
+    }.entries) {
+      SharedPreferences.setMockInitialValues({
+        ElixThemeController.personalStyleKey: entry.key,
+        'elix-theme': entry.key == 'paper' ? 'dark' : 'light',
+      });
+      final controller = ElixThemeController();
+      await controller.load();
+      expect(controller.mode, entry.value);
+      controller.dispose();
+    }
+    SharedPreferences.setMockInitialValues({});
+    final controller = ElixThemeController();
+    await controller.load();
+    expect(controller.mode, ThemeMode.light);
+    controller.usePersonalStyle('ink');
+    expect(controller.mode, ThemeMode.dark);
+    controller.usePersonalStyle('paper');
+    expect(controller.mode, ThemeMode.light);
+    controller.dispose();
+  });
+
   test('light and dark themes share the top-level Elix Screens contract', () {
     final light = AnsibleDesign.theme();
     final dark = AnsibleDesign.darkTheme();

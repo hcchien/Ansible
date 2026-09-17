@@ -67,6 +67,7 @@ extension ElixScreenStyleUi on ElixScreenStyle {
           muted: AnsibleDesign.inkMuted,
           faint: AnsibleDesign.inkFaint,
           rule: AnsibleDesign.rule,
+          ruleSoft: AnsibleDesign.ruleSoft,
           accent: AnsibleDesign.ochre,
         );
       case ElixScreenStyle.ink:
@@ -77,6 +78,7 @@ extension ElixScreenStyleUi on ElixScreenStyle {
           muted: AnsibleDesign.darkInkMuted,
           faint: AnsibleDesign.darkInkFaint,
           rule: AnsibleDesign.darkRule,
+          ruleSoft: AnsibleDesign.darkRuleSoft,
           accent: AnsibleDesign.darkOchre,
         );
       case ElixScreenStyle.system:
@@ -151,6 +153,10 @@ extension ElixBoardMotionUi on ElixBoardMotion {
 }
 
 class ElixScreenStyleData {
+  /// Palette for ordinary app pages, including routes outside board scopes.
+  static ElixScreenStyleData of(BuildContext context) =>
+      ElixScreenStyle.forAppBrightness(Theme.of(context).brightness).data;
+
   const ElixScreenStyleData({
     required this.background,
     required this.surface,
@@ -158,6 +164,7 @@ class ElixScreenStyleData {
     required this.muted,
     required this.faint,
     required this.rule,
+    required this.ruleSoft,
     required this.accent,
   });
 
@@ -167,6 +174,7 @@ class ElixScreenStyleData {
   final Color muted;
   final Color faint;
   final Color rule;
+  final Color ruleSoft;
   final Color accent;
 }
 
@@ -187,7 +195,7 @@ class ElixScreenStyleScope extends InheritedWidget {
   }
 
   static ElixScreenStyleData dataOf(BuildContext context) {
-    return styleOf(context).dataFor(Theme.of(context).brightness);
+    return styleOf(context).dataFor(MediaQuery.platformBrightnessOf(context));
   }
 
   @override

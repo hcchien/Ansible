@@ -33,8 +33,8 @@ class AnsibleScreenScaffold extends StatelessWidget {
     final isInk =
         style == ElixScreenStyle.ink ||
         (style == ElixScreenStyle.system &&
-            Theme.of(context).brightness == Brightness.dark);
-    final screenStyle = style.dataFor(Theme.of(context).brightness);
+            MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+    final screenStyle = style.dataFor(MediaQuery.platformBrightnessOf(context));
 
     // A Paper screen may be reached while the app follows the system's dark
     // theme. Its scaffold already uses Paper colours, but Material controls

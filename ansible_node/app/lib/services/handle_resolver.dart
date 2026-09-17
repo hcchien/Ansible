@@ -43,13 +43,14 @@ class HandleResolver {
   }
 
   /// Returns the handle for [did], or null if unknown/unresolvable.
-  Future<String?> handleFor(String did) async {
+  Future<String?> handleFor(String did, {bool refresh = false}) async {
     final identity = did.trim();
     if (identity.isEmpty) return null;
     // Some imported/federated records already carry a handle in the author
     // field. Do not turn that friendly identifier into a failed DID lookup.
     if (!identity.startsWith('did:')) return identity.replaceFirst('@', '');
-    if (_cachedOrigin[identity] == _baseUri.toString() &&
+    if (!refresh &&
+        _cachedOrigin[identity] == _baseUri.toString() &&
         DateTime.now().difference(_cachedAt[identity] ?? DateTime(1970)) <
             const Duration(minutes: 2)) {
       return _cache[identity];
@@ -200,7 +201,10 @@ class PublicProfileResolver {
 
     // Resolve both public presentation sources concurrently so a slow Relay
     // cannot add another full timeout after the AppView lookup (or vice versa).
-    final canonicalHandleFuture = _handleResolver.handleFor(identity);
+    final canonicalHandleFuture = _handleResolver.handleFor(
+      identity,
+      refresh: refresh,
+    );
     PublicAuthorProfile? publishedProfile;
     final base = _baseUri;
     if (base != null && base.hasScheme && base.host.isNotEmpty) {

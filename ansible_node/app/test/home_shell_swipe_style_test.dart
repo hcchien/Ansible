@@ -4,6 +4,9 @@ import 'package:ansible_node/main.dart';
 import 'package:ansible_node/screens/home_shell.dart';
 import 'package:ansible_node/screens/discover_screen.dart';
 import 'package:ansible_node/screens/notifications_screen.dart';
+import 'package:ansible_node/screens/murmur_screen.dart';
+import 'package:ansible_node/screens/note_workspace_screen.dart';
+import 'package:ansible_node/screens/follow_connections_screen.dart';
 import 'package:ansible_node/theme/ansible_design.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
@@ -16,6 +19,85 @@ import 'support/accepted_terms_store.dart';
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+  });
+
+  for (final style in ['paper', 'ink', 'system']) {
+    testWidgets('$style applies to pushed personal pages on dark iOS', (
+      tester,
+    ) async {
+      tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+      addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+      await _pumpHomeShell(tester, coachmarkSeen: true, personalStyle: style);
+      final brightness = style == 'paper' ? Brightness.light : Brightness.dark;
+      final background = style == 'paper'
+          ? AnsibleDesign.paper
+          : AnsibleDesign.darkPaper;
+      for (final label in ['Murmur', 'Note']) {
+        await tester.tap(find.byKey(const Key('home_compose_button')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+        if (label == 'Note') {
+          final field = find.byKey(const Key('note_body_field'));
+          expect(Theme.of(tester.element(field)).brightness, brightness);
+          expect(
+            Scaffold.of(tester.element(field)).widget.backgroundColor,
+            background,
+          );
+          await tester.tap(find.byKey(const Key('note_editor_cancel_button')));
+          await tester.pumpAndSettle();
+        }
+        final page = label == 'Murmur'
+            ? find.byType(MurmurScreen)
+            : find.byType(NoteWorkspaceScreen);
+        expect(Theme.of(tester.element(page)).brightness, brightness);
+        expect(
+          Scaffold.of(tester.element(page)).widget.backgroundColor,
+          background,
+        );
+        await tester.tap(find.byIcon(Icons.arrow_back_ios_new));
+        await tester.pumpAndSettle();
+      }
+      await tester.tap(find.byKey(const Key('settings_button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('open_following')));
+      await tester.pumpAndSettle();
+      expect(
+        Theme.of(
+          tester.element(find.byType(FollowConnectionsScreen)),
+        ).brightness,
+        brightness,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('forum Auto follows the OS independently of personal Paper', (
+    tester,
+  ) async {
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+    await _pumpHomeShell(
+      tester,
+      coachmarkSeen: true,
+      personalStyle: 'paper',
+      forumStyle: 'system',
+    );
+    expect(_screenStyleColor(tester, 'feed'), AnsibleDesign.paper);
+    await tester.drag(
+      find.byKey(const Key('board_swipe_page_view')),
+      const Offset(-340, 0),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find.byKey(const Key('board_swipe_page_view')),
+      const Offset(-340, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(_screenStyleColor(tester, 'circle'), AnsibleDesign.darkPaper);
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
+    await tester.pumpAndSettle();
+    expect(_screenStyleColor(tester, 'circle'), AnsibleDesign.paper);
   });
 
   testWidgets(
@@ -372,9 +454,13 @@ void main() {
 Future<void> _pumpHomeShell(
   WidgetTester tester, {
   bool coachmarkSeen = false,
+  String? personalStyle,
+  String? forumStyle,
 }) async {
   SharedPreferences.setMockInitialValues({
     if (coachmarkSeen) 'elix_board_swipe_shown': true,
+    if (personalStyle != null) 'elix-screen-style.feed': personalStyle,
+    if (forumStyle != null) 'elix-screen-style.circle': forumStyle,
   });
   final db = AppDatabase(NativeDatabase.memory());
   addTearDown(() => db.close());

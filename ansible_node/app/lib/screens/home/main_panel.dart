@@ -9,6 +9,7 @@ import '../../services/ops_dispatch_service.dart';
 import '../../services/reading_preferences_controller.dart';
 import '../../services/relay_discovery_client.dart';
 import '../../theme/elix_screen_style.dart';
+import '../../theme/ansible_design.dart';
 import '../../widgets/feed_filter_tabs.dart';
 import '../contact_picker_screen.dart' show ContactInputResolver;
 import '../inbox_screen.dart' show ContactAvailabilityResolver;
@@ -185,7 +186,11 @@ class MainPanel extends StatelessWidget {
 
     Widget wrapPage(ElixTab tab, Widget child, {String? scopeName}) {
       final style = screenStyles[tab] ?? ElixScreenStyle.paper;
-      final data = style.dataFor(Theme.of(context).brightness);
+      final brightness = MediaQuery.platformBrightnessOf(context);
+      final data = style.dataFor(brightness);
+      final dark =
+          style == ElixScreenStyle.ink ||
+          (style == ElixScreenStyle.system && brightness == Brightness.dark);
       return ElixScreenStyleScope(
         style: style,
         child: AnimatedContainer(
@@ -193,7 +198,10 @@ class MainPanel extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOutCubic,
           decoration: BoxDecoration(color: data.background),
-          child: child,
+          child: Theme(
+            data: dark ? AnsibleDesign.darkTheme() : AnsibleDesign.theme(),
+            child: child,
+          ),
         ),
       );
     }
@@ -314,7 +322,7 @@ class MainPanel extends StatelessWidget {
   /// Standalone panels reuse the shell header and its everyday actions.
   Widget _compactBrandHeader(BuildContext context) => HomeCompactHeader(
     colors: (screenStyles[selectedTab] ?? ElixScreenStyle.paper).dataFor(
-      Theme.of(context).brightness,
+      MediaQuery.platformBrightnessOf(context),
     ),
     onSearch: () => Navigator.of(context).push(
       MaterialPageRoute<void>(

@@ -29,7 +29,7 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen> {
   ElixScreenStyleData get _colors => ElixScreenStyleScope.styleOf(
     context,
-  ).dataFor(Theme.of(context).brightness);
+  ).dataFor(MediaQuery.platformBrightnessOf(context));
 
   late final ContactRepository _contacts = DriftContactRepository(widget.db);
   final _displayNameController = TextEditingController();

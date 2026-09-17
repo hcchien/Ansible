@@ -84,13 +84,14 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = ElixScreenStyleData.of(context);
     final l10n = context.l10n;
     final titleMissing = _showErrors && _titleController.text.trim().isEmpty;
     final bodyMissing = _showErrors && _bodyController.text.trim().isEmpty;
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      backgroundColor: AnsibleDesign.paper,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -103,7 +104,7 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
                     onPressed: () => Navigator.of(context).pop(),
                     tooltip: l10n.cancel,
                     icon: const Icon(Icons.close_rounded, size: 18),
-                    color: AnsibleDesign.inkMuted,
+                    color: colors.muted,
                     visualDensity: VisualDensity.compact,
                   ),
                   const SizedBox(width: 4),
@@ -118,10 +119,10 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
                             child: Text(
                               l10n.draftLocal,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: AnsibleDesign.mono,
                                 fontSize: 11,
-                                color: AnsibleDesign.inkFaint,
+                                color: colors.faint,
                                 letterSpacing: 1.4,
                               ),
                             ),
@@ -135,12 +136,9 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
                     key: const Key('note_editor_done_button'),
                     onPressed: _submit,
                     style: FilledButton.styleFrom(
-                      backgroundColor: AnsibleDesign.paperElev,
-                      foregroundColor: AnsibleDesign.ink,
-                      side: const BorderSide(
-                        color: AnsibleDesign.rule,
-                        width: 0.5,
-                      ),
+                      backgroundColor: colors.surface,
+                      foregroundColor: colors.foreground,
+                      side: BorderSide(color: colors.rule, width: 0.5),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 14,
                         vertical: 8,
@@ -164,10 +162,10 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   l10n.editing,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: AnsibleDesign.mono,
                     fontSize: 11,
-                    color: AnsibleDesign.inkFaint,
+                    color: colors.faint,
                     letterSpacing: 1.6,
                   ),
                 ),
@@ -186,10 +184,10 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
                       autofocus: true,
                       textInputAction: TextInputAction.next,
                       onChanged: (_) => setState(() {}),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 28,
                         height: 1.2,
-                        color: AnsibleDesign.ink,
+                        color: colors.foreground,
                         fontWeight: FontWeight.w500,
                         letterSpacing: 0,
                       ),
@@ -197,27 +195,27 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
                         isDense: true,
                         filled: false,
                         hintText: l10n.noteTitleHint,
-                        hintStyle: const TextStyle(
-                          color: AnsibleDesign.inkFaint,
+                        hintStyle: TextStyle(
+                          color: colors.faint,
                           fontSize: 28,
                           fontStyle: FontStyle.normal,
                           fontWeight: FontWeight.w500,
                         ),
-                        border: const UnderlineInputBorder(
+                        border: UnderlineInputBorder(
                           borderSide: BorderSide(
-                            color: AnsibleDesign.ruleSoft,
+                            color: colors.ruleSoft,
                             width: 0.5,
                           ),
                         ),
-                        enabledBorder: const UnderlineInputBorder(
+                        enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(
-                            color: AnsibleDesign.ruleSoft,
+                            color: colors.ruleSoft,
                             width: 0.5,
                           ),
                         ),
-                        focusedBorder: const UnderlineInputBorder(
+                        focusedBorder: UnderlineInputBorder(
                           borderSide: BorderSide(
-                            color: AnsibleDesign.accent,
+                            color: colors.accent,
                             width: 1,
                           ),
                         ),
@@ -246,14 +244,11 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
                               : EdgeInsets.zero,
                           decoration: BoxDecoration(
                             color: isHovering
-                                ? AnsibleDesign.accent.withValues(alpha: 0.08)
+                                ? colors.accent.withValues(alpha: 0.08)
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(8),
                             border: isHovering
-                                ? Border.all(
-                                    color: AnsibleDesign.accent,
-                                    width: 0.8,
-                                  )
+                                ? Border.all(color: colors.accent, width: 0.8)
                                 : null,
                           ),
                           child: TextField(
@@ -265,16 +260,16 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
                             keyboardType: TextInputType.multiline,
                             textInputAction: TextInputAction.newline,
                             onChanged: (_) => setState(() {}),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: AnsibleDesign.readingTextSize,
                               height: 1.8,
-                              color: AnsibleDesign.ink,
+                              color: colors.foreground,
                             ),
                             decoration: InputDecoration(
                               filled: false,
                               hintText: l10n.noteBodyHint,
-                              hintStyle: const TextStyle(
-                                color: AnsibleDesign.inkFaint,
+                              hintStyle: TextStyle(
+                                color: colors.faint,
                                 fontSize: AnsibleDesign.readingTextSize,
                                 height: 1.8,
                                 fontStyle: FontStyle.italic,
@@ -429,6 +424,7 @@ class _EditorVisibilityRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = ElixScreenStyleData.of(context);
     final meta = contentVisibilityMeta(context, visibility);
     return InkWell(
       key: const Key('note_editor_visibility_chip'),
@@ -441,10 +437,10 @@ class _EditorVisibilityRow extends StatelessWidget {
           Expanded(
             child: Text(
               _summary(context),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11.5,
                 height: 1.4,
-                color: AnsibleDesign.inkFaint,
+                color: colors.faint,
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -509,12 +505,13 @@ class _EditorFormatToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = ElixScreenStyleData.of(context);
     return Container(
       height: 40,
       margin: const EdgeInsets.fromLTRB(22, 0, 22, 8),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: AnsibleDesign.ink,
+        color: colors.foreground,
         borderRadius: BorderRadius.circular(999),
         boxShadow: [
           BoxShadow(
@@ -537,7 +534,7 @@ class _EditorFormatToolbar extends StatelessWidget {
               Container(
                 width: 0.5,
                 height: 18,
-                color: AnsibleDesign.paper.withValues(alpha: 0.16),
+                color: colors.background.withValues(alpha: 0.16),
               ),
           ],
         ],
@@ -554,6 +551,7 @@ class _EditorFormatButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = ElixScreenStyleData.of(context);
     return InkResponse(
       key: tool.key,
       onTap: onTap,
@@ -562,12 +560,12 @@ class _EditorFormatButton extends StatelessWidget {
         child: Text(
           tool.label,
           style: TextStyle(
-            color: AnsibleDesign.paper,
+            color: colors.background,
             fontSize: 14,
             fontWeight: tool.weight,
             fontStyle: tool.style,
             decoration: tool.decoration,
-            decorationColor: AnsibleDesign.paper,
+            decorationColor: colors.background,
           ),
         ),
       ),
@@ -608,15 +606,16 @@ class _EditorMurmurDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = ElixScreenStyleData.of(context);
     final items = murmurs.reversed.take(6).toList();
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: const BoxDecoration(
-        color: AnsibleDesign.paperElev,
+      decoration: BoxDecoration(
+        color: colors.surface,
         border: Border(
-          top: BorderSide(color: AnsibleDesign.rule, width: 0.5),
-          left: BorderSide(color: AnsibleDesign.rule, width: 0.5),
-          right: BorderSide(color: AnsibleDesign.rule, width: 0.5),
+          top: BorderSide(color: colors.rule, width: 0.5),
+          left: BorderSide(color: colors.rule, width: 0.5),
+          right: BorderSide(color: colors.rule, width: 0.5),
         ),
         borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),
@@ -634,17 +633,17 @@ class _EditorMurmurDrawer extends StatelessWidget {
                     width: 28,
                     height: 3,
                     decoration: BoxDecoration(
-                      color: AnsibleDesign.rule,
+                      color: colors.rule,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                   const Spacer(),
                   Text(
                     context.l10n.drawIn,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: AnsibleDesign.mono,
                       fontSize: 11,
-                      color: AnsibleDesign.inkFaint,
+                      color: colors.faint,
                       letterSpacing: 1.5,
                     ),
                   ),
@@ -654,7 +653,7 @@ class _EditorMurmurDrawer extends StatelessWidget {
                         ? Icons.keyboard_arrow_down_rounded
                         : Icons.keyboard_arrow_up_rounded,
                     size: 18,
-                    color: AnsibleDesign.inkMuted,
+                    color: colors.muted,
                   ),
                 ],
               ),
@@ -670,8 +669,8 @@ class _EditorMurmurDrawer extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                         child: Text(
                           context.l10n.noMurmursToDraw,
-                          style: const TextStyle(
-                            color: AnsibleDesign.inkMuted,
+                          style: TextStyle(
+                            color: colors.muted,
                             fontStyle: FontStyle.italic,
                             fontSize: 12,
                           ),
@@ -731,12 +730,13 @@ class _EditorMurmurCardSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = ElixScreenStyleData.of(context);
     return Container(
       width: 168,
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
-        color: AnsibleDesign.paper,
-        border: Border.all(color: AnsibleDesign.rule, width: 0.5),
+        color: colors.background,
+        border: Border.all(color: colors.rule, width: 0.5),
         borderRadius: BorderRadius.circular(8),
         boxShadow: elevated
             ? [
@@ -753,10 +753,10 @@ class _EditorMurmurCardSurface extends StatelessWidget {
         children: [
           Text(
             'MURMUR · ${_formatDate(murmur.createdAt)}',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AnsibleDesign.mono,
               fontSize: 8.5,
-              color: AnsibleDesign.inkFaint,
+              color: colors.faint,
               letterSpacing: 1.1,
             ),
           ),
@@ -765,10 +765,10 @@ class _EditorMurmurCardSurface extends StatelessWidget {
             murmur.body,
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               height: 1.55,
-              color: AnsibleDesign.ink,
+              color: colors.foreground,
               fontStyle: FontStyle.italic,
             ),
           ),

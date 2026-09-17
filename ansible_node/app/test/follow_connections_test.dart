@@ -1,6 +1,8 @@
 import 'package:ansible_node/screens/follow_connections_screen.dart';
 import 'package:ansible_node/services/follow_connections.dart';
-import 'package:ansible_node/services/handle_resolver.dart' show shortenDid;
+import 'dart:async';
+
+import 'package:ansible_node/services/handle_resolver.dart';
 import 'package:ansible_node/widgets/follow_connections_links.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
@@ -147,6 +149,170 @@ Future<void> seedLabelCase(
 }
 
 void main() {
+  test(
+    'public profiles enrich both lists without changing local relationships',
+    () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      await seed(db);
+      final local = await loadFollowConnections(db, owner);
+      final resolver = _ProfileResolver((did, refresh) async {
+        return PublicAuthorProfile(
+          displayName: did == 'did:elix:alice' ? 'Published Alice' : null,
+          handle: '${did.split(':').last}.public',
+        );
+      });
+      final enriched = await resolveFollowConnectionProfiles(local, resolver);
+      expect(enriched.following.first.name, 'bob');
+      final alice = enriched.following.singleWhere(
+        (p) => p.did == 'did:elix:alice',
+      );
+      expect(alice.name, 'Published Alice');
+      expect(alice.handleLabel, '@alice.public');
+      expect(alice.localOnly, isTrue);
+      expect(enriched.followingCount, local.followingCount);
+      expect(enriched.followerCount, local.followerCount);
+      expect(
+        enriched.following.where((p) => p.pending).single.did,
+        'did:elix:bob',
+      );
+      expect(
+        enriched.followers.where((p) => p.pending).single.did,
+        'did:elix:dave',
+      );
+    },
+  );
+
+  test(
+    'missing local labels resolve display name, handle, DID and deduplicate peers',
+    () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      await seedLabelCase(db, targetName: labelPeer);
+      final local = await loadFollowConnections(db, owner);
+      for (final example in [
+        (
+          profile: const PublicAuthorProfile(
+            displayName: ' Alice ',
+            handle: 'alice',
+          ),
+          expected: 'Alice',
+        ),
+        (
+          profile: const PublicAuthorProfile(
+            displayName: labelPeer,
+            handle: ' alice ',
+          ),
+          expected: '@alice',
+        ),
+        (
+          profile: const PublicAuthorProfile(displayName: ' ', handle: ' '),
+          expected: shortenDid(labelPeer),
+        ),
+      ]) {
+        var reads = 0;
+        final resolver = _ProfileResolver((did, refresh) async {
+          reads++;
+          expect(did, labelPeer);
+          expect(refresh, isTrue);
+          return example.profile;
+        });
+        final result = await resolveFollowConnectionProfiles(
+          local,
+          resolver,
+          refresh: true,
+        );
+        expect(result.following.single.name, example.expected);
+        expect(result.followers.single.name, example.expected);
+        expect(reads, 1);
+      }
+      final unavailable = await resolveFollowConnectionProfiles(
+        local,
+        _ProfileResolver((_, _) async => throw Exception('offline')),
+      );
+      expect(unavailable.following.single.name, shortenDid(labelPeer));
+      expect(unavailable.followers.single.name, shortenDid(labelPeer));
+    },
+  );
+
+  testWidgets(
+    'local rows stay visible until public labels arrive and become searchable',
+    (tester) async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      await seedLabelCase(db, targetName: labelPeer);
+      final profile = Completer<PublicAuthorProfile?>();
+      final resolver = _ProfileResolver((_, _) => profile.future);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FollowConnectionsScreen(
+            db: db,
+            did: owner,
+            profileResolver: resolver,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(shortenDid(labelPeer)), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      profile.complete(
+        const PublicAuthorProfile(
+          displayName: 'Published Alice',
+          handle: 'alice.public',
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Published Alice'), findsOneWidget);
+      for (final tab in ['追蹤中 1', '追蹤者 1']) {
+        await tester.tap(find.text(tab));
+        await tester.pumpAndSettle();
+        for (final query in ['published alice', 'alice.public', labelPeer]) {
+          await tester.enterText(
+            find.byKey(const Key('connections_search')),
+            query,
+          );
+          await tester.pump();
+          expect(find.text('Published Alice'), findsOneWidget);
+        }
+      }
+      // Public presentation enrichment does not overwrite the local source.
+      expect(
+        (await loadFollowConnections(db, owner)).following.single.name,
+        shortenDid(labelPeer),
+      );
+    },
+  );
+
+  testWidgets('late public lookup cannot restore a previous account list', (
+    tester,
+  ) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await seedLabelCase(db, targetName: labelPeer);
+    final profile = Completer<PublicAuthorProfile?>();
+    final resolver = _ProfileResolver((_, _) => profile.future);
+    Future<void> show(String did) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FollowConnectionsScreen(
+            db: db,
+            did: did,
+            profileResolver: resolver,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await show(owner);
+    await show('did:elix:empty');
+    profile.complete(
+      const PublicAuthorProfile(displayName: 'Previous account peer'),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Previous account peer'), findsNothing);
+    expect(find.text('目前沒有追蹤任何人'), findsOneWidget);
+  });
   test(
     'own list preserves local-only and pending while excluding boards, deleted and inactive edges',
     () async {
@@ -317,4 +483,13 @@ void main() {
     expect(find.text('目前沒有追蹤任何人'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+}
+
+class _ProfileResolver extends PublicProfileResolver {
+  _ProfileResolver(this.lookup);
+  final Future<PublicAuthorProfile?> Function(String, bool) lookup;
+
+  @override
+  Future<PublicAuthorProfile?> profileFor(String did, {bool refresh = false}) =>
+      lookup(did, refresh);
 }

@@ -62,7 +62,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       (widget.embedded
               ? ElixScreenStyle.forAppBrightness(Theme.of(context).brightness)
               : ElixScreenStyleScope.styleOf(context))
-          .dataFor(Theme.of(context).brightness);
+          .dataFor(MediaQuery.platformBrightnessOf(context));
 
   final _queryController = TextEditingController();
   Timer? _debounce;

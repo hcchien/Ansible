@@ -676,21 +676,32 @@ class AnsibleDesign {
 
 class ElixThemeController extends ChangeNotifier {
   static const _key = 'elix-theme';
+  static const personalStyleKey = 'elix-screen-style.feed';
+  static final shared = ElixThemeController();
 
-  ThemeMode _mode = ThemeMode.system;
+  // Personal pages and pushed routes share the appearance selected in Settings.
+  // Paper is also the default used by the personal board.
+  ThemeMode _mode = ThemeMode.light;
   ThemeMode get mode => _mode;
   bool get isDark => _mode == ThemeMode.dark;
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString(_key);
-    if (saved == 'light') {
-      _mode = ThemeMode.light;
-    } else if (saved == 'dark') {
-      _mode = ThemeMode.dark;
-    } else {
-      _mode = ThemeMode.system;
-    }
+    final saved = prefs.getString(personalStyleKey) ?? prefs.getString(_key);
+    _mode = _modeFor(saved);
+    notifyListeners();
+  }
+
+  static ThemeMode _modeFor(String? value) => switch (value) {
+    'ink' || 'dark' => ThemeMode.dark,
+    'system' => ThemeMode.system,
+    _ => ThemeMode.light,
+  };
+
+  void usePersonalStyle(String style) {
+    final mode = _modeFor(style);
+    if (_mode == mode) return;
+    _mode = mode;
     notifyListeners();
   }
 
@@ -699,6 +710,7 @@ class ElixThemeController extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_key, isDark ? 'dark' : 'light');
+    await prefs.setString(personalStyleKey, isDark ? 'ink' : 'paper');
   }
 }
 

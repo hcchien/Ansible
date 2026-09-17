@@ -2,6 +2,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import '../l10n/app_l10n.dart';
 import '../services/follow_connections.dart';
+import '../services/handle_resolver.dart';
 import 'user_profile_screen.dart';
 
 class FollowConnectionsScreen extends StatefulWidget {
@@ -10,10 +11,12 @@ class FollowConnectionsScreen extends StatefulWidget {
     required this.db,
     required this.did,
     this.initialTab = 0,
+    this.profileResolver,
   });
   final AppDatabase db;
   final String did;
   final int initialTab;
+  final PublicProfileResolver? profileResolver;
   @override
   State<FollowConnectionsScreen> createState() =>
       _FollowConnectionsScreenState();
@@ -21,15 +24,31 @@ class FollowConnectionsScreen extends StatefulWidget {
 
 class _FollowConnectionsScreenState extends State<FollowConnectionsScreen> {
   late Future<FollowConnections> _data;
+  FollowConnections? _localData;
+  int _loadEpoch = 0;
   String _query = '';
   @override
   void initState() {
     super.initState();
-    _data = loadFollowConnections(widget.db, widget.did);
+    _data = _load();
+  }
+
+  Future<FollowConnections> _load({bool refresh = false}) async {
+    final epoch = ++_loadEpoch;
+    _localData = null;
+    final local = await loadFollowConnections(widget.db, widget.did);
+    if (!mounted || epoch != _loadEpoch) return local;
+    // Local relationships remain readable while public labels are resolving.
+    setState(() => _localData = local);
+    return resolveFollowConnectionProfiles(
+      local,
+      widget.profileResolver ?? PublicProfileResolver.shared,
+      refresh: refresh,
+    );
   }
 
   Future<void> _reload() async {
-    final future = loadFollowConnections(widget.db, widget.did);
+    final future = _load(refresh: true);
     setState(() => _data = future);
     try {
       await future;
@@ -41,8 +60,10 @@ class _FollowConnectionsScreenState extends State<FollowConnectionsScreen> {
   @override
   void didUpdateWidget(covariant FollowConnectionsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.did != widget.did || oldWidget.db != widget.db) {
-      _data = loadFollowConnections(widget.db, widget.did);
+    if (oldWidget.did != widget.did ||
+        oldWidget.db != widget.db ||
+        oldWidget.profileResolver != widget.profileResolver) {
+      _data = _load();
     }
   }
 
@@ -88,7 +109,7 @@ class _FollowConnectionsScreenState extends State<FollowConnectionsScreen> {
               }
               final data = snapshot.connectionState == ConnectionState.done
                   ? snapshot.data
-                  : null;
+                  : _localData;
               if (data == null) {
                 return const Center(child: CircularProgressIndicator());
               }
@@ -228,7 +249,7 @@ class _FollowConnectionsScreenState extends State<FollowConnectionsScreen> {
             db: widget.db,
             followerDid: widget.did,
             did: person.did,
-            displayName: person.name,
+            displayName: person.displayName,
           ),
         ),
       );

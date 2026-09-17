@@ -309,7 +309,7 @@ class _StyleChoice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = style.dataFor(Theme.of(context).brightness);
+    final data = style.dataFor(MediaQuery.platformBrightnessOf(context));
     // Auto previews as a half-Paper / half-Ink split, per the design's swatch.
     final auto = style == ElixScreenStyle.system;
     final previewColor = auto ? null : data.background;
