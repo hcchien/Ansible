@@ -11,6 +11,8 @@ import '../content_detail_screen.dart';
 import '../discover_screen.dart';
 import '../user_profile_screen.dart';
 import 'post_card.dart';
+import 'post_card_revision.dart';
+import '../../widgets/animated_feed_list.dart';
 import 'home_types.dart';
 
 /// Timeline board (時間軸) — posts from people you follow.
@@ -21,6 +23,7 @@ class TimelineBoardView extends StatelessWidget {
     required this.did,
     required this.loading,
     required this.followingPosts,
+    this.refreshing = false,
     required this.opsDispatchService,
     required this.onFlushPendingOps,
     required this.onOpenBoard,
@@ -33,6 +36,7 @@ class TimelineBoardView extends StatelessWidget {
   final String did;
   final bool loading;
   final List<PostCardData> followingPosts;
+  final bool refreshing;
   final OpsDispatchService opsDispatchService;
   final Future<void> Function() onFlushPendingOps;
   final ValueChanged<String> onOpenBoard;
@@ -49,16 +53,16 @@ class TimelineBoardView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: loading
+          child: loading || (refreshing && followingPosts.isEmpty)
               ? const Center(child: CircularProgressIndicator())
               : followingPosts.isEmpty
               ? _timelineEmptyState(context)
-              : ListView.separated(
-                  itemCount: followingPosts.length,
-                  padding: const EdgeInsets.only(bottom: 12),
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final post = followingPosts[index];
+              : AnimatedFeedList<PostCardData>(
+                  key: ValueKey('timeline_board:$did:${sort.name}'),
+                  items: followingPosts,
+                  itemId: postCardId,
+                  itemRevision: postCardRevision,
+                  itemBuilder: (context, post) {
                     return PostCard(
                       db: db,
                       data: post,

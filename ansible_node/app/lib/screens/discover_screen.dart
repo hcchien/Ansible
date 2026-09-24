@@ -72,11 +72,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   List<BoardSearchResult> _browseBoards = const [];
   Set<String> _subscribedBoardIds = const {};
   SearchResults _results = const SearchResults();
-  bool _loadingFeed = true;
+  final Set<_DiscoverTab> _loadingTabs = {..._DiscoverTab.values};
+  final Map<_DiscoverTab, String> _feedErrors = {};
+  int _feedEpoch = 0;
   bool _profileInvitationDismissed = false;
   bool _searching = false;
   String _query = '';
-  String? _feedError;
   String? _searchError;
   _DiscoverTab _tab = _DiscoverTab.people;
 
@@ -95,39 +96,83 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Future<void> _loadFeed() async {
+    final epoch = ++_feedEpoch;
     setState(() {
-      _loadingFeed = true;
-      _feedError = null;
+      _loadingTabs.addAll(_DiscoverTab.values);
+      _feedErrors.clear();
     });
     try {
-      final subscriptions = await DriftHostedBoardRepository(
-        widget.db,
-      ).listSubscriptions();
-      final suggestions = await widget.client.suggestFollows(
-        readerDid: widget.localDid,
-        limit: 20,
-      );
-      final explore = await widget.client.explore(limit: 30);
-      // Empty query => browse popular boards for the 看板 tab.
-      final boards = await widget.client.searchBoards(query: '', limit: 30);
-      if (!mounted) return;
+      final repository = DriftHostedBoardRepository(widget.db);
+      final subscriptions = await repository.listSubscriptions();
+      final projections = await repository.listProjections();
+      if (!mounted || epoch != _feedEpoch) return;
       setState(() {
-        _suggestions = suggestions;
-        _explore = explore;
-        _browseBoards = boards;
         _subscribedBoardIds = {
           for (final subscription in subscriptions)
             if (subscription.readEnabled) subscription.hostedBoardId,
         };
-        _loadingFeed = false;
+        if (_browseBoards.isEmpty) {
+          _browseBoards = [
+            for (final board in projections)
+              if (!board.isDeleted &&
+                  _subscribedBoardIds.contains(board.hostedBoardId))
+                BoardSearchResult(
+                  hostedBoardId: board.hostedBoardId,
+                  title: board.title,
+                  description: board.description,
+                  canonicalBoardUri: board.canonicalBoardUri,
+                  postingPolicy: board.postingPolicy,
+                  accessPolicy: board.accessPolicy,
+                  accessPolicyVersion: board.accessPolicyVersion,
+                  contentVisibility: board.contentVisibility,
+                  encryptionEpoch: board.encryptionEpoch,
+                  encryptionState: board.encryptionState,
+                  federationPolicy: board.federationPolicy,
+                ),
+          ];
+        }
       });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _loadingFeed = false;
-        _feedError = userFacingError(context, error);
-      });
+    } catch (_) {
+      // A local projection failure need not prevent online discovery.
     }
+    if (!mounted || epoch != _feedEpoch) return;
+    Future<void> load<T>(
+      _DiscoverTab tab,
+      Future<List<T>> Function() fetch,
+      void Function(List<T>) apply,
+    ) async {
+      try {
+        final items = await fetch().timeout(const Duration(seconds: 15));
+        if (!mounted || epoch != _feedEpoch) return;
+        setState(() => apply(items));
+      } catch (error) {
+        if (!mounted || epoch != _feedEpoch) return;
+        setState(() => _feedErrors[tab] = userFacingError(context, error));
+      } finally {
+        if (mounted && epoch == _feedEpoch) {
+          setState(() => _loadingTabs.remove(tab));
+        }
+      }
+    }
+
+    await Future.wait([
+      load(
+        _DiscoverTab.people,
+        () =>
+            widget.client.suggestFollows(readerDid: widget.localDid, limit: 20),
+        (items) => _suggestions = items,
+      ),
+      load(
+        _DiscoverTab.posts,
+        () => widget.client.explore(limit: 30),
+        (items) => _explore = items,
+      ),
+      load(
+        _DiscoverTab.boards,
+        () => widget.client.searchBoards(query: '', limit: 30),
+        (items) => _browseBoards = items,
+      ),
+    ]);
   }
 
   void _onQueryChanged(String value) {
@@ -462,9 +507,17 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     if (searching && _searchError != null) {
       return [_errorPane(context, _searchError!, () => _runSearch(_query))];
     }
-    if (!searching && _loadingFeed) return [_loader()];
-    if (!searching && _feedError != null) {
-      return [_errorPane(context, _feedError!, _loadFeed)];
+    final hasFeed = switch (_tab) {
+      _DiscoverTab.people => _suggestions.isNotEmpty,
+      _DiscoverTab.boards => _browseBoards.isNotEmpty,
+      _DiscoverTab.posts => _explore.isNotEmpty,
+    };
+    if (!searching && !hasFeed && _loadingTabs.contains(_tab)) {
+      return [_loader()];
+    }
+    final feedError = _feedErrors[_tab];
+    if (!searching && !hasFeed && feedError != null) {
+      return [_errorPane(context, feedError, _loadFeed)];
     }
 
     switch (_tab) {

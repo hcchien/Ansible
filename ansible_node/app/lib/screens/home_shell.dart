@@ -109,6 +109,7 @@ class HomeShell extends StatefulWidget {
     this.onClearIdentity,
     this.syncRunner,
     this.pullRefreshRunner,
+    this.timelineLoader,
     this.relayDiscoveryLoader,
     this.defaultSubscriptionsDiscoveryLoader,
     this.networkStatusMonitor,
@@ -140,6 +141,9 @@ class HomeShell extends StatefulWidget {
   final VoidCallback? onClearIdentity;
   final Future<AppSyncResult> Function()? syncRunner;
   final Future<RelayPullSummary> Function()? pullRefreshRunner;
+
+  /// Read-only remote timeline source; local projections always render first.
+  final Future<List<FollowTimelineItem>> Function()? timelineLoader;
   final Future<RelayDiscovery> Function()? relayDiscoveryLoader;
   final Future<RelayDiscovery> Function()? defaultSubscriptionsDiscoveryLoader;
   final NetworkStatusMonitor? networkStatusMonitor;
@@ -204,6 +208,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   List<ContentItem> _contentItems = [];
   Map<String, int> _murmurReferenceCounts = const {};
   bool _loading = true;
+  int _loadEpoch = 0;
+  int _timelineScopeEpoch = 0;
+  String? _timelineSourceUrl;
+  bool _refreshingTimeline = false;
+  bool _refreshingLocalMetadata = false;
+  List<FollowTimelineItem> _remoteWallItems = const [];
   bool _syncing = false;
   bool _pullRefreshing = false;
   bool _hasActiveMessengerRelay = false;
@@ -337,7 +347,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       if (!mounted) return;
       unawaited(_loadScreenStyles());
       unawaited(_loadBoardMotion());
-      unawaited(_loadData());
+      await _loadData();
+      if (!mounted) return;
       // Subscription/projection setup must finish before the first relay pull.
       // Otherwise the pull filters out historical board ops, then only the
       // empty local board shells are rendered until a later resume/manual sync.
@@ -456,29 +467,33 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       widget.globalSyncController?.attach(_runGlobalSync);
     }
     if (oldWidget.did != widget.did) {
+      _timelineScopeEpoch++;
       unawaited(_syncAuthorizationController.invalidate());
+      _remoteWallItems = const [];
+      _followingPosts = [];
+      _posts = [];
+      _contentItems = [];
+      _loading = true;
+      unawaited(_loadData());
     }
   }
 
-  Future<void> _loadData() async {
-    setState(() => _loading = true);
+  Future<void> _loadData({bool refreshRemote = true}) async {
+    if (!mounted) return;
+    final epoch = ++_loadEpoch;
     final l10n = context.l10n;
-    for (final did in _localDids) {
-      await ContactSourceSyncService(
-        followRepository: _followRepo,
-        contactRepository: _contactRepo,
-        messengerRepository: _messengerRepo,
-      ).syncForIdentity(did);
-    }
-    if (!_notificationBackfillDone) {
-      await _notificationRebuilder.rebuild();
-      _notificationBackfillDone = true;
-    }
-    await _refreshNotificationUnread();
+    // Keep the mounted lists readable during refresh. Only the initial local
+    // read uses the full-page loading state; no HTTP belongs in this path.
     final remoteNodes = await _remoteNodeRepo.list();
+    if (!mounted || epoch != _loadEpoch) return;
     AppEnvironment.socialRelayBaseUrl =
         remoteNodes.where((node) => node.isActive).firstOrNull?.url ??
         AppEnvironment.defaultRelayBaseUrl;
+    if (_timelineSourceUrl != AppEnvironment.socialRelayBaseUrl) {
+      _timelineSourceUrl = AppEnvironment.socialRelayBaseUrl;
+      _timelineScopeEpoch++;
+      _remoteWallItems = const [];
+    }
     final hasActiveRemoteNode = remoteNodes.any((node) => node.isActive);
     final hasActiveForumHost = (await _forumHostRepo.listActive()).isNotEmpty;
     final hostedBoardProjections = await _hostedBoardRepo.listProjections();
@@ -562,22 +577,24 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       );
     }).toList();
 
-    // Timeline board (時間軸): posts from people you follow. Best-effort — a
-    // discovery/AppView outage falls back to locally synced followed content.
-    List<PostCardData> followingCards = const [];
-    try {
-      final followingEntries = await _dynamicWallItems(limit: 100);
-      followingCards = await _buildFollowingPostCards(
-        followingEntries,
-        boardMap,
-      );
-    } catch (_) {
-      followingCards = const [];
-    }
+    final localFollowing = await _localFollowFeedSource().fetch(
+      followerDid: widget.did,
+      limit: 100,
+    );
+    if (!mounted || epoch != _loadEpoch) return;
+    final seen = <String>{};
+    final followingEntries = [
+      ..._remoteWallItems,
+      ...localFollowing.items,
+    ].where((item) => seen.add(_timelineItemKey(item))).toList();
+    var followingCards = await _buildFollowingPostCards(
+      followingEntries,
+      boardMap,
+    );
 
     // Local-first home: locally stored public content remains readable without
-    // a network, while online AppView results enrich the same wall. De-duplicate
-    // by content/thread id because a synced local item may also be in AppView.
+    // a network, while online Relay results enrich the same wall. De-duplicate
+    // by content/thread id because a synced local item may also be in the Relay.
     final localContentCards = await Future.wait(
       contentItems
           .where(
@@ -615,6 +632,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             .toList()
           ..sort(_compareTimelineCards);
 
+    if (!mounted || epoch != _loadEpoch) return;
     setState(() {
       _boards = boards;
       _posts = forumTiered;
@@ -632,6 +650,66 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     });
     if (showFirstRunDiscovery) {
       unawaited(_loadRelayDiscoveryIfNeeded());
+    }
+    if (refreshRemote) {
+      unawaited(_refreshTimeline());
+      unawaited(_refreshLocalMetadata());
+    }
+  }
+
+  Future<void> _refreshLocalMetadata() async {
+    if (_refreshingLocalMetadata) return;
+    _refreshingLocalMetadata = true;
+    try {
+      for (final did in _localDids) {
+        if (!mounted) return;
+        await ContactSourceSyncService(
+          followRepository: _followRepo,
+          contactRepository: _contactRepo,
+          messengerRepository: _messengerRepo,
+        ).syncForIdentity(did);
+      }
+      if (!mounted) return;
+      if (!_notificationBackfillDone) {
+        await _notificationRebuilder.rebuild();
+        _notificationBackfillDone = true;
+      }
+      if (mounted) await _refreshNotificationUnread();
+    } catch (_) {
+      // Derived contact/notification maintenance must not hide readable posts.
+      // The next local refresh retries it.
+    } finally {
+      _refreshingLocalMetadata = false;
+    }
+  }
+
+  Future<void> _refreshTimeline() async {
+    if (!mounted || _refreshingTimeline || _networkStatusService.isOffline) {
+      return;
+    }
+    if (widget.timelineLoader == null &&
+        (!AppEnvironment.useRelayFeed ||
+            AppEnvironment.socialRelayBaseUrl.isEmpty)) {
+      return;
+    }
+    final scopeEpoch = _timelineScopeEpoch;
+    setState(() => _refreshingTimeline = true);
+    try {
+      final items = await (widget.timelineLoader ?? _fetchRemoteWallItems)()
+          .timeout(const Duration(seconds: 20));
+      if (!mounted || scopeEpoch != _timelineScopeEpoch) return;
+      _remoteWallItems = items;
+      // Re-read current local state so a slow response cannot undo a local
+      // edit, reaction, block, or filter change made while it was in flight.
+      await _loadData(refreshRemote: false);
+    } catch (_) {
+      // Offline/failed refresh keeps both the local rows and last good remote
+      // snapshot. A network failure is not an authoritative empty feed.
+    } finally {
+      if (mounted) setState(() => _refreshingTimeline = false);
+      if (mounted && scopeEpoch != _timelineScopeEpoch) {
+        unawaited(_refreshTimeline());
+      }
     }
   }
 
@@ -1190,68 +1268,28 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     ),
   );
 
-  // Following-feed source: the scalable AppView timeline when enabled+configured,
-  // otherwise the local Design-1 filter over synced ops.
-  FollowFeedSource _followFeedSource() {
-    if (AppEnvironment.useRelayFeed &&
-        AppEnvironment.socialRelayBaseUrl.isNotEmpty) {
-      final client = AppViewTimelineClient(
-        baseUrl: AppEnvironment.socialRelayBaseUrl,
-      );
-      return AppViewTimelineSource(
+  /// Fetches the selected Relay's online timeline after local rows render.
+  /// Preserve prod's follow-only source; discovery remains a separate screen.
+  Future<List<FollowTimelineItem>> _fetchRemoteWallItems() async {
+    final client = AppViewTimelineClient(
+      baseUrl: AppEnvironment.socialRelayBaseUrl,
+    );
+    try {
+      final source = AppViewTimelineSource(
         followRepository: _followRepo,
         fetcher: client.fetch,
-
-        // Prefer the server-materialized home timeline (fan-out-on-write) when
-        // enabled; otherwise fall back to fan-out-on-read over the follow set.
       );
+      final page = await source
+          .fetch(followerDid: widget.did, limit: 100)
+          .timeout(const Duration(seconds: 18));
+      return page.items;
+    } finally {
+      client.close();
     }
-
-    return _localFollowFeedSource();
-  }
-
-  /// Builds the social home wall. When online, newest verified public content
-  /// fills a sparse following feed so a new account sees a real, changing wall
-  /// instead of static onboarding copy. The combined wall stays chronological.
-  Future<List<FollowTimelineItem>> _dynamicWallItems({int limit = 100}) async {
-    final source = _followFeedSource();
-    final followed = <FollowTimelineItem>[];
-
-    try {
-      followed.addAll(
-        (await source.fetch(followerDid: widget.did, limit: limit)).items,
-      );
-    } catch (_) {
-      // Continue with the locally synced projection below.
-    }
-
-    // AppView is an online acceleration/read model, not the sole source of
-    // truth. Merge locally synced followed content as an offline-safe lane.
-    if (AppEnvironment.useRelayFeed &&
-        AppEnvironment.socialRelayBaseUrl.isNotEmpty) {
-      try {
-        final local = await _localFollowFeedSource().fetch(
-          followerDid: widget.did,
-          limit: limit,
-        );
-        final seen = followed.map(_timelineItemKey).toSet();
-        for (final item in local.items) {
-          if (seen.add(_timelineItemKey(item))) followed.add(item);
-        }
-        followed.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-        if (followed.length > limit) {
-          followed.removeRange(limit, followed.length);
-        }
-      } catch (_) {
-        // A local projection failure must not prevent the verified AppView lane.
-      }
-    }
-
-    return followed;
   }
 
   String _timelineItemKey(FollowTimelineItem item) => switch (item) {
-    PostTimelineItem(:final entry) => 'post:${entry.thread.id}',
+    PostTimelineItem(:final entry) => 'post:${entry.post.id}',
     ContentTimelineItem(:final entry) => 'content:${entry.item.id}',
   };
 
@@ -1297,10 +1335,18 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
     for (final item in items) {
       if (item is ContentTimelineItem) {
+        final stored = await _contentItemRepo.getById(item.entry.item.id);
+        if (stored != null &&
+            (stored.isDeleted ||
+                stored.status != ContentStatus.active ||
+                stored.visibility == ContentVisibility.private)) {
+          continue;
+        }
         cards.add(
           await _contentFollowCard(
-            item.entry.item,
-            signatureVerified: item.signatureVerified,
+            stored ?? item.entry.item,
+            signatureVerified:
+                stored?.signatureVerified ?? item.signatureVerified,
             authorDisplayName: item.authorDisplayName,
             authorHandle: item.authorHandle,
             appViewReactionCount: item.reactionCount,
@@ -1316,6 +1362,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       final threadItems = postItemsByThread[threadId] ?? [item];
       final storedThread = await _threadRepo.getById(threadId);
       final thread = storedThread ?? item.entry.thread;
+      if (thread.isDeleted) continue;
       final storedPosts = await _postRepo.list(threadId: threadId);
       final activeStoredPosts =
           storedPosts.where((post) => !post.isDeleted).toList()
@@ -1325,7 +1372,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           if (!timelineItem.entry.post.isDeleted)
             timelineItem.entry.post.id: timelineItem.entry.post,
       };
-      final availablePosts = activeStoredPosts.isNotEmpty
+      final availablePosts = storedPosts.isNotEmpty
           ? activeStoredPosts
           : (timelinePostsById.values.toList()
               ..sort((a, b) => a.createdAt.compareTo(b.createdAt)));
@@ -2948,6 +2995,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 atProtoClient: _atProtoClient,
                 onClearIdentity: widget.onClearIdentity,
                 loading: _loading,
+                timelineRefreshing: _refreshingTimeline,
                 posts: _posts,
                 followingPosts: _followingPosts,
                 timelineSort: _timelineSort,

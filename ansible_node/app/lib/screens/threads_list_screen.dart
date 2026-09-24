@@ -117,6 +117,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
   List<Thread> _threads = [];
   List<Map<String, dynamic>> _deliberations = const [];
   bool _isLoading = true;
+  int _loadEpoch = 0;
 
   /// Per-thread preview: opening post (content + signature) and reply count,
   /// for the Threads-style content-forward rows.
@@ -192,12 +193,12 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
   }
 
   Future<void> _loadThreads() async {
-    setState(() => _isLoading = true);
+    if (!mounted) return;
+    final epoch = ++_loadEpoch;
     final threads = await _threadRepo.list(boardId: widget.board.id);
     final projection = await DriftHostedBoardRepository(
       widget.db,
     ).getProjectionByLocalBoardId(widget.board.id);
-    final deliberations = await _loadDeliberations(projection);
     final postingBlocked = await _checkPostingGate(projection);
     final remoteRemoval = projection == null
         ? null
@@ -213,7 +214,6 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
             entry.action == HostModerationState.actionLocked)
           entry.targetRef: entry,
     };
-    final externalItems = await _loadExternalItems(projection);
     final firstPostByThread = <String, Post?>{};
     final replyCountByThread = <String, int>{};
     final reactionCountByThread = <String, int>{};
@@ -247,15 +247,14 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
       final created = b.createdAt.compareTo(a.createdAt);
       return created != 0 ? created : a.id.compareTo(b.id);
     });
+    if (!mounted || epoch != _loadEpoch) return;
     setState(() {
       _threads = threads;
-      _deliberations = deliberations;
       _hostedProjection = projection;
       _remoteRemoval = remoteRemoval;
       _postingBlocked = postingBlocked;
       _requiredTier = projection?.minPostTier;
       _lockedByThreadId = lockedByThreadId;
-      _externalItems = externalItems;
       _firstPostByThread
         ..clear()
         ..addAll(firstPostByThread);
@@ -270,6 +269,42 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
         ..addAll(lastActivityByThread);
       _isLoading = false;
     });
+    // Public/native local history is ready. Optional remote sections must not
+    // gate it or wait for one another, even on an unreachable host.
+    unawaited(_refreshDeliberations(projection, epoch));
+    unawaited(_refreshExternalItems(projection, epoch));
+  }
+
+  Future<void> _refreshDeliberations(
+    HostedBoardProjection? projection,
+    int epoch,
+  ) async {
+    try {
+      final items = await _loadDeliberations(
+        projection,
+      ).timeout(const Duration(seconds: 15));
+      if (mounted && epoch == _loadEpoch) {
+        setState(() => _deliberations = items);
+      }
+    } catch (_) {
+      // Keep the last successful section on a transient failure.
+    }
+  }
+
+  Future<void> _refreshExternalItems(
+    HostedBoardProjection? projection,
+    int epoch,
+  ) async {
+    try {
+      final items = await _loadExternalItems(
+        projection,
+      ).timeout(const Duration(seconds: 15));
+      if (mounted && epoch == _loadEpoch) {
+        setState(() => _externalItems = items);
+      }
+    } catch (_) {
+      // Keep native history readable. Both external inclusion gates still run.
+    }
   }
 
   Future<List<Map<String, dynamic>>> _loadDeliberations(
@@ -278,31 +313,25 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
     if (projection == null) return const [];
     final injected = widget.deliberationsLoader;
     if (injected != null) return injected(projection);
+    final host = await DriftRemoteNodeRepository(
+      widget.db,
+    ).getById(projection.forumHostId);
+    if (host == null) return const [];
+    final path =
+        '/api/v1/forum-host/boards/${Uri.encodeComponent(projection.hostedBoardId)}/deliberations';
+    final headers = await _deliberationReadHeaders(
+      projection: projection,
+      hostUrl: host.url,
+      path: path,
+    );
+    final client = ForumHostClient(baseUrl: host.url);
     try {
-      final host = await DriftRemoteNodeRepository(
-        widget.db,
-      ).getById(projection.forumHostId);
-      if (host == null) return const [];
-      final path =
-          '/api/v1/forum-host/boards/${Uri.encodeComponent(projection.hostedBoardId)}/deliberations';
-      final headers = await _deliberationReadHeaders(
-        projection: projection,
-        hostUrl: host.url,
-        path: path,
+      return await client.listDeliberations(
+        projection.hostedBoardId,
+        headers: headers,
       );
-      final client = ForumHostClient(baseUrl: host.url);
-      try {
-        return await client.listDeliberations(
-          projection.hostedBoardId,
-          headers: headers,
-        );
-      } finally {
-        client.close();
-      }
-    } catch (_) {
-      // The board and its local threads remain readable when its Forum Host is
-      // temporarily unavailable; the dedicated screen exposes retry/error UI.
-      return const [];
+    } finally {
+      client.close();
     }
   }
 
@@ -344,14 +373,8 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
 
     final fetcher = _resolveExternalFetcher();
     if (fetcher == null) return const [];
-    try {
-      final page = await fetcher(projection.hostedBoardId);
-      return page.items;
-    } catch (_) {
-      // External content is best-effort and non-load-bearing: a fetch failure
-      // never blocks the native thread list.
-      return const [];
-    }
+    final page = await fetcher(projection.hostedBoardId);
+    return page.items;
   }
 
   BoardExternalFetcher? _resolveExternalFetcher() {

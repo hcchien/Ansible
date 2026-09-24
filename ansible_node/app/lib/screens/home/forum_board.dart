@@ -8,6 +8,8 @@ import '../../theme/ansible_design.dart';
 import '../../theme/elix_screen_style.dart';
 import '../user_profile_screen.dart';
 import 'post_card.dart';
+import 'post_card_revision.dart';
+import '../../widgets/animated_feed_list.dart';
 
 /// Forum board (討論區) — boards only; the following feed lives in 時間軸.
 class ForumBoardView extends StatelessWidget {
@@ -169,13 +171,14 @@ class ForumBoardView extends StatelessWidget {
                               ?.copyWith(color: AnsibleDesign.inkMuted),
                         ),
                       ))
-              : ListView.separated(
-                  itemCount: posts.length,
-                  padding: const EdgeInsets.only(bottom: 12),
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) => PostCard(
+              : AnimatedFeedList<PostCardData>(
+                  key: ValueKey('forum_board:$did:$selectedBoardId'),
+                  items: posts,
+                  itemId: postCardId,
+                  itemRevision: postCardRevision,
+                  itemBuilder: (context, post) => PostCard(
                     db: db,
-                    data: posts[index],
+                    data: post,
                     authorDid: did,
                     opsDispatchService: opsDispatchService,
                     onFlushPendingOps: onFlushPendingOps,

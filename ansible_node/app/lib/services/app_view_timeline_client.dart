@@ -16,6 +16,8 @@ class AppViewTimelineClient {
   AppViewTimelineClient({required this.baseUrl, http.Client? client})
     : _client = client ?? http.Client();
 
+  void close() => _client.close();
+
   /// Fetches a board's curated external (fediverse) items from the committed
   /// AppView contract:
   /// `GET /api/v1/boards/:board_id/external?cursor=&limit=`.
