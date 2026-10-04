@@ -82,7 +82,7 @@ void main() {
     await pumpScreen(tester, db, repo);
 
     expect(find.text('在你發表或參與的貼文中留言'), findsOneWidget);
-    expect(find.text('開始追蹤你'), findsOneWidget);
+    expect(find.text('要求追蹤你'), findsOneWidget);
     expect(find.text('傳來一則私訊'), findsOneWidget);
     expect(find.text('在回覆中提及了你'), findsOneWidget);
   });
@@ -247,7 +247,7 @@ void main() {
     );
 
     await pumpScreen(tester, db, repo);
-    await tester.tap(find.text('開始追蹤你'));
+    await tester.tap(find.text('要求追蹤你'));
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(await repo.unreadCount(), 0);
