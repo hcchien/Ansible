@@ -145,6 +145,76 @@ void main() {
     expect(all.single.type, NotificationType.replyToPost);
   });
 
+  test(
+    'later comments notify a participant, earlier comments do not',
+    () async {
+      await seedThread(authorId: otherDid);
+      final joined = DateTime.utc(2026, 6, 12);
+      await DriftPostRepository(db).create(
+        Post(
+          id: 'mine',
+          boardId: 'board-1',
+          threadId: 'thread-1',
+          content: 'joined',
+          authorId: localDid,
+          createdAt: joined,
+          updatedAt: joined,
+          lastEditAt: joined,
+          signatureVerified: true,
+        ),
+      );
+      await projector.onSyncedActivity(
+        activity(entityId: 'later', threadId: 'thread-1'),
+      );
+      await projector.onSyncedActivity(
+        Activity(
+          activityId: 'old',
+          type: 'create',
+          entityType: 'post',
+          entityId: 'old',
+          threadId: 'thread-1',
+          authorId: otherDid,
+          createdAt: joined.subtract(const Duration(days: 1)),
+          payload: const {},
+        ),
+      );
+      expect((await notifications.list()).single.targetRef, 'later');
+    },
+  );
+
+  test('standalone comment on my content notifies without a mention', () async {
+    final contents = DriftContentItemRepository(db);
+    final now = DateTime.utc(2026, 6, 12);
+    await contents.create(
+      ContentItem(
+        id: 'content-1',
+        authorDid: localDid,
+        mode: ContentMode.murmur,
+        body: 'hello',
+        status: ContentStatus.active,
+        visibility: ContentVisibility.public,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    projector = NotificationProjector(
+      notifications: notifications,
+      localDid: localDid,
+      postRepository: DriftPostRepository(db),
+      contentRepository: contents,
+    );
+    final op = activity(
+      entityType: 'comment',
+      entityId: 'comment-1',
+      payload: {'targetId': 'content-1'},
+    );
+    await projector.onSyncedActivity(op);
+    await projector.onSyncedActivity(op);
+    final result = (await notifications.list()).single;
+    expect(result.threadId, 'content-1');
+    expect(result.type, NotificationType.replyToThread);
+  });
+
   test('mention in another user thread emits a targeted mention', () async {
     await seedThread(authorId: otherDid);
 

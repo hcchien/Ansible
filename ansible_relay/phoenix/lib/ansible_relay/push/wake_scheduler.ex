@@ -157,8 +157,12 @@ defmodule AnsibleRelay.Push.WakeScheduler do
 
   defp handle_op(%{entity_type: "comment", op_type: "insert"} = op) do
     case decode_payload(op.payload) do
-      {:ok, %{} = payload} -> schedule_mention_wakes(payload, op.author_did)
-      _ -> :ok
+      {:ok, %{} = payload} ->
+        schedule_mention_wakes(payload, op.author_did)
+        schedule_reply_wake(payload, op.author_did)
+
+      _ ->
+        :ok
     end
   end
 
@@ -174,12 +178,22 @@ defmodule AnsibleRelay.Push.WakeScheduler do
   defp handle_op(_op), do: :ok
 
   defp schedule_reply_wake(payload, reply_author_did) do
-    with thread_id when is_binary(thread_id) <- payload["threadId"] || payload["thread_id"],
-         author when is_binary(author) <- OpStore.create_op_author("thread", thread_id),
-         true <- author != reply_author_did do
-      schedule_wakes(author, "reply")
-    else
-      _ -> :ok
+    target_id = payload["threadId"] || payload["thread_id"] || payload["targetId"]
+
+    if is_binary(target_id) do
+      owners =
+        Enum.map(
+          ["thread", "murmur", "note", "post"],
+          &OpStore.create_op_author(&1, target_id)
+        )
+
+      parent_id = payload["parentPostId"] || payload["parent_post_id"]
+      parent_author = if is_binary(parent_id), do: OpStore.create_op_author("post", parent_id)
+
+      (owners ++ [parent_author] ++ OpStore.discussion_participants(target_id))
+      |> Enum.filter(&(is_binary(&1) and &1 != reply_author_did))
+      |> Enum.uniq()
+      |> Enum.each(&schedule_wakes(&1, "reply"))
     end
   end
 

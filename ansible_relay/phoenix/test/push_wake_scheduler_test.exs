@@ -167,6 +167,39 @@ defmodule AnsibleRelay.Push.WakeSchedulerTest do
     assert token == "tok_#{author}"
   end
 
+  test "a standalone comment wakes its content author without a mention" do
+    author = "did:plc:content_owner_#{System.unique_integer([:positive])}"
+    replier = "did:plc:commenter_#{System.unique_integer([:positive])}"
+    key = seed_did(author)
+    reply_key = seed_did(replier)
+    target = "content-#{System.unique_integer([:positive])}"
+    register_device(author, ["reply"])
+    ingest_op(author, key, "murmur", target, %{"body" => "hello", "visibility" => "public"})
+
+    ingest_op(replier, reply_key, "comment", "comment-#{target}", %{
+      "targetId" => target,
+      "content" => "hello"
+    })
+
+    await_flush()
+    assert [%{token: token}] = TestSender.calls()
+    assert token == "tok_#{author}"
+  end
+
+  test "a later reply wakes an earlier participant" do
+    participant = "did:plc:participant_#{System.unique_integer([:positive])}"
+    replier = "did:plc:later_#{System.unique_integer([:positive])}"
+    key = seed_did(participant)
+    later_key = seed_did(replier)
+    target = "joined-#{System.unique_integer([:positive])}"
+    register_device(participant, ["reply"])
+    ingest_op(participant, key, "post", "own-#{target}", %{"threadId" => target})
+    ingest_op(replier, later_key, "post", "later-#{target}", %{"threadId" => target})
+    await_flush()
+    assert [%{token: token}] = TestSender.calls()
+    assert token == "tok_#{participant}"
+  end
+
   test "a self-reply does not wake the thread author" do
     author = "did:plc:wake_selfreply_#{System.unique_integer([:positive])}"
     author_key = seed_did(author)

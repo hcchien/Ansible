@@ -37,11 +37,17 @@ export function projectWebReplyNotifications({ feeds = [], subjectDids = [], rea
       const mentionDids = payload.mentionDids ?? payload.mention_dids ?? [];
       const mentioned = Array.isArray(mentionDids) &&
         mentionDids.slice(0, 10).some((did) => localDids.has(String(did ?? '').trim()));
+      const participated = [...posts.values()].some((post) => {
+        const ownPayload = post.payload ?? {};
+        const ownThread = ownPayload.threadId ?? ownPayload.thread_id ?? post.thread_id;
+        return ownThread === threadId && localDids.has(post.author_did) &&
+          Date.parse(post.created_at) < Date.parse(item.created_at);
+      });
       const type = mentioned
         ? 'mention'
         : parent && localDids.has(parent.author_did)
           ? 'reply_to_post'
-          : thread && localDids.has(thread.author_did)
+          : ((thread && localDids.has(thread.author_did)) || participated)
             ? 'reply_to_thread'
             : null;
       if (!type || !threadId) continue;

@@ -106,3 +106,14 @@ readStore.markAllRead('did:elix:me', ['reply:two']);
 assert.deepEqual(readStore.readIds('did:elix:me'), ['reply:one', 'reply:two']);
 assert.deepEqual(readStore.readIds('did:elix:other'), []);
 console.log('ok - keeps read state browser-local and isolated per DID');
+
+const participantFeed = { items: [
+  { entity_type: 'thread', op_type: 'insert', entity_id: 'joined', author_did: 'other' },
+  ...['before', 'mine', 'after'].map((id, index) => ({
+    entity_type: 'post', op_type: 'insert', entity_id: id,
+    author_did: id === 'mine' ? 'me' : 'other',
+    created_at: `2026-10-04T00:0${index}:00Z`, payload: { threadId: 'joined' },
+  })),
+] };
+assert.deepEqual(projectWebReplyNotifications({ feeds: [participantFeed], subjectDids: ['me'] })
+  .map((item) => item.id), ['reply:after']);

@@ -854,7 +854,7 @@ const notificationsHtml = renderPageBody(
     },
   }),
 );
-assert.match(notificationsHtml, /回覆了你的討論串/);
+assert.match(notificationsHtml, /在你發表或參與的貼文中留言/);
 assert.match(notificationsHtml, /data-action="open-notification"/);
 assert.match(notificationsHtml, /data-action="mark-all-notifications-read"/);
 assert.match(notificationsHtml, /notification-unread-dot/);

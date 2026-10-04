@@ -1,4 +1,5 @@
 import 'package:ansible_store/ansible_store.dart';
+import 'notification_preferences_controller.dart';
 
 /// Reconstructs the local notification projection from data already present
 /// in SQLite. This is intentionally idempotent: stable dedup keys preserve
@@ -13,12 +14,16 @@ class LocalNotificationRebuilder {
     required ThreadRepository threads,
     required PostRepository posts,
     required MessengerRepository messenger,
+    ContentItemRepository? contents,
+    Future<bool> Function(NotificationCategory)? isCategoryEnabled,
     required String localDid,
     Iterable<String> localDidAliases = const [],
   }) : _notifications = notifications,
        _threads = threads,
        _posts = posts,
        _messenger = messenger,
+       _contents = contents,
+       _isCategoryEnabled = isCategoryEnabled,
        _localDids = {
          localDid,
          ...localDidAliases,
@@ -28,12 +33,19 @@ class LocalNotificationRebuilder {
   final ThreadRepository _threads;
   final PostRepository _posts;
   final MessengerRepository _messenger;
+  final ContentItemRepository? _contents;
+  final Future<bool> Function(NotificationCategory)? _isCategoryEnabled;
   final Set<String> _localDids;
 
   Future<void> rebuild() async {
     if (_localDids.isEmpty) return;
-    await _rebuildReplies();
-    await _rebuildMessenger();
+    if (await _isCategoryEnabled?.call(NotificationCategory.reply) ?? true) {
+      await _rebuildReplies();
+    }
+    if (await _isCategoryEnabled?.call(NotificationCategory.messenger) ??
+        true) {
+      await _rebuildMessenger();
+    }
   }
 
   Future<void> _rebuildReplies() async {
@@ -58,7 +70,19 @@ class LocalNotificationRebuilder {
             ? threadsById[post.threadId]
             : await _threads.getById(post.threadId);
         threadsById[post.threadId] = thread;
-        if (_localDids.contains(thread?.authorId)) {
+        final content = await _contents?.getById(post.threadId);
+        final participated = posts.any(
+          (own) =>
+              own.threadId == post.threadId &&
+              !own.isDeleted &&
+              _localDids.contains(own.authorId) &&
+              own.createdAt.isBefore(post.createdAt),
+        );
+        if (_localDids.contains(thread?.authorId) ||
+            (content != null &&
+                !content.isDeleted &&
+                _localDids.contains(content.authorDid)) ||
+            participated) {
           type = NotificationType.replyToThread;
         }
       }

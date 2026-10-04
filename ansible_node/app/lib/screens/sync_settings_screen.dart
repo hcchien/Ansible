@@ -679,6 +679,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
       reactionRepository: DriftReactionRepository(widget.db),
       notificationProjector: NotificationProjector(
         notifications: DriftNotificationRepository(widget.db),
+        contentRepository: DriftContentItemRepository(widget.db),
         localDid: widget.localDid,
         threadRepository: _threadRepo,
         postRepository: _postRepo,

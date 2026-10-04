@@ -23,6 +23,7 @@ class NotificationProjector {
     ThreadRepository? threadRepository,
     PostRepository? postRepository,
     ContactRepository? contactRepository,
+    ContentItemRepository? contentRepository,
     NotificationCategoryEnabled? isCategoryEnabled,
     DateTime Function()? now,
   }) : _notifications = notifications,
@@ -33,6 +34,7 @@ class NotificationProjector {
        _threadRepo = threadRepository,
        _postRepo = postRepository,
        _contactRepo = contactRepository,
+       _contentRepo = contentRepository,
        _isCategoryEnabled = isCategoryEnabled,
        _now = now ?? (() => DateTime.now().toUtc());
 
@@ -41,6 +43,7 @@ class NotificationProjector {
   final ThreadRepository? _threadRepo;
   final PostRepository? _postRepo;
   final ContactRepository? _contactRepo;
+  final ContentItemRepository? _contentRepo;
   final NotificationCategoryEnabled? _isCategoryEnabled;
   final DateTime Function() _now;
 
@@ -147,10 +150,6 @@ class NotificationProjector {
       return;
     }
 
-    // Standalone comments have no locally stored parent/thread author lookup;
-    // mention is their only targeted notification path.
-    if (activity.entityType.toLowerCase() == 'comment') return;
-
     final parentPostId = activity.payload['parentPostId'] as String?;
 
     // Reply to one of my posts?
@@ -164,10 +163,26 @@ class NotificationProjector {
     }
 
     // Reply in one of my threads?
-    final threadId = activity.threadId;
+    final threadId =
+        (activity.payload['threadId'] ?? activity.payload['targetId'])
+            ?.toString() ??
+        activity.threadId;
     if (threadId == null || threadId.isEmpty) return;
     final thread = await _threadRepo?.getById(threadId);
-    if (thread == null || !_localDids.contains(thread.authorId)) return;
+    final content = await _contentRepo?.getById(threadId);
+    final ownsTarget =
+        _localDids.contains(thread?.authorId) ||
+        (content != null &&
+            !content.isDeleted &&
+            _localDids.contains(content.authorDid));
+    final posts = await _postRepo?.list(threadId: threadId) ?? <Post>[];
+    final participated = posts.any(
+      (post) =>
+          !post.isDeleted &&
+          _localDids.contains(post.authorId) &&
+          post.createdAt.isBefore(activity.createdAt),
+    );
+    if (!ownsTarget && !participated) return;
     if (!await _enabled(NotificationCategory.reply)) return;
     await _emitReply(activity, NotificationType.replyToThread);
   }
@@ -209,7 +224,10 @@ class NotificationProjector {
         actorDid: activity.authorId,
         targetRef: activity.entityId,
         boardId: activity.boardId,
-        threadId: activity.threadId,
+        threadId:
+            (activity.payload['threadId'] ?? activity.payload['targetId'])
+                ?.toString() ??
+            activity.threadId,
         postId: activity.entityId,
         createdAt: activity.createdAt,
         dedupKey: dedupKey,

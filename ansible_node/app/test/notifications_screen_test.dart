@@ -81,7 +81,7 @@ void main() {
 
     await pumpScreen(tester, db, repo);
 
-    expect(find.text('回覆了你的討論串'), findsOneWidget);
+    expect(find.text('在你發表或參與的貼文中留言'), findsOneWidget);
     expect(find.text('開始追蹤你'), findsOneWidget);
     expect(find.text('傳來一則私訊'), findsOneWidget);
     expect(find.text('在回覆中提及了你'), findsOneWidget);

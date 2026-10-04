@@ -268,6 +268,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _notificationPrefs = NotificationPreferencesController();
     _notificationProjector = NotificationProjector(
       notifications: _notificationRepo,
+      contentRepository: DriftContentItemRepository(widget.db),
       localDid: widget.did,
       localDidAliases: widget.identityAliases,
       threadRepository: _threadRepo,
@@ -280,6 +281,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       threads: _threadRepo,
       posts: _postRepo,
       messenger: _messengerRepo,
+      contents: DriftContentItemRepository(widget.db),
+      isCategoryEnabled: _notificationPrefs.categoryEnabled,
       localDid: widget.did,
       localDidAliases: widget.identityAliases,
     );

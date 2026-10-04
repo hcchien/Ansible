@@ -14,6 +14,8 @@ import 'posts_view_screen.dart';
 import 'user_profile_screen.dart';
 import 'public_content_screen.dart';
 import '../services/discovery_client.dart';
+import 'content_detail_screen.dart';
+import '../services/ops_dispatch_service.dart';
 
 /// In-app notification feed (Phase A): a pure read of the local
 /// `notifications` table. Tapping a row marks it read and navigates to the
@@ -159,6 +161,33 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         : await _threadRepo.getById(threadId);
     if (!mounted) return;
     if (thread == null && threadId != null) {
+      final content = await DriftContentItemRepository(
+        widget.db,
+      ).getById(threadId);
+      if (!mounted) return;
+      if (content != null && !content.isDeleted) {
+        final dispatch = OpsDispatchService(
+          repository: DriftOpsQueueRepository(widget.db),
+        );
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ContentDetailScreen(
+              db: widget.db,
+              localDid: widget.did,
+              contentId: content.id,
+              authorDid: content.authorDid,
+              body: content.body,
+              title: content.title,
+              opsDispatchService: dispatch,
+              onFlushPendingOps: () async {
+                await dispatch.flushPending();
+              },
+            ),
+          ),
+        );
+        return;
+      }
+      // Keep the existing public lookup for targets not present locally.
       final client = DiscoveryClient(appViewBaseUrl: '');
       await Navigator.of(context).push(
         MaterialPageRoute(
@@ -234,8 +263,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   String _typeLabel(BuildContext context, AppNotification notification) {
     return switch (notification.type) {
       NotificationType.replyToThread => context.uiCopy(
-        zh: '回覆了你的討論串',
-        en: 'replied to your thread',
+        zh: '在你發表或參與的貼文中留言',
+        en: 'commented on a post you authored or joined',
       ),
       NotificationType.replyToPost => context.uiCopy(
         zh: '回覆了你的留言',

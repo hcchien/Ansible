@@ -278,6 +278,32 @@ defmodule AnsibleRelay.OpStore do
     )
   end
 
+  @doc "Public discussion participants used only for content-free wake routing."
+  def discussion_participants(target_id) do
+    Repo.all(
+      from(o in Op,
+        as: :reply,
+        where: o.entity_type in ["post", "comment"] and o.op_type == "insert",
+        where:
+          not exists(
+            from(d in Op,
+              where:
+                d.entity_type == parent_as(:reply).entity_type and
+                  d.entity_id == parent_as(:reply).entity_id and d.op_type == "delete",
+              select: 1
+            )
+          ),
+        select: {o.author_did, o.payload}
+      )
+    )
+    |> Enum.filter(fn {_author, raw} ->
+      payload = decode_payload(raw)
+      (payload["threadId"] || payload["thread_id"] || payload["targetId"]) == target_id
+    end)
+    |> Enum.map(&elem(&1, 0))
+    |> Enum.uniq()
+  end
+
   defp lock_entity(entity_type, entity_id) do
     # `hashtext` collisions merely serialize unrelated entities; they cannot
     # authorize a mutation.  The lock is released with this transaction.
