@@ -437,6 +437,120 @@ defmodule AnsibleRelay.Web.IdentityAnchorControllerTest do
     assert Jason.decode!(resp.resp_body)["error"] == "invalid_signature"
   end
 
+  test "rotated authority replaces a warmed verification key across cache reloads" do
+    ctx = seed_initial()
+    nullifier = "rotation-nullifier-#{System.unique_integer([:positive])}"
+    :ok = AnsibleRelay.IdentityCache.put(ctx.did, ctx.id_pub, nullifier)
+    assert {:ok, before} = AnsibleRelay.IdentityCache.get(ctx.did)
+    assert before.public_key_hex == ctx.id_pub
+    {new_pub, new_priv} = ed25519_keypair()
+
+    fields = %{
+      did: ctx.did,
+      handle: ctx.handle,
+      identity_key: new_pub,
+      reason: "rotation",
+      prev_anchor_cid: ctx.anchor_cid,
+      created_at: "2026-06-14T09:00:00.000Z"
+    }
+
+    {anchor, _, body} = build_anchor(fields, new_priv)
+
+    assert post_json(
+             "/api/v1/identity/anchor",
+             Map.put(anchor, "device_sig", sign(ctx.id_priv, body))
+           ).status == 200
+
+    message = "rotation-verification-probe"
+
+    for _ <- 1..2 do
+      assert {:ok, current} = AnsibleRelay.IdentityCache.get(ctx.did)
+      assert current.public_key_hex == new_pub
+      assert current.nullifier == before.nullifier
+      assert current.expires_at == before.expires_at
+
+      assert AnsibleRelay.IdentityCache.verify_signature(
+               ctx.did,
+               message,
+               sign(new_priv, message)
+             )
+
+      refute AnsibleRelay.IdentityCache.verify_signature(
+               ctx.did,
+               message,
+               sign(ctx.id_priv, message)
+             )
+
+      # Simulates an independent Relay instance with a cold ETS cache. The
+      # persisted verified_dids row still holds the original public key.
+      :ets.delete(:verified_did_cache, ctx.did)
+    end
+
+    op = %{
+      "author_did" => ctx.did,
+      "entity_id" => "reaction-rotation-test",
+      "entity_type" => "reaction",
+      "op_id" => "op-rotation-test-#{System.unique_integer([:positive])}",
+      "op_type" => "insert",
+      "payload" =>
+        Base.encode64(
+          Jason.encode!(%{
+            "targetType" => "post",
+            "targetId" => "post-1",
+            "reactionType" => "heart"
+          })
+        )
+    }
+
+    canonical =
+      "{" <>
+        (op
+         |> Enum.sort_by(&elem(&1, 0))
+         |> Enum.map_join(",", fn {k, v} -> Jason.encode!(k) <> ":" <> Jason.encode!(v) end)) <>
+        "}"
+
+    assert post_json("/api/v1/ops", Map.put(op, "signature", sign(ctx.id_priv, canonical))).status ==
+             401
+
+    assert post_json("/api/v1/ops", Map.put(op, "signature", sign(new_priv, canonical))).status ==
+             202
+  end
+
+  test "active P-256 authority replaces cached legacy verification material" do
+    ctx = seed_initial()
+
+    :ok =
+      AnsibleRelay.IdentityCache.put(
+        ctx.did,
+        ctx.id_pub,
+        "p256-#{System.unique_integer([:positive])}"
+      )
+
+    {public, private} = :crypto.generate_key(:ecdh, :secp256r1)
+    public_hex = Base.encode16(public, case: :lower)
+
+    Repo.query!(
+      "UPDATE identity_anchors SET identity_key = $1, identity_key_algorithm = 'p256-sha256' WHERE did = $2 AND state = 'active'",
+      [public_hex, ctx.did]
+    )
+
+    message = "hardware-identity-verification"
+
+    signature =
+      :crypto.sign(:ecdsa, :sha256, message, [private, :secp256r1]) |> Base.encode16(case: :lower)
+
+    assert {:ok, entry} = AnsibleRelay.IdentityCache.get(ctx.did)
+    assert entry.signing_algorithm == "p256-sha256"
+    assert entry.public_key_hex == public_hex
+    assert AnsibleRelay.IdentityCache.verify_signature(ctx.did, message, signature)
+
+    refute AnsibleRelay.IdentityCache.verify_signature(
+             ctx.did,
+             message,
+             sign(ctx.id_priv, message)
+           )
+  end
+
   # =========================================================================
   # device_change
   # =========================================================================
@@ -619,11 +733,19 @@ defmodule AnsibleRelay.Web.IdentityAnchorControllerTest do
 
     # Repair compatibility with the first deployed version, which wrote the
     # orphaned recovery as superseded rather than cancelled.
-    Repo.query!("UPDATE identity_anchors SET state = 'superseded' WHERE did = $1 AND anchor_cid = $2", [ctx.did, pending_cid])
+    Repo.query!(
+      "UPDATE identity_anchors SET state = 'superseded' WHERE did = $1 AND anchor_cid = $2",
+      [ctx.did, pending_cid]
+    )
 
     assert {:ok, repaired_chain} = AnchorStore.get_chain(ctx.did)
     assert Enum.map(repaired_chain, & &1["reason"]) == ["initial", "rotation"]
-    Repo.query!("UPDATE identity_anchors SET reason = 'rotation' WHERE did = $1 AND anchor_cid = $2", [ctx.did, pending_cid])
+
+    Repo.query!(
+      "UPDATE identity_anchors SET reason = 'rotation' WHERE did = $1 AND anchor_cid = $2",
+      [ctx.did, pending_cid]
+    )
+
     assert {:error, :invalid_chain} = AnchorStore.get_chain(ctx.did)
   end
 

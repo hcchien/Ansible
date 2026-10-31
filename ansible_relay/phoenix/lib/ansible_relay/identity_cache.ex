@@ -89,10 +89,40 @@ defmodule AnsibleRelay.IdentityCache do
   re-anchor during a transient Postgres blip.
   """
   def get(did) do
-    case :ets.lookup(@table, did) do
-      [{^did, entry}] -> {:ok, entry}
-      [] -> read_through(did)
+    cached =
+      case :ets.lookup(@table, did) do
+        [{^did, entry}] -> {:ok, entry}
+        [] -> read_through(did)
+      end
+
+    case cached do
+      {:ok, entry} -> apply_active_identity_key(did, entry)
+      other -> other
     end
+  end
+
+  # Verification eligibility remains the verified DID's original expiry and
+  # nullifier. Its signing authority, however, is the current active anchor,
+  # queried on every use so another Relay instance cannot retain an old key.
+  defp apply_active_identity_key(did, entry) do
+    case Repo.one(
+           from(a in IdentityAnchor,
+             where: a.did == ^did and a.state == "active",
+             select: {a.identity_key, a.identity_key_algorithm}
+           )
+         ) do
+      {key, algorithm} ->
+        {:ok, %{entry | public_key_hex: key, signing_algorithm: algorithm || "ed25519"}}
+
+      nil ->
+        if Repo.exists?(from(a in IdentityAnchor, where: a.did == ^did)) do
+          :not_found
+        else
+          {:ok, entry}
+        end
+    end
+  rescue
+    _ -> {:error, :unavailable}
   end
 
   defp read_through(did) do
