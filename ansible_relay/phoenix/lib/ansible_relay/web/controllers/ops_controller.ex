@@ -574,7 +574,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
     with {:ok, %{} = map} <- decode_payload(payload),
          target_type when target_type in ["thread", "post"] <- map["targetType"],
          target_id when is_binary(target_id) and target_id != "" <- map["targetId"],
-         reaction_type when reaction_type in ["happy", "sad", "thumbsUp", "angry"] <-
+         reaction_type when reaction_type in ["happy", "sad", "thumbsUp", "angry", "heart"] <-
            map["reactionType"] do
       {:ok, {target_type, target_id}}
     else

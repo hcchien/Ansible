@@ -58,8 +58,8 @@ defmodule AnsibleRelay.WebReactionTest do
     )
   end
 
-  test "signed reactions allow all four types for posts and threads", %{board: board} do
-    for target <- ~w(post thread), type <- ~w(thumbsUp happy sad angry) do
+  test "signed reactions allow all five types for posts and threads", %{board: board} do
+    for target <- ~w(post thread), type <- ~w(thumbsUp happy sad angry heart) do
       op =
         operation(board, "forum.react", %{
           "targetType" => target,

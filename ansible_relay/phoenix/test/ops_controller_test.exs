@@ -602,7 +602,7 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
         alice_private,
         "reaction-1",
         "update",
-        Map.put(payload, "reactionType", "angry")
+        Map.put(payload, "reactionType", "heart")
       )
 
     assert post_json("/api/v1/ops", replacement).status == 202

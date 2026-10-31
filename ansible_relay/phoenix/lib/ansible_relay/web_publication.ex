@@ -344,7 +344,7 @@ defmodule AnsibleRelay.WebPublication do
   defp validate_original_author(_operation), do: :ok
 
   # Signed reactions retain their target across edits and expose only a public
-  # DID plus one of the four supported expressions. Older web clients omit
+  # DID plus one of the supported expressions. Older web clients omit
   # targetType on insert; their parent has always meant a post.
   defp validate_reaction_payload(%{"entity_type" => "reaction"} = operation) do
     payload = maybe_add_reaction_target(operation["payload"], operation)
@@ -354,7 +354,7 @@ defmodule AnsibleRelay.WebPublication do
          :ok <-
            ensure(
              operation["action"] == "forum.delete" or
-               payload["reactionType"] in ~w(thumbsUp happy sad angry)
+               payload["reactionType"] in ~w(thumbsUp happy sad angry heart)
            ) do
       if operation["action"] in ["forum.edit", "forum.delete"] do
         case OpStore.create_op("reaction", operation["entity_id"]) do
