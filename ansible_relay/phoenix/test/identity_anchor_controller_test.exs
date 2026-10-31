@@ -614,6 +614,17 @@ defmodule AnsibleRelay.Web.IdentityAnchorControllerTest do
     assert {:ok, active} = AnchorStore.get_active(ctx.did)
     assert active["anchor_cid"] == rotation_cid
     assert active["identity_key"] == new_pub
+    assert {:ok, chain} = AnchorStore.get_chain(ctx.did)
+    assert length(chain) == 2
+
+    # Repair compatibility with the first deployed version, which wrote the
+    # orphaned recovery as superseded rather than cancelled.
+    Repo.query!("UPDATE identity_anchors SET state = 'superseded' WHERE did = $1 AND anchor_cid = $2", [ctx.did, pending_cid])
+
+    assert {:ok, repaired_chain} = AnchorStore.get_chain(ctx.did)
+    assert Enum.map(repaired_chain, & &1["reason"]) == ["initial", "rotation"]
+    Repo.query!("UPDATE identity_anchors SET reason = 'rotation' WHERE did = $1 AND anchor_cid = $2", [ctx.did, pending_cid])
+    assert {:error, :invalid_chain} = AnchorStore.get_chain(ctx.did)
   end
 
   test "pending endpoint exposes the grace-window recovery and clears after veto" do

@@ -590,7 +590,7 @@ defmodule AnsibleRelay.Identity.AnchorStore do
             from(a in IdentityAnchor,
               where: a.did == ^did and a.state == "pending" and a.reason == "recovery"
             ),
-            set: [state: "superseded", grace_until: nil, updated_at: DateTime.utc_now()]
+            set: [state: "cancelled", grace_until: nil, updated_at: DateTime.utc_now()]
           )
         end
 
@@ -929,13 +929,29 @@ defmodule AnsibleRelay.Identity.AnchorStore do
         active = active_anchor(did)
 
         with {:ok, ordered} <- walk_chain(active, by_cid, MapSet.new(), []),
-             true <- length(ordered) == map_size(by_cid),
+             true <- only_cancelled_recovery_branches?(ordered, rows),
              :ok <- verify_served_chain(ordered) do
           {:ok, Enum.map(ordered, &to_object/1)}
         else
           _ -> {:error, :invalid_chain}
         end
     end
+  end
+
+  # The first rotation release stored cancelled pending recoveries as
+  # "superseded". They are siblings of a verified rotation, never part of
+  # the active chain. Ignore only those exact orphaned recovery branches.
+  defp only_cancelled_recovery_branches?(ordered, rows) do
+    chain_ids = MapSet.new(ordered, & &1.anchor_cid)
+    rotations = Enum.filter(ordered, &(&1.reason == "rotation"))
+
+    rows
+    |> Enum.reject(&MapSet.member?(chain_ids, &1.anchor_cid))
+    |> Enum.all?(fn row ->
+      row.state == "superseded" and row.reason == "recovery" and
+        Enum.any?(rotations, &(&1.prev_anchor_cid == row.prev_anchor_cid)) and
+        not Enum.any?(rows, &(&1.prev_anchor_cid == row.anchor_cid))
+    end)
   end
 
   defp walk_chain(nil, _by_cid, _seen, _acc), do: {:error, :invalid_chain}

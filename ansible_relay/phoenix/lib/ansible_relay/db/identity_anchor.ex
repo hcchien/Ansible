@@ -61,7 +61,7 @@ defmodule AnsibleRelay.Db.IdentityAnchor do
       :created_at
     ])
     |> validate_inclusion(:reason, ~w(initial rotation recovery device_change))
-    |> validate_inclusion(:state, ~w(active pending vetoed superseded))
+    |> validate_inclusion(:state, ~w(active pending vetoed superseded cancelled))
     |> unique_constraint([:did, :anchor_cid])
   end
 end
