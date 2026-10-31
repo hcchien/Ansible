@@ -106,6 +106,10 @@ defmodule AnsibleRelay.Web.Router do
 
   # Self-certifying identity anchor (the legacy ZKP challenge/anchor flow was
   # retired in favour of did:elix + this self-certifying object).
+  get "/api/v1/identity/rotation/capabilities" do
+    send_resp(conn, 200, Jason.encode!(%{"supersedes_pending_recovery" => true}))
+  end
+
   post "/api/v1/identity/anchor" do
     AnsibleRelay.Web.Controllers.IdentityAnchorController.submit(conn, conn.body_params)
   end

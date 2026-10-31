@@ -565,12 +565,34 @@ defmodule AnsibleRelay.Identity.AnchorStore do
 
     result =
       Repo.transaction(fn ->
+        current =
+          Repo.one(
+            from(a in IdentityAnchor,
+              where: a.did == ^did and a.state == "active",
+              lock: "FOR UPDATE"
+            )
+          )
+
+        if current == nil or current.anchor_cid != prev.anchor_cid,
+          do: Repo.rollback(:conflict)
+
         # Supersede the prior active anchor first so the one-active-per-DID
         # partial unique index never collides.
         Repo.update_all(
           from(a in IdentityAnchor, where: a.did == ^did and a.anchor_cid == ^prev.anchor_cid),
           set: [state: "superseded", updated_at: DateTime.utc_now()]
         )
+
+        # A successful dual-signed rotation supersedes an outstanding recovery
+        # based on the previous key; it must never activate after this rotation.
+        if reason == "rotation" do
+          Repo.update_all(
+            from(a in IdentityAnchor,
+              where: a.did == ^did and a.state == "pending" and a.reason == "recovery"
+            ),
+            set: [state: "superseded", grace_until: nil, updated_at: DateTime.utc_now()]
+          )
+        end
 
         case insert_anchor(attrs) do
           {:ok, row} -> row
@@ -679,7 +701,7 @@ defmodule AnsibleRelay.Identity.AnchorStore do
       due
       |> Enum.filter(fn a -> not frozen?(a.did) end)
       |> Enum.flat_map(fn pending ->
-        case promote_one(pending) do
+        case promote_one(pending, now) do
           {:ok, cid} -> [cid]
           _ -> []
         end
@@ -688,9 +710,30 @@ defmodule AnsibleRelay.Identity.AnchorStore do
     {:ok, promoted}
   end
 
-  defp promote_one(pending) do
+  defp promote_one(pending, now) do
     result =
       Repo.transaction(fn ->
+        current =
+          Repo.one(
+            from(a in IdentityAnchor,
+              where: a.did == ^pending.did and a.state == "active",
+              lock: "FOR UPDATE"
+            )
+          )
+
+        candidate =
+          Repo.one(
+            from(a in IdentityAnchor,
+              where: a.did == ^pending.did and a.anchor_cid == ^pending.anchor_cid,
+              lock: "FOR UPDATE"
+            )
+          )
+
+        if current == nil or candidate == nil or candidate.state != "pending" or
+             candidate.prev_anchor_cid != current.anchor_cid or candidate.grace_until == nil or
+             DateTime.compare(candidate.grace_until, now) == :gt or frozen?(pending.did),
+           do: Repo.rollback(:stale)
+
         Repo.update_all(
           from(a in IdentityAnchor, where: a.did == ^pending.did and a.state == "active"),
           set: [state: "superseded", updated_at: DateTime.utc_now()]
@@ -755,36 +798,63 @@ defmodule AnsibleRelay.Identity.AnchorStore do
   defp do_veto(pending) do
     now = DateTime.utc_now()
 
-    Repo.transaction(fn ->
-      Repo.update_all(
-        from(a in IdentityAnchor,
-          where: a.did == ^pending.did and a.anchor_cid == ^pending.anchor_cid
-        ),
-        set: [state: "vetoed", grace_until: nil, updated_at: now]
-      )
+    result =
+      Repo.transaction(fn ->
+        active =
+          Repo.one(
+            from(a in IdentityAnchor,
+              where: a.did == ^pending.did and a.state == "active",
+              lock: "FOR UPDATE"
+            )
+          )
 
-      %IdentityAccountFreeze{}
-      |> IdentityAccountFreeze.changeset(%{
-        did: pending.did,
-        reason: "veto",
-        vetoed_anchor_cid: pending.anchor_cid,
-        frozen_at: now
-      })
-      |> Repo.insert(on_conflict: :nothing, conflict_target: :did)
-    end)
+        candidate =
+          Repo.one(
+            from(a in IdentityAnchor,
+              where: a.did == ^pending.did and a.anchor_cid == ^pending.anchor_cid,
+              lock: "FOR UPDATE"
+            )
+          )
 
-    AnsibleRelay.Metrics.inc("identity_veto_total")
+        if active == nil or candidate == nil or candidate.state != "pending" or
+             candidate.prev_anchor_cid != active.anchor_cid,
+           do: Repo.rollback(:not_found)
 
-    AnsibleRelay.Identity.RecoveryStore.audit!(
-      pending.did,
-      "recovery_vetoed",
-      "enrolled_key_veto",
-      pending.anchor_cid
-    )
+        Repo.update_all(
+          from(a in IdentityAnchor,
+            where: a.did == ^pending.did and a.anchor_cid == ^pending.anchor_cid
+          ),
+          set: [state: "vetoed", grace_until: nil, updated_at: now]
+        )
 
-    AnsibleRelay.Identity.AnchorAlerts.recovery_vetoed(pending.did)
+        %IdentityAccountFreeze{}
+        |> IdentityAccountFreeze.changeset(%{
+          did: pending.did,
+          reason: "veto",
+          vetoed_anchor_cid: pending.anchor_cid,
+          frozen_at: now
+        })
+        |> Repo.insert(on_conflict: :nothing, conflict_target: :did)
+      end)
 
-    :ok
+    case result do
+      {:error, reason} ->
+        {:error, reason}
+
+      {:ok, _} ->
+        AnsibleRelay.Metrics.inc("identity_veto_total")
+
+        AnsibleRelay.Identity.RecoveryStore.audit!(
+          pending.did,
+          "recovery_vetoed",
+          "enrolled_key_veto",
+          pending.anchor_cid
+        )
+
+        AnsibleRelay.Identity.AnchorAlerts.recovery_vetoed(pending.did)
+
+        :ok
+    end
   end
 
   # A veto is authorized by any key the DID has EVER enrolled: every prior

@@ -585,6 +585,37 @@ defmodule AnsibleRelay.Web.IdentityAnchorControllerTest do
     assert object["state"] == "active"
   end
 
+  test "dual signed rotation supersedes a pending recovery permanently" do
+    ctx = seed_initial(with_device: true)
+    {pending, pending_cid, _} = build_recovery(ctx)
+    assert post_json("/api/v1/identity/anchor", pending).status == 202
+    {new_pub, new_priv} = ed25519_keypair()
+
+    fields = %{
+      did: ctx.did,
+      handle: ctx.handle,
+      identity_key: new_pub,
+      reason: "rotation",
+      prev_anchor_cid: ctx.anchor_cid,
+      created_at: "2026-06-14T09:00:00.000Z"
+    }
+
+    {anchor, rotation_cid, body} = build_anchor(fields, new_priv)
+
+    assert post_json(
+             "/api/v1/identity/anchor",
+             Map.put(anchor, "device_sig", sign(ctx.id_priv, body))
+           ).status == 200
+
+    future = DateTime.add(DateTime.utc_now(), 400_000, :second)
+    assert {:ok, promoted} = AnchorStore.promote_due(future)
+    refute pending_cid in promoted
+    assert get_req("/api/v1/identity/anchor/#{ctx.did}/pending").status == 404
+    assert {:ok, active} = AnchorStore.get_active(ctx.did)
+    assert active["anchor_cid"] == rotation_cid
+    assert active["identity_key"] == new_pub
+  end
+
   test "pending endpoint exposes the grace-window recovery and clears after veto" do
     ctx = seed_initial(with_device: true)
 
