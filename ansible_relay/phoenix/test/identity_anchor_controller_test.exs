@@ -603,7 +603,7 @@ defmodule AnsibleRelay.Web.IdentityAnchorControllerTest do
     {anchor, rotation_cid, body} = build_anchor(fields, new_priv)
 
     assert post_json(
-             "/api/v1/identity/anchor",
+             "/api/v1/identity/rotation/safe",
              Map.put(anchor, "device_sig", sign(ctx.id_priv, body))
            ).status == 200
 

@@ -110,6 +110,14 @@ defmodule AnsibleRelay.Web.Router do
     send_resp(conn, 200, Jason.encode!(%{"supersedes_pending_recovery" => true}))
   end
 
+  post "/api/v1/identity/rotation/safe" do
+    if conn.body_params["reason"] == "rotation" do
+      AnsibleRelay.Web.Controllers.IdentityAnchorController.submit(conn, conn.body_params)
+    else
+      send_resp(conn, 422, Jason.encode!(%{"error" => "invalid_rotation"}))
+    end
+  end
+
   post "/api/v1/identity/anchor" do
     AnsibleRelay.Web.Controllers.IdentityAnchorController.submit(conn, conn.body_params)
   end
